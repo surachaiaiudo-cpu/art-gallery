@@ -1,7 +1,7 @@
 name = "art-gallery"
-main = ".open-next/worker.js"
 compatibility_date = "2024-04-01"
 compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
 
 [[d1_databases]]
 binding = "DB"
@@ -11,4 +11,3 @@ migrations_dir = "drizzle"
 
 [vars]
 NEXT_PUBLIC_SITE_URL = "https://art-gallery.pages.dev"
-
