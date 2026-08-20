@@ -20,6 +20,14 @@ const mockD1: any = {
 };
 
 export function getD1Binding() {
+  try {
+    const symbol = Symbol.for('__cloudflare-request-context__');
+    const ctx = (globalThis as any)[symbol];
+    if (ctx?.env?.DB) {
+      return ctx.env.DB;
+    }
+  } catch {}
+
   if (typeof (globalThis as any).DB !== 'undefined') {
     return (globalThis as any).DB;
   }
