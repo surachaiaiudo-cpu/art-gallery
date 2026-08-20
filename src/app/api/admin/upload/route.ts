@@ -24,7 +24,13 @@ export async function POST(req: NextRequest) {
     const finalFileName = `${cleanBaseName}-${Date.now()}${extension}`;
 
     // 1. ImageKit.io Upload (1st Priority)
-    const imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_KEY;
+    const symbol = Symbol.for('__cloudflare-request-context__');
+    const ctx = (globalThis as any)[symbol];
+    const imageKitPrivateKey =
+      ctx?.env?.IMAGEKIT_PRIVATE_KEY ||
+      ctx?.env?.IMAGEKIT_KEY ||
+      process.env.IMAGEKIT_PRIVATE_KEY ||
+      process.env.IMAGEKIT_KEY;
     if (imageKitPrivateKey) {
       try {
         const ikFormData = new FormData();
