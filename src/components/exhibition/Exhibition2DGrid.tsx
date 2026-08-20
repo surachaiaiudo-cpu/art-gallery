@@ -65,11 +65,13 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
 
             {/* Meta Row: Curator + Dates + Stats */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#6B655A] font-medium pt-1">
-              <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-[#E2DDD3] shadow-sm">
-                <Award className="w-3.5 h-3.5 text-[#8C6D3F] shrink-0" />
-                <span>{t.specs.curatedBy}:</span>
-                <strong className="text-[#1A1918]">{exhibition.curator?.name || 'Ms. Anchalee S.'}</strong>
-              </div>
+              {exhibition.curator?.name && (
+                <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-[#E2DDD3] shadow-sm">
+                  <Award className="w-3.5 h-3.5 text-[#8C6D3F] shrink-0" />
+                  <span>{t.specs.curatedBy}:</span>
+                  <strong className="text-[#1A1918]">{exhibition.curator.name}</strong>
+                </div>
+              )}
 
               {exhibition.startDate && (
                 <div className="flex items-center gap-1.5 text-[#7A7468]">

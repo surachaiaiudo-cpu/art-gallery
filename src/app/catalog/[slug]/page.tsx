@@ -98,9 +98,11 @@ export default async function CatalogViewerPage({
             <h1 className="font-serif text-2xl sm:text-4xl font-bold text-[#1A1918]">
               {exhibition.title}
             </h1>
-            <p className="text-sm text-[#615B50] font-medium pt-2">
-              Curated by: <span className="font-semibold text-[#1A1918]">{curator?.name || 'Ms. Anchalee S.'}</span>
-            </p>
+            {curator?.name && (
+              <p className="text-sm text-[#615B50] font-medium pt-2">
+                Curated by: <span className="font-semibold text-[#1A1918]">{curator.name}</span>
+              </p>
+            )}
             <p className="text-xs text-[#8A8376]">
               {formatDateRange(exhibition.startDate, exhibition.endDate)}
             </p>

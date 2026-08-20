@@ -207,7 +207,7 @@ export function ExhibitionCatalogPDF({ exhibition }: ExhibitionCatalogPDFProps) 
               {exhibition.title}
             </Text>
             <Text style={{ fontSize: 10, color: '#6A6458', marginBottom: 4 }}>
-              Curated by: {curator?.name || 'Ms. Anchalee S.'}
+              {curator?.name ? `Curated by: ${curator.name}` : 'ARTVARA Curated Collection'}
             </Text>
             <Text style={{ fontSize: 9, color: '#8C8578' }}>
               {formatDateRange(exhibition.startDate, exhibition.endDate)}

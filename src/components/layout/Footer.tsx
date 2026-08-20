@@ -17,16 +17,18 @@ export function Footer({ exhibition }: FooterProps) {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Participating Artists List */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-center md:text-left">
-          <span className="font-semibold text-[#2B2824]">{t.specs.participatingArtists}:</span>
           {artists.length > 0 ? (
-            artists.map((artist, idx) => (
-              <span key={artist.id} className="text-[#4F4B43]">
-                {artist.flagEmoji} {artist.name}
-                {idx < artists.length - 1 && <span className="text-[#A8A397] ml-2">,</span>}
-              </span>
-            ))
+            <>
+              <span className="font-semibold text-[#2B2824]">{t.specs.participatingArtists}:</span>
+              {artists.map((artist, idx) => (
+                <span key={artist.id} className="text-[#4F4B43]">
+                  {artist.flagEmoji} {artist.name}
+                  {idx < artists.length - 1 && <span className="text-[#A8A397] ml-2">,</span>}
+                </span>
+              ))}
+            </>
           ) : (
-            <span>Somchai Jaiyen, Sasithol Arivarat, Luckshal Sailom, Art des, Sarawathudam, Akhil Namwan, MA Families</span>
+            <span className="text-[#7A756B]">ARTVARA Fine Arts & Contemporary Heritage Gallery</span>
           )}
         </div>
 
