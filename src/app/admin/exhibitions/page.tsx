@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { getAllExhibitions } from '@/lib/data';
 import { AdminExhibitionsManagerClient } from '@/components/admin/AdminExhibitionsManagerClient';
 
@@ -8,3 +9,4 @@ export default async function AdminExhibitionsPage() {
 
   return <AdminExhibitionsManagerClient initialExhibitions={exhibitions} />;
 }
+

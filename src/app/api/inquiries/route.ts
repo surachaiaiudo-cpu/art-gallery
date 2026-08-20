@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { createInquiry, getAllInquiries } from '@/lib/data';
 
@@ -38,3 +39,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to create inquiry' }, { status: 500 });
   }
 }
+

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { notFound } from 'next/navigation';
 import { getArtistProfile } from '@/lib/data';
 import { ArtistProfileClient } from '@/components/artists/ArtistProfileClient';

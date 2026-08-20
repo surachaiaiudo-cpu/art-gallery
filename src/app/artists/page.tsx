@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { getAllArtistsWithStats } from '@/lib/data';
 import { ArtistsDirectoryClient } from '@/components/artists/ArtistsDirectoryClient';
 
@@ -8,3 +9,4 @@ export default async function ArtistsDirectoryPage() {
 
   return <ArtistsDirectoryClient artists={artists} />;
 }
+

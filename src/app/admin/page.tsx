@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import React from 'react';
 import { getAllExhibitions, getAllArtworks, getAllArtists, getAllInquiries } from '@/lib/data';
 import { AdminDashboardClient } from '@/components/admin/AdminDashboardClient';
@@ -19,3 +20,4 @@ export default async function AdminDashboardPage() {
     />
   );
 }
+

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { getAllArtistsWithStats } from '@/lib/data';
 import { AdminArtistsManagerClient } from '@/components/admin/AdminArtistsManagerClient';
 
@@ -8,3 +9,4 @@ export default async function AdminArtistsPage() {
 
   return <AdminArtistsManagerClient initialArtists={artists} />;
 }
+

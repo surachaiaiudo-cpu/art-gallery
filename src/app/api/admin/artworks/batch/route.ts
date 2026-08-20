@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
@@ -114,3 +115,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to batch import artworks', details: String(error) }, { status: 500 });
   }
 }
+

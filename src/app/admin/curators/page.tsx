@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import React from 'react';
 import { getAllCuratorsWithStats } from '@/lib/data';
 import { AdminCuratorsManagerClient } from '@/components/admin/AdminCuratorsManagerClient';
@@ -9,3 +10,4 @@ export default async function AdminCuratorsPage() {
 
   return <AdminCuratorsManagerClient initialCurators={curators} />;
 }
+

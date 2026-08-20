@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
@@ -17,8 +16,9 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const originalName = file.name || 'artwork.jpg';
-    const extension = path.extname(originalName) || '.jpg';
-    const cleanBaseName = (customFileName || path.basename(originalName, extension))
+    const extension = originalName.lastIndexOf('.') !== -1 ? originalName.slice(originalName.lastIndexOf('.')) : '.jpg';
+    const baseName = originalName.replace(extension, '');
+    const cleanBaseName = (customFileName || baseName)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-');
     const finalFileName = `${cleanBaseName}-${Date.now()}${extension}`;
@@ -54,32 +54,21 @@ export async function POST(req: NextRequest) {
             name: ikData.name,
             provider: 'imagekit',
           });
-        } else {
-          const errorText = await ikRes.text();
-          console.warn('ImageKit API returned error, falling back to local storage:', errorText);
         }
       } catch (ikErr) {
-        console.warn('ImageKit upload error, using local fallback:', ikErr);
+        console.warn('ImageKit upload error:', ikErr);
       }
     }
 
-    // 2. Fallback: Save to public/uploads directory
-    const publicUploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    if (!fs.existsSync(publicUploadsDir)) {
-      fs.mkdirSync(publicUploadsDir, { recursive: true });
-    }
-
-    const targetFilePath = path.join(publicUploadsDir, finalFileName);
-    fs.writeFileSync(targetFilePath, buffer);
-
-    const publicUrl = `/uploads/${finalFileName}`;
+    // 2. Fallback: Base64 data URL for Edge compatibility
+    const base64Data = buffer.toString('base64');
+    const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64Data}`;
 
     return NextResponse.json({
       success: true,
-      url: publicUrl,
+      url: dataUrl,
       fileName: finalFileName,
-      provider: 'local',
-      note: 'ImageKit private key not configured. Uploaded to public/uploads.',
+      provider: 'data-url',
     });
   } catch (error) {
     console.error('Upload handler error:', error);

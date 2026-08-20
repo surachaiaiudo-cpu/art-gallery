@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import React from 'react';
 import { getAllInquiries } from '@/lib/data';
 import { AdminInquiriesClient } from '@/components/admin/AdminInquiriesClient';
@@ -8,3 +9,4 @@ export default async function AdminInquiriesPage() {
   const inquiries = await getAllInquiries();
   return <AdminInquiriesClient inquiries={inquiries} />;
 }
+

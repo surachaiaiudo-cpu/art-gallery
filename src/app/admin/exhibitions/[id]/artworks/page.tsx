@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { notFound } from 'next/navigation';
 import { getExhibitionById, getAllArtworks } from '@/lib/data';
 import { AdminExhibitionArtworksClient } from '@/components/admin/AdminExhibitionArtworksClient';
