@@ -23,6 +23,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
 
 interface CuratorWithStats extends User {
   exhibitionCount: number;
@@ -48,7 +49,7 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
     email: '',
     country: 'Thailand',
     flagEmoji: '🇹🇭',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop',
+    avatarUrl: '',
     bio: '',
     instagram: '',
     website: '',
@@ -77,7 +78,7 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
       email: '',
       country: 'Thailand',
       flagEmoji: '🇹🇭',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop',
+      avatarUrl: '',
       bio: '',
       instagram: '',
       website: '',
@@ -551,17 +552,20 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
                 </p>
               </div>
 
-              {/* Avatar Photo URL */}
+              {/* Avatar Photo Upload / Dropzone */}
               <div>
-                <label className="block text-[#1A1918] font-bold mb-1">
-                  {lang === 'th' ? 'รูปภาพโปรไฟล์ (Avatar URL)' : 'Profile Photo URL'}
-                </label>
-                <input
-                  type="url"
+                <ImageUploadDropzone
+                  label={lang === 'th' ? 'รูปภาพโปรไฟล์ภัณฑารักษ์ (Avatar Image)' : 'Curator Profile Photo'}
                   value={formData.avatarUrl}
-                  onChange={(e) => setFormData({ ...formData, avatarUrl: e.target.value })}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DDD6C8] focus:border-[#C5A880] focus:outline-none bg-[#FAF8F5] font-mono text-xs"
+                  onChange={(url) => setFormData({ ...formData, avatarUrl: url })}
+                  titleHint={formData.name || 'curator-avatar'}
+                  folder="/artvara-curators"
+                  shape="circle"
+                  helperText={
+                    lang === 'th'
+                      ? 'ลากรูปภาพมาวาง หรือคลิกเพื่ออัปโหลดไปยัง ImageKit CDN'
+                      : 'Drag & drop curator photo or click to upload to ImageKit CDN'
+                  }
                 />
               </div>
 
