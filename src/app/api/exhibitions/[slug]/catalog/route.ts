@@ -7,7 +7,10 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { slug: string } }
 ) {
-  const slug = params.slug || 'the-golden-age-of-ayutthaya';
+  const slug = params.slug;
+  if (!slug) {
+    return NextResponse.redirect(new URL('/', req.url));
+  }
   const url = new URL(`/catalog/${slug}`, req.url);
   return NextResponse.redirect(url);
 }

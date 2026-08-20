@@ -20,7 +20,6 @@ export function Navbar({
   isDownloadingPdf = false,
 }: NavbarProps) {
   const { lang, setLang, t } = useLanguage();
-  const catalogSlug = exhibition?.slug ?? 'the-golden-age-of-ayutthaya';
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#F9F8F6]/95 backdrop-blur-md border-b border-[#E5E2DC] transition-all">
@@ -119,24 +118,28 @@ export function Navbar({
           </Link>
 
           {/* Read Catalog Online */}
-          <Link
-            href={`/catalog/${catalogSlug}`}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium tracking-wide text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-md transition-colors"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-[#8C6D3F]" />
-            <span>{t.actions.readCatalog}</span>
-          </Link>
+          {exhibition?.slug && (
+            <>
+              <Link
+                href={`/catalog/${exhibition.slug}`}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium tracking-wide text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-md transition-colors"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                <span>{t.actions.readCatalog}</span>
+              </Link>
 
-          {/* PDF Download Button */}
-          <a
-            href={`/api/exhibitions/${catalogSlug}/catalog`}
-            download={`${catalogSlug}-catalog.pdf`}
-            className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase bg-[#F2EFE9] hover:bg-[#E5DFD3] text-[#2C2925] border border-[#D0CABE] transition-all shadow-sm active:scale-95"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">{t.actions.downloadPdf}</span>
-            <span className="xs:hidden">PDF</span>
-          </a>
+              {/* PDF Download Button */}
+              <a
+                href={`/api/exhibitions/${exhibition.slug}/catalog`}
+                download={`${exhibition.slug}-catalog.pdf`}
+                className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase bg-[#F2EFE9] hover:bg-[#E5DFD3] text-[#2C2925] border border-[#D0CABE] transition-all shadow-sm active:scale-95"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">{t.actions.downloadPdf}</span>
+                <span className="xs:hidden">PDF</span>
+              </a>
+            </>
+          )}
 
           {/* Curator Admin Portal Link */}
           <Link

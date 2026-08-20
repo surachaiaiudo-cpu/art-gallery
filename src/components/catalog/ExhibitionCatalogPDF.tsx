@@ -269,12 +269,14 @@ export function ExhibitionCatalogPDF({ exhibition }: ExhibitionCatalogPDFProps) 
 
                 <Text style={styles.artTitle}>{art.title}</Text>
                 <Text style={styles.artSpecs}>
-                  {art.medium || 'Mixed Media'} {art.dimensions || '120 x 100 cm.'}
+                  {[art.medium, art.dimensions].filter(Boolean).join(' • ')}
                 </Text>
 
-                <Text style={styles.conceptLabel}>
-                  Concept : <Text style={styles.conceptText}>{art.concept || art.description || 'This work investigates sacred cultural heritage and contemporary memory.'}</Text>
-                </Text>
+                {(art.concept || art.description) && (
+                  <Text style={styles.conceptLabel}>
+                    Concept : <Text style={styles.conceptText}>{art.concept || art.description}</Text>
+                  </Text>
+                )}
               </View>
             </View>
           </Page>

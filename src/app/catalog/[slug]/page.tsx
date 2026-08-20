@@ -184,12 +184,12 @@ export default async function CatalogViewerPage({
                       </p>
                     </div>
 
-                    <div className="pt-2 text-xs leading-relaxed text-[#423E37]">
-                      <span className="font-bold text-[#1A1918]">Concept : </span>
-                      <span>
-                        {art.concept || art.description || 'This work deals with cultural heritage and historical preservation.'}
-                      </span>
-                    </div>
+                    {(art.concept || art.description) && (
+                      <div className="pt-2 text-xs leading-relaxed text-[#423E37]">
+                        <span className="font-bold text-[#1A1918]">Concept : </span>
+                        <span>{art.concept || art.description}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
