@@ -33,7 +33,7 @@ export async function getExhibitionBySlug(slug: string): Promise<Exhibition | nu
       .where(eq(schema.exhibitionArtworks.exhibitionId, exh.id))
       .orderBy(asc(schema.exhibitionArtworks.displayOrder));
 
-    const artworks: Artwork[] = rawLinks.map((item) => {
+    const artworks: Artwork[] = rawLinks.map((item: any) => {
       let wallPos: WallPosition | null = null;
       if (item.link.wallPosition) {
         try {
@@ -122,7 +122,7 @@ export async function getAllArtworks(): Promise<Artwork[]> {
       .leftJoin(schema.users, eq(schema.artworks.artistId, schema.users.id))
       .orderBy(desc(schema.artworks.createdAt));
 
-    return raw.map((r) => ({
+    return raw.map((r: any) => ({
       ...r.art,
       artist: r.artist ? (r.artist as User) : null,
     }));
@@ -179,7 +179,7 @@ export async function getArtistProfile(artistId: string) {
         .innerJoin(schema.exhibitions, eq(schema.exhibitionArtworks.exhibitionId, schema.exhibitions.id))
         .where(eq(schema.exhibitionArtworks.artworkId, art.id));
 
-      const exhibitions = links.map((l) => {
+      const exhibitions = links.map((l: any) => {
         const exhInfo = {
           id: l.exhibition.id,
           title: l.exhibition.title,
@@ -313,7 +313,7 @@ export async function getAllInquiries(): Promise<Inquiry[]> {
       .leftJoin(schema.artworks, eq(schema.inquiries.artworkId, schema.artworks.id))
       .orderBy(desc(schema.inquiries.createdAt));
 
-    return list.map((item) => ({
+    return list.map((item: any) => ({
       ...item.inquiry,
       artworkTitle: item.artTitle ?? 'Unknown Artwork',
     })) as Inquiry[];
