@@ -100,7 +100,7 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
       email: curator.email,
       country: curator.country || 'Thailand',
       flagEmoji: curator.flagEmoji || '🇹🇭',
-      avatarUrl: curator.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop',
+      avatarUrl: curator.avatarUrl || '',
       bio: curator.bio || '',
       instagram: social.instagram || '',
       website: social.website || '',
