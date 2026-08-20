@@ -1,53 +1,58 @@
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from './schema';
 
-// Mock D1 binding for fallback / build-time SSG
-const mockD1: any = {
-  prepare: () => ({
-    bind: () => ({
-      all: async () => ({ results: [] }),
-      first: async () => null,
-      run: async () => ({ success: true }),
-      values: async () => [],
-    }),
-    all: async () => ({ results: [] }),
-    first: async () => null,
-    run: async () => ({ success: true }),
-    values: async () => [],
-  }),
-  batch: async () => [],
-  exec: async () => ({ count: 0, duration: 0 }),
-};
-
 export function getD1Binding() {
   try {
     const symbol = Symbol.for('__cloudflare-request-context__');
     const ctx = (globalThis as any)[symbol];
-    if (ctx?.env?.DB) {
+    if (ctx?.env?.DB && typeof ctx.env.DB.prepare === 'function') {
       return ctx.env.DB;
     }
   } catch {}
 
-  if (typeof (globalThis as any).DB !== 'undefined') {
+  if (typeof (globalThis as any).DB !== 'undefined' && typeof (globalThis as any).DB?.prepare === 'function') {
     return (globalThis as any).DB;
   }
 
-  if (typeof process !== 'undefined' && (process.env as any).DB) {
+  if (typeof process !== 'undefined' && (process.env as any).DB && typeof (process.env as any).DB?.prepare === 'function') {
     return (process.env as any).DB;
   }
 
-  return mockD1;
+  return null;
+}
+
+export function hasD1Binding(): boolean {
+  return getD1Binding() !== null;
 }
 
 export function getDb() {
   const binding = getD1Binding();
-  return drizzle(binding, { schema });
+  if (!binding) return null;
+  try {
+    return drizzle(binding, { schema });
+  } catch {
+    return null;
+  }
 }
 
-// Dynamic Proxy to always bind to the active request's D1 instance
+// Safe Dynamic Proxy
 export const db = new Proxy({} as any, {
   get(_target, prop) {
     const activeDb = getDb();
+    if (!activeDb) {
+      return () => ({
+        from: () => ({
+          where: () => ({ limit: async () => [] }),
+          orderBy: () => ({ limit: async () => [], values: async () => [] }),
+          innerJoin: () => ({ leftJoin: () => ({ where: () => ({ orderBy: async () => [] }) }) }),
+          leftJoin: () => ({ orderBy: async () => [] }),
+          limit: async () => [],
+        }),
+        insert: () => ({ values: async () => ({ success: true }) }),
+        update: () => ({ set: () => ({ where: async () => ({ success: true }) }) }),
+        delete: () => ({ where: async () => ({ success: true }) }),
+      });
+    }
     const val = (activeDb as any)[prop];
     if (typeof val === 'function') {
       return val.bind(activeDb);
