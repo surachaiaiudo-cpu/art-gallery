@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     const originalName = file.name || 'artwork.jpg';
     const extension = originalName.lastIndexOf('.') !== -1 ? originalName.slice(originalName.lastIndexOf('.')) : '.jpg';
     const baseName = originalName.replace(extension, '');
@@ -22,41 +23,10 @@ export async function POST(req: NextRequest) {
       .replace(/[^a-z0-9]+/g, '-');
     const finalFileName = `${cleanBaseName}-${Date.now()}${extension}`;
 
-    // 1. Check Cloudflare R2 Bucket Binding (First Priority)
-    const symbol = Symbol.for('__cloudflare-request-context__');
-    const ctx = (globalThis as any)[symbol];
-    const bucket = ctx?.env?.BUCKET || (globalThis as any).BUCKET || (process.env as any).BUCKET;
-
-    if (bucket && typeof bucket.put === 'function') {
-      try {
-        await bucket.put(finalFileName, arrayBuffer, {
-          httpMetadata: {
-            contentType: file.type || 'image/jpeg',
-          },
-        });
-
-        // If public R2 domain is configured
-        const r2PublicDomain = process.env.NEXT_PUBLIC_R2_DOMAIN;
-        const imageUrl = r2PublicDomain
-          ? `${r2PublicDomain.replace(/\/$/, '')}/${finalFileName}`
-          : `/api/images/${finalFileName}`;
-
-        return NextResponse.json({
-          success: true,
-          url: imageUrl,
-          fileName: finalFileName,
-          provider: 'cloudflare-r2',
-        });
-      } catch (r2Err) {
-        console.warn('Cloudflare R2 upload error:', r2Err);
-      }
-    }
-
-    // 2. Check ImageKit.io Upload (Second Priority)
-    const imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+    // 1. ImageKit.io Upload (1st Priority)
+    const imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_KEY;
     if (imageKitPrivateKey) {
       try {
-        const buffer = Buffer.from(arrayBuffer);
         const ikFormData = new FormData();
         const base64File = buffer.toString('base64');
         ikFormData.append('file', `data:${file.type || 'image/jpeg'};base64,${base64File}`);
@@ -83,14 +53,16 @@ export async function POST(req: NextRequest) {
             name: ikData.name,
             provider: 'imagekit',
           });
+        } else {
+          const errText = await ikRes.text();
+          console.warn('ImageKit upload response not ok:', errText);
         }
       } catch (ikErr) {
         console.warn('ImageKit upload error:', ikErr);
       }
     }
 
-    // 3. Fallback: Base64 data URL
-    const buffer = Buffer.from(arrayBuffer);
+    // 2. Fallback: Base64 data URL
     const base64Data = buffer.toString('base64');
     const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64Data}`;
 
