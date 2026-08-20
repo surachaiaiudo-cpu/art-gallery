@@ -6,6 +6,38 @@ import { getAllArtistsWithStats } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
+// Helper: Delete file from ImageKit
+async function deleteFromImageKit(imageUrl: string, privateKey?: string) {
+  if (!privateKey || !imageUrl || !imageUrl.includes('ik.imagekit.io')) return;
+  try {
+    const authHeader = `Basic ${Buffer.from(`${privateKey}:`).toString('base64')}`;
+    const cleanUrl = imageUrl.split('?')[0];
+    const parts = cleanUrl.split('/');
+    const filename = parts[parts.length - 1];
+
+    const searchRes = await fetch(`https://api.imagekit.io/v1/files?name=${encodeURIComponent(filename)}`, {
+      headers: { Authorization: authHeader },
+    });
+
+    if (searchRes.ok) {
+      const files = await searchRes.json();
+      if (Array.isArray(files) && files.length > 0) {
+        const matched = files.find((f: any) => f.name === filename) || files[0];
+        const fileId = matched.fileId;
+        if (fileId) {
+          await fetch(`https://api.imagekit.io/v1/files/${fileId}`, {
+            method: 'DELETE',
+            headers: { Authorization: authHeader },
+          });
+          console.log('Deleted image from ImageKit:', fileId, filename);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('ImageKit delete error for artist:', err);
+  }
+}
+
 // GET: List all artists with stats
 export async function GET() {
   try {
@@ -79,6 +111,23 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Artist not found' }, { status: 404 });
     }
 
+    // Clean up old avatar image from ImageKit if changed
+    if (
+      avatarUrl &&
+      existing[0].avatarUrl &&
+      avatarUrl !== existing[0].avatarUrl &&
+      existing[0].avatarUrl.includes('ik.imagekit.io')
+    ) {
+      const symbol = Symbol.for('__cloudflare-request-context__');
+      const ctx = (globalThis as any)[symbol];
+      const imageKitPrivateKey =
+        ctx?.env?.IMAGEKIT_PRIVATE_KEY ||
+        ctx?.env?.IMAGEKIT_KEY ||
+        process.env.IMAGEKIT_PRIVATE_KEY ||
+        process.env.IMAGEKIT_KEY;
+      await deleteFromImageKit(existing[0].avatarUrl, imageKitPrivateKey);
+    }
+
     await db
       .update(schema.users)
       .set({
@@ -104,7 +153,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE: Delete artist
+// DELETE: Delete artist and clean up ImageKit avatar and artwork photos
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -114,6 +163,33 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Artist ID is required' }, { status: 400 });
     }
 
+    const symbol = Symbol.for('__cloudflare-request-context__');
+    const ctx = (globalThis as any)[symbol];
+    const imageKitPrivateKey =
+      ctx?.env?.IMAGEKIT_PRIVATE_KEY ||
+      ctx?.env?.IMAGEKIT_KEY ||
+      process.env.IMAGEKIT_PRIVATE_KEY ||
+      process.env.IMAGEKIT_KEY;
+
+    // 1. Fetch artist avatarUrl
+    const existing = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1);
+    if (existing.length > 0 && existing[0].avatarUrl) {
+      await deleteFromImageKit(existing[0].avatarUrl, imageKitPrivateKey);
+    }
+
+    // 2. Fetch all artworks by this artist to delete their images from ImageKit
+    const artistArtworks = await db
+      .select()
+      .from(schema.artworks)
+      .where(eq(schema.artworks.artistId, id));
+
+    for (const art of artistArtworks) {
+      if (art.imageUrl) {
+        await deleteFromImageKit(art.imageUrl, imageKitPrivateKey);
+      }
+    }
+
+    // 3. Delete artist from database (cascades to artworks)
     await db.delete(schema.users).where(eq(schema.users.id, id));
 
     return NextResponse.json({ success: true });
@@ -122,4 +198,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to delete artist' }, { status: 500 });
   }
 }
-

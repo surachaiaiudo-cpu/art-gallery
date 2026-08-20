@@ -24,6 +24,7 @@ import {
   Search,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
 
 interface ArtistWithStats extends User {
   artworkCount: number;
@@ -646,15 +647,18 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
-                  {lang === 'th' ? 'URL รูปถ่ายโปรไฟล์ศิลปิน (Avatar Image URL)' : 'Avatar Photo URL'}
-                </label>
-                <input
-                  type="url"
+                <ImageUploadDropzone
+                  label={lang === 'th' ? 'รูปถ่ายโปรไฟล์ศิลปิน (Artist Portrait / Photo)' : 'Artist Profile Photo'}
                   value={formData.avatarUrl}
-                  onChange={(e) => setFormData({ ...formData, avatarUrl: e.target.value })}
-                  placeholder="https://images.unsplash.com/photo-..."
-                  className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg font-mono text-xs focus:outline-none"
+                  onChange={(url) => setFormData({ ...formData, avatarUrl: url })}
+                  titleHint={formData.name || 'artist-avatar'}
+                  folder="/artvara-artists"
+                  shape="circle"
+                  helperText={
+                    lang === 'th'
+                      ? 'ลากรูปถ่ายศิลปินมาวาง หรือคลิกเพื่ออัปโหลดไปยัง ImageKit CDN'
+                      : 'Drag & drop artist photo or click to upload to ImageKit CDN'
+                  }
                 />
               </div>
 

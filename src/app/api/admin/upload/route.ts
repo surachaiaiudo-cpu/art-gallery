@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     const customFileName = (formData.get('fileName') as string) || '';
+    const targetFolder = (formData.get('folder') as string) || '/artvara-artworks';
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
         const base64File = buffer.toString('base64');
         ikFormData.append('file', `data:${file.type || 'image/jpeg'};base64,${base64File}`);
         ikFormData.append('fileName', finalFileName);
-        ikFormData.append('folder', '/artvara-artworks');
+        ikFormData.append('folder', targetFolder);
         ikFormData.append('useUniqueFileName', 'true');
 
         const authHeader = `Basic ${Buffer.from(`${imageKitPrivateKey}:`).toString('base64')}`;

@@ -2,15 +2,29 @@
 
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
-import { UploadCloud, Image as ImageIcon, CheckCircle2, AlertCircle, X, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { UploadCloud, Image as ImageIcon, CheckCircle2, AlertCircle, X, Link as LinkIcon, Loader2, RefreshCw } from 'lucide-react';
 
 interface ImageUploadDropzoneProps {
   value: string;
   onChange: (url: string) => void;
   titleHint?: string;
+  label?: string;
+  helperText?: string;
+  folder?: string;
+  shape?: 'rounded' | 'circle';
+  required?: boolean;
 }
 
-export function ImageUploadDropzone({ value, onChange, titleHint }: ImageUploadDropzoneProps) {
+export function ImageUploadDropzone({
+  value,
+  onChange,
+  titleHint,
+  label = 'รูปภาพ (Image)',
+  helperText,
+  folder = '/artvara-artworks',
+  shape = 'rounded',
+  required = false,
+}: ImageUploadDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -39,6 +53,9 @@ export function ImageUploadDropzone({ value, onChange, titleHint }: ImageUploadD
       formData.append('file', file);
       if (titleHint) {
         formData.append('fileName', titleHint);
+      }
+      if (folder) {
+        formData.append('folder', folder);
       }
 
       const res = await fetch('/api/admin/upload', {
@@ -85,7 +102,7 @@ export function ImageUploadDropzone({ value, onChange, titleHint }: ImageUploadD
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A]">
-          รูปภาพผลงานศิลปะ (Artwork Image) <span className="text-rose-600">*</span>
+          {label} {required && <span className="text-rose-600">*</span>}
         </label>
         
         {/* Mode Switcher */}
@@ -119,7 +136,7 @@ export function ImageUploadDropzone({ value, onChange, titleHint }: ImageUploadD
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onClick={() => !isUploading && fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
+            className={`relative border-2 border-dashed rounded-2xl p-5 text-center transition-all cursor-pointer ${
               isDragging
                 ? 'border-[#8C6D3F] bg-[#FAF3E8] scale-[1.01]'
                 : value
@@ -141,22 +158,29 @@ export function ImageUploadDropzone({ value, onChange, titleHint }: ImageUploadD
             {isUploading ? (
               <div className="py-6 flex flex-col items-center justify-center gap-2">
                 <Loader2 className="w-8 h-8 text-[#8C6D3F] animate-spin" />
-                <p className="text-xs font-bold text-[#1A1918]">กำลังอัปโหลดไปยัง ImageKit.io CDN...</p>
+                <p className="text-xs font-bold text-[#1A1918]">กำลังอัปโหลดรูปภาพไปยัง ImageKit.io CDN...</p>
                 <p className="text-[10px] text-[#7A7468]">กำลังประมวลผลไฟล์ภาพความละเอียดสูง</p>
               </div>
             ) : value ? (
               <div className="flex flex-col sm:flex-row items-center gap-4 text-left">
-                <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-[#1A1918] border border-[#D5CFC3] shrink-0 shadow-md">
-                  <Image src={value} alt="Uploaded Artwork" fill className="object-cover" />
+                <div
+                  className={`relative ${
+                    shape === 'circle'
+                      ? 'w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-[#C5A880]'
+                      : 'w-24 h-24 sm:w-28 sm:h-28 rounded-xl border border-[#D5CFC3]'
+                  } overflow-hidden bg-[#1A1918] shrink-0 shadow-md`}
+                >
+                  <Image src={value} alt="Preview" fill className="object-cover" />
                 </div>
-                <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold">
                     <CheckCircle2 className="w-4 h-4 shrink-0" />
                     <span>อัปโหลดรูปภาพสำเร็จ (พร้อมใช้งาน)</span>
                   </div>
                   <p className="text-[11px] text-[#8C8477] font-mono truncate">{value}</p>
-                  <p className="text-[10px] text-[#8C6D3F] font-semibold pt-1">
-                    ☁️ บันทึกลง ImageKit.io CDN เรียบร้อยแล้ว (คลิกหรือลากไฟล์ใหม่มาวางเพื่อเปลี่ยนภาพ)
+                  <p className="text-[10px] text-[#8C6D3F] font-semibold flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" />
+                    <span>คลิกหรือลากไฟล์ใหม่มาวางเพื่อเปลี่ยนภาพ</span>
                   </p>
                 </div>
               </div>
@@ -170,7 +194,7 @@ export function ImageUploadDropzone({ value, onChange, titleHint }: ImageUploadD
                     ลากไฟล์รูปภาพมาวางที่นี่ หรือ <span className="text-[#8C6D3F] underline">คลิกเพื่อเลือกไฟล์</span>
                   </p>
                   <p className="text-[11px] text-[#7A7468] mt-0.5">
-                    รองรับไฟล์ JPG, PNG, WebP (ไฟล์จะถูกอัปโหลดขึ้น ImageKit.io CDN โดยอัตโนมัติ)
+                    {helperText || 'รองรับไฟล์ JPG, PNG, WebP (ไฟล์จะถูกอัปโหลดขึ้น ImageKit.io CDN อัตโนมัติ)'}
                   </p>
                 </div>
               </div>
@@ -189,7 +213,7 @@ export function ImageUploadDropzone({ value, onChange, titleHint }: ImageUploadD
         <div className="space-y-2">
           <input
             type="url"
-            required
+            required={required}
             value={value}
             onChange={(e) => {
               setInputUrl(e.target.value);
@@ -200,10 +224,14 @@ export function ImageUploadDropzone({ value, onChange, titleHint }: ImageUploadD
           />
           {value && (
             <div className="flex items-center gap-3 p-2 bg-[#FAF8F5] rounded-lg border border-[#EAE5DA]">
-              <div className="relative w-10 h-10 rounded overflow-hidden bg-[#1A1918] shrink-0 border border-[#D5CFC3]">
+              <div
+                className={`relative ${
+                  shape === 'circle' ? 'w-10 h-10 rounded-full border border-[#C5A880]' : 'w-10 h-10 rounded border border-[#D5CFC3]'
+                } overflow-hidden bg-[#1A1918] shrink-0`}
+              >
                 <Image src={value} alt="Preview" fill className="object-cover" />
               </div>
-              <span className="text-[11px] text-[#6E685C] truncate font-mono">{value}</span>
+              <span className="text-[11px] text-[#6E685C] truncate font-mono flex-1">{value}</span>
             </div>
           )}
         </div>
