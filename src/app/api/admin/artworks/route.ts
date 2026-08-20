@@ -154,6 +154,34 @@ export async function PUT(req: NextRequest) {
   }
 }
 
+// Helper: Delete file from ImageKit
+async function deleteFromImageKit(imageUrl: string, privateKey?: string) {
+  if (!privateKey || !imageUrl || !imageUrl.includes('ik.imagekit.io')) return;
+  try {
+    const authHeader = `Basic ${Buffer.from(`${privateKey}:`).toString('base64')}`;
+    const parts = imageUrl.split('?')[0].split('/');
+    const filename = parts[parts.length - 1];
+
+    const searchRes = await fetch(`https://api.imagekit.io/v1/files?name=${encodeURIComponent(filename)}`, {
+      headers: { Authorization: authHeader },
+    });
+
+    if (searchRes.ok) {
+      const files = await searchRes.json();
+      if (Array.isArray(files) && files.length > 0) {
+        const fileId = files[0].fileId;
+        await fetch(`https://api.imagekit.io/v1/files/${fileId}`, {
+          method: 'DELETE',
+          headers: { Authorization: authHeader },
+        });
+        console.log('Deleted from ImageKit:', fileId, filename);
+      }
+    }
+  } catch (err) {
+    console.warn('ImageKit delete error:', err);
+  }
+}
+
 // DELETE: Delete artwork
 export async function DELETE(req: NextRequest) {
   try {
@@ -164,6 +192,26 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Artwork ID is required' }, { status: 400 });
     }
 
+    // 1. Fetch artwork details to get imageUrl
+    const existing = await db
+      .select()
+      .from(schema.artworks)
+      .where(eq(schema.artworks.id, id))
+      .limit(1);
+
+    if (existing.length > 0 && existing[0].imageUrl) {
+      const symbol = Symbol.for('__cloudflare-request-context__');
+      const ctx = (globalThis as any)[symbol];
+      const imageKitPrivateKey =
+        ctx?.env?.IMAGEKIT_PRIVATE_KEY ||
+        ctx?.env?.IMAGEKIT_KEY ||
+        process.env.IMAGEKIT_PRIVATE_KEY ||
+        process.env.IMAGEKIT_KEY;
+
+      await deleteFromImageKit(existing[0].imageUrl, imageKitPrivateKey);
+    }
+
+    // 2. Delete artwork from D1 database
     await db.delete(schema.artworks).where(eq(schema.artworks.id, id));
 
     return NextResponse.json({ success: true });

@@ -83,3 +83,60 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+// DELETE: Delete image from ImageKit
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const imageUrl = searchParams.get('url');
+    const fileId = searchParams.get('fileId');
+
+    const symbol = Symbol.for('__cloudflare-request-context__');
+    const ctx = (globalThis as any)[symbol];
+    const privateKey =
+      ctx?.env?.IMAGEKIT_PRIVATE_KEY ||
+      ctx?.env?.IMAGEKIT_KEY ||
+      process.env.IMAGEKIT_PRIVATE_KEY ||
+      process.env.IMAGEKIT_KEY;
+
+    if (!privateKey) {
+      return NextResponse.json({ error: 'ImageKit private key not configured' }, { status: 400 });
+    }
+
+    const authHeader = `Basic ${Buffer.from(`${privateKey}:`).toString('base64')}`;
+
+    if (fileId) {
+      await fetch(`https://api.imagekit.io/v1/files/${fileId}`, {
+        method: 'DELETE',
+        headers: { Authorization: authHeader },
+      });
+      return NextResponse.json({ success: true, deletedFileId: fileId });
+    }
+
+    if (imageUrl && imageUrl.includes('ik.imagekit.io')) {
+      const parts = imageUrl.split('?')[0].split('/');
+      const filename = parts[parts.length - 1];
+
+      const searchRes = await fetch(`https://api.imagekit.io/v1/files?name=${encodeURIComponent(filename)}`, {
+        headers: { Authorization: authHeader },
+      });
+
+      if (searchRes.ok) {
+        const files = await searchRes.json();
+        if (Array.isArray(files) && files.length > 0) {
+          const targetId = files[0].fileId;
+          await fetch(`https://api.imagekit.io/v1/files/${targetId}`, {
+            method: 'DELETE',
+            headers: { Authorization: authHeader },
+          });
+          return NextResponse.json({ success: true, deletedFileId: targetId });
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('ImageKit delete API error:', error);
+    return NextResponse.json({ error: 'Failed to delete from ImageKit' }, { status: 500 });
+  }
+}
