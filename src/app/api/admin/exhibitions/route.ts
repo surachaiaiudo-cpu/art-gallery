@@ -1,0 +1,138 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db, schema } from '@/db';
+import { eq, desc } from 'drizzle-orm';
+import { getAllExhibitions } from '@/lib/data';
+
+export const dynamic = 'force-dynamic';
+
+// GET: List all exhibitions with full relations
+export async function GET() {
+  try {
+    const list = await getAllExhibitions();
+    return NextResponse.json({ exhibitions: list });
+  } catch (error) {
+    console.error('Error fetching exhibitions:', error);
+    return NextResponse.json({ error: 'Failed to fetch exhibitions' }, { status: 500 });
+  }
+}
+
+// POST: Create a new exhibition
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const {
+      title,
+      slug,
+      curatorNote,
+      bannerUrl,
+      startDate,
+      endDate,
+      status = 'active',
+      roomSize = 'medium',
+    } = body;
+
+    if (!title || !slug) {
+      return NextResponse.json({ error: 'Title and Slug are required' }, { status: 400 });
+    }
+
+    const newId = `exh-${Date.now()}`;
+    const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    const themeConfig = JSON.stringify({
+      roomSize: roomSize || 'medium',
+      wallTexture: 'wood-warm',
+      wallColor: '#2B1E16',
+      floorColor: '#E6E0D4',
+      spotlightIntensity: 1.8,
+    });
+
+    await db.insert(schema.exhibitions).values({
+      id: newId,
+      title,
+      slug: cleanSlug,
+      curatorNote: curatorNote || '',
+      bannerUrl:
+        bannerUrl ||
+        'https://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1600&auto=format&fit=crop',
+      catalogPdfUrl: `/api/exhibitions/${cleanSlug}/catalog`,
+      startDate: startDate || new Date().toISOString().split('T')[0],
+      endDate: endDate || new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
+      status: (status === 'active' || status === 'archived' || status === 'upcoming') ? status : 'active',
+      themeConfig,
+    });
+
+    return NextResponse.json({ success: true, id: newId, slug: cleanSlug });
+  } catch (error) {
+    console.error('Error creating exhibition:', error);
+    return NextResponse.json({ error: 'Failed to create exhibition', details: String(error) }, { status: 500 });
+  }
+}
+
+// PUT: Update exhibition details or toggle status
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, title, curatorNote, bannerUrl, startDate, endDate, status, roomSize } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Exhibition ID is required' }, { status: 400 });
+    }
+
+    const existing = await db
+      .select()
+      .from(schema.exhibitions)
+      .where(eq(schema.exhibitions.id, id))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return NextResponse.json({ error: 'Exhibition not found' }, { status: 404 });
+    }
+
+    let updatedTheme: any = {};
+    try {
+      updatedTheme = existing[0].themeConfig ? JSON.parse(existing[0].themeConfig) : {};
+    } catch {}
+
+    if (roomSize) {
+      updatedTheme.roomSize = roomSize;
+    }
+
+    await db
+      .update(schema.exhibitions)
+      .set({
+        title: title !== undefined ? title : existing[0].title,
+        curatorNote: curatorNote !== undefined ? curatorNote : existing[0].curatorNote,
+        bannerUrl: bannerUrl !== undefined ? bannerUrl : existing[0].bannerUrl,
+        startDate: startDate !== undefined ? startDate : existing[0].startDate,
+        endDate: endDate !== undefined ? endDate : existing[0].endDate,
+        status: status !== undefined ? status : existing[0].status,
+        themeConfig: JSON.stringify(updatedTheme),
+      })
+      .where(eq(schema.exhibitions.id, id));
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error updating exhibition:', error);
+    return NextResponse.json({ error: 'Failed to update exhibition' }, { status: 500 });
+  }
+}
+
+// DELETE: Delete an exhibition
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Exhibition ID is required' }, { status: 400 });
+    }
+
+    // Delete exhibition (CASCADE will automatically delete exhibition_artworks links)
+    await db.delete(schema.exhibitions).where(eq(schema.exhibitions.id, id));
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting exhibition:', error);
+    return NextResponse.json({ error: 'Failed to delete exhibition' }, { status: 500 });
+  }
+}

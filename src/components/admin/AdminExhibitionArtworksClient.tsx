@@ -1,0 +1,1153 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Exhibition, Artwork } from '@/types/exhibition';
+import { useLanguage } from '@/context/LanguageContext';
+import { parseArtworkDimensions, formatDimensionsInCm } from '@/lib/utils';
+import {
+  Plus,
+  ArrowLeft,
+  Box,
+  Trash2,
+  Edit3,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Palette,
+  Layers,
+  Sparkles,
+  ExternalLink,
+  BookOpen,
+  FileSpreadsheet,
+  Download,
+  Upload,
+  Table as TableIcon,
+  LayoutGrid,
+  Search,
+  Check,
+  Wand2,
+} from 'lucide-react';
+import { CountryFlag } from '@/components/ui/CountryFlag';
+import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
+import { smartDetectArtwork } from '@/lib/smartParser';
+
+interface AdminExhibitionArtworksClientProps {
+  exhibition: Exhibition;
+  allArtworksLibrary: Artwork[];
+}
+
+interface ParsedBatchRow {
+  title: string;
+  artistName: string;
+  artistCountry: string;
+  medium: string;
+  dimensions: string;
+  yearCreated: string | number;
+  concept: string;
+  imageUrl: string;
+}
+
+export function AdminExhibitionArtworksClient({
+  exhibition: initialExhibition,
+  allArtworksLibrary: initialLibrary,
+}: AdminExhibitionArtworksClientProps) {
+  const { lang, t } = useLanguage();
+  const [exhibition, setExhibition] = useState<Exhibition>(initialExhibition);
+  const [libraryArtworks, setLibraryArtworks] = useState<Artwork[]>(initialLibrary);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isCreateNewModalOpen, setIsCreateNewModalOpen] = useState(false);
+  const [isBatchImportModalOpen, setIsBatchImportModalOpen] = useState(false);
+  const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Batch Import States
+  const [rawPastedText, setRawPastedText] = useState('');
+  const [smartPasteInput, setSmartPasteInput] = useState('');
+  const [parsedRows, setParsedRows] = useState<ParsedBatchRow[]>([]);
+  const [allArtists, setAllArtists] = useState<any[]>(exhibition.artists || []);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Fetch all artists from database
+  useEffect(() => {
+    fetch('/api/admin/artists')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.artists && data.artists.length > 0) {
+          setAllArtists(data.artists);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  // Handle single-row Smart Paste and Auto-Detection
+  const handleSmartPaste = (text: string) => {
+    setSmartPasteInput(text);
+    if (!text.trim()) return;
+
+    const detected = smartDetectArtwork(text);
+    setArtworkForm((prev) => ({
+      ...prev,
+      title: detected.title || prev.title,
+      artistName: detected.artistName || prev.artistName,
+      medium: detected.medium || prev.medium,
+      dimensions: detected.dimensions || prev.dimensions,
+      yearCreated: detected.yearCreated || prev.yearCreated,
+      concept: detected.concept || prev.concept,
+      imageUrl:
+        detected.imageUrl && !detected.imageUrl.includes('unsplash.com/photo-1579783900882')
+          ? detected.imageUrl
+          : prev.imageUrl,
+    }));
+
+    showNotification('success', lang === 'th' ? '✨ ระบบตรวจจับและแยกข้อมูลลงช่องให้อัตโนมัติแล้ว!' : '✨ Fields auto-detected & populated!');
+  };
+
+  // Form for New / Edit Artwork
+  const [artworkForm, setArtworkForm] = useState({
+    title: '',
+    artistId: '',
+    artistName: 'สมโภชน์ บุญส่งประเสริฐ',
+    medium: 'Oil on Linen Canvas (สีน้ำมันบนผ้าลินิน)',
+    dimensions: '120 x 180 cm.',
+    yearCreated: 2026,
+    concept: '',
+    description: '',
+    imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop',
+  });
+
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback(null), 3500);
+  };
+
+  const refreshExhibition = async () => {
+    try {
+      const res = await fetch(`/api/exhibitions/${exhibition.slug}`);
+      const data = await res.json();
+      if (data.exhibition) {
+        setExhibition(data.exhibition);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Link existing artwork to exhibition
+  const handleLinkArtwork = async (artId: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/exhibitions/${exhibition.id}/artworks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artworkId: artId }),
+      });
+
+      if (!res.ok) throw new Error('Failed to add artwork');
+      showNotification('success', lang === 'th' ? 'เพิ่มผลงานเข้านิทรรศการแล้ว' : 'Artwork added to exhibition');
+      setIsAddModalOpen(false);
+      await refreshExhibition();
+    } catch (err: any) {
+      showNotification('error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Remove artwork from exhibition
+  const handleRemoveArtwork = async (artId: string, artTitle: string) => {
+    if (!confirm(lang === 'th' ? `นำ "${artTitle}" ออกจากนิทรรศการนี้หรือไม่?` : `Remove "${artTitle}" from this exhibition?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/exhibitions/${exhibition.id}/artworks?artworkId=${artId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        showNotification('success', lang === 'th' ? 'นำผลงานออกจากนิทรรศการสำเร็จ' : 'Artwork removed');
+        await refreshExhibition();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Open Edit Modal
+  const handleOpenEdit = (art: Artwork) => {
+    setEditingArtwork(art);
+    setArtworkForm({
+      title: art.title,
+      artistId: art.artistId || '',
+      artistName: art.artist?.name || '',
+      medium: art.medium || '',
+      dimensions: art.dimensions || '120 x 180 cm.',
+      yearCreated: art.yearCreated || 2026,
+      concept: art.concept || art.description || '',
+      description: art.description || '',
+      imageUrl: art.imageUrl || '',
+    });
+  };
+
+  // Submit Artwork Edit
+  const handleSubmitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingArtwork) return;
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/admin/artworks', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingArtwork.id,
+          ...artworkForm,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update artwork');
+      showNotification('success', lang === 'th' ? 'บันทึกรายละเอียดผลงานสำเร็จ' : 'Artwork details updated');
+      setEditingArtwork(null);
+      await refreshExhibition();
+    } catch (err: any) {
+      showNotification('error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Create brand new artwork and link directly to exhibition
+  const handleCreateAndLinkNewArtwork = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/admin/artworks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...artworkForm,
+          exhibitionId: exhibition.id,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to create artwork');
+      showNotification('success', lang === 'th' ? 'สร้างผลงานใหม่และเพิ่มเข้านิทรรศการแล้ว' : 'Artwork created & added');
+      setIsCreateNewModalOpen(false);
+      await refreshExhibition();
+    } catch (err: any) {
+      showNotification('error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Parse Raw Excel Paste (TSV / CSV)
+  const parseExcelText = (text: string) => {
+    setRawPastedText(text);
+    if (!text.trim()) {
+      setParsedRows([]);
+      return;
+    }
+
+    const lines = text.trim().split(/\r?\n/);
+    const rows: ParsedBatchRow[] = [];
+
+    // Check if first line is a header
+    const firstLineLower = lines[0].toLowerCase();
+    const hasHeader =
+      firstLineLower.includes('title') ||
+      firstLineLower.includes('ชื่อ') ||
+      firstLineLower.includes('artist') ||
+      firstLineLower.includes('ศิลปิน') ||
+      firstLineLower.includes('image') ||
+      firstLineLower.includes('ภาพ');
+
+    const startIndex = hasHeader ? 1 : 0;
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const detected = smartDetectArtwork(line);
+      if (detected.title || detected.artistName) {
+        rows.push({
+          title: detected.title,
+          artistName: detected.artistName,
+          artistCountry: detected.artistCountry,
+          medium: detected.medium,
+          dimensions: detected.dimensions,
+          yearCreated: detected.yearCreated,
+          concept: detected.concept,
+          imageUrl: detected.imageUrl,
+        });
+      }
+    }
+
+    setParsedRows(rows);
+  };
+
+  // Handle CSV File Upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        parseExcelText(text);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Download Sample Excel Template (CSV)
+  const handleDownloadSampleTemplate = () => {
+    const headers = 'ชื่อผลงาน (Title)\tศิลปิน (Artist)\tประเทศ (Country)\tเทคนิค (Medium)\tขนาด (Dimensions)\tปี (Year)\tแนวคิดผลงาน (Concept)\tURL รูปภาพ (Image URL)\n';
+    const sampleData = [
+      'แสงอรุณเหนือวิหารหลวง\tสมชาย ใจเย็น\tThailand\tOil on Canvas\t140 x 200 cm.\t2026\tแสงแรกแห่งวันสะท้อนองค์พระปรางค์โบราณ สัญลักษณ์แห่งการเกิดใหม่ทางจิตวิญญาณ\thttps://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1200&auto=format&fit=crop',
+      'เสียงสะท้อนแห่งความเงียบ\tElena Rossi\tItaly\tTempera & Gold Leaf on Linen\t110 x 160 cm.\t2025\tการตีความมิติทางประวัติศาสตร์การค้าทางทะเลผ่านศิลปะยุคฟื้นฟูศิลปวิทยา\thttps://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop',
+      'สัจธรรมแห่งสายน้ำ\tKenji Takahashi\tJapan\tInk and Acrylic on Washi Paper\t100 x 150 cm.\t2026\tความสงบนิ่งและจิตวิญญาณแห่งความเรียบง่ายตามปรัชญาเซนริมแม่น้ำเจ้าพระยา\thttps://images.unsplash.com/photo-1552465011-b4e21bf6e79a?q=80&w=1200&auto=format&fit=crop',
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + headers + sampleData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'artvara_artworks_template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Execute Batch Import
+  const handleExecuteBatchImport = async () => {
+    if (parsedRows.length === 0) return;
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/admin/artworks/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: parsedRows,
+          exhibitionId: exhibition.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Batch import failed');
+
+      showNotification(
+        'success',
+        lang === 'th'
+          ? `นำเข้าผลงานสำเร็จทั้งหมด ${data.count} ชิ้นเรียบร้อยแล้ว!`
+          : `Successfully batch imported ${data.count} artworks!`
+      );
+      setIsBatchImportModalOpen(false);
+      setParsedRows([]);
+      setRawPastedText('');
+      await refreshExhibition();
+    } catch (err: any) {
+      showNotification('error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const currentArtworks = exhibition.artworks || [];
+  const currentArtIds = new Set(currentArtworks.map((a) => a.id));
+  const availableLibrary = libraryArtworks.filter((a) => !currentArtIds.has(a.id));
+
+  const filteredCurrentArtworks = currentArtworks.filter((art) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      art.title.toLowerCase().includes(q) ||
+      (art.artist?.name || '').toLowerCase().includes(q) ||
+      (art.artist?.country || '').toLowerCase().includes(q) ||
+      (art.medium || '').toLowerCase().includes(q) ||
+      (art.dimensions || '').toLowerCase().includes(q) ||
+      (art.concept || '').toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-8 select-none">
+      {/* Top Header Navigation */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#DCD5C8] pb-6">
+        <div>
+          <Link
+            href="/admin/exhibitions"
+            className="inline-flex items-center gap-1.5 text-xs text-[#8C6D3F] hover:underline font-semibold mb-2"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'กลับหน้ารายการนิทรรศการ' : 'Back to Exhibitions'}</span>
+          </Link>
+          <h1 className="font-serif text-3xl font-bold text-[#1A1918]">
+            {lang === 'th' ? 'จัดการผลงานในนิทรรศการ' : 'Exhibition Artworks Curator'}
+          </h1>
+          <p className="text-xs text-[#6E685C] mt-1">
+            {lang === 'th' ? 'นิทรรศการ' : 'Exhibition'}:{' '}
+            <span className="font-semibold text-[#1A1918]">{exhibition.title}</span> (
+            {currentArtworks.length} {t.lobby.artworksCount})
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Batch Excel Import Button */}
+          <button
+            onClick={() => setIsBatchImportModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-95"
+            title="Import multiple artworks directly from Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+            <span>{lang === 'th' ? 'นำเข้าจาก Excel / CSV' : 'Excel Import'}</span>
+          </button>
+
+          <Link
+            href={`/admin/exhibitions/${exhibition.id}`}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-[#C5A880] hover:bg-[#D4BC96] text-[#1A1918] rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all"
+          >
+            <Box className="w-3.5 h-3.5" />
+            <span>{lang === 'th' ? 'จัดผัง 3D' : '3D Walls'}</span>
+          </Link>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all"
+          >
+            <Plus className="w-4 h-4 text-[#C5A880]" />
+            <span>{lang === 'th' ? 'เพิ่มผลงาน' : 'Add Artwork'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Notification Banner */}
+      {feedback && (
+        <div
+          className={`p-4 rounded-xl text-xs font-semibold flex items-center gap-2 animate-slide-up shadow ${
+            feedback.type === 'success' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-rose-100 text-rose-900 border border-rose-300'
+          }`}
+        >
+          {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+          <span>{feedback.message}</span>
+        </div>
+      )}
+
+      {/* Toolbar: Search + View Mode Switcher */}
+      <div className="bg-white p-4 rounded-2xl border border-[#E0D9CD] shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        {/* Search Input */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-[#8C6D3F] absolute left-3.5 top-3" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={lang === 'th' ? 'ค้นหาชื่อผลงาน, ศิลปิน, สัญชาติ, เทคนิค...' : 'Search artwork title, artist, medium...'}
+            className="w-full pl-10 pr-4 py-2.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-xl text-xs text-[#1A1918] placeholder-[#A0988A] focus:outline-none focus:border-[#C5A880]"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-2.5 text-xs text-neutral-400 hover:text-neutral-700"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* View Mode Toggle Buttons */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-[#7A7468] font-medium hidden sm:inline">
+            {lang === 'th' ? `ผลงาน ${filteredCurrentArtworks.length} ชิ้น` : `${filteredCurrentArtworks.length} Artworks`}
+          </span>
+
+          <div className="flex items-center bg-[#ECE6DC] p-1 rounded-xl border border-[#DDD6C8] text-xs font-semibold">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-[#1A1918] text-white shadow'
+                  : 'text-[#6E685C] hover:text-[#1A1918]'
+              }`}
+              title="Grid Cards View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'การ์ด' : 'Cards'}</span>
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                viewMode === 'table'
+                  ? 'bg-[#1A1918] text-white shadow'
+                  : 'text-[#6E685C] hover:text-[#1A1918]'
+              }`}
+              title="Table View"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'ตาราง' : 'Table'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* MODE 1: GRID CARDS VIEW */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCurrentArtworks.map((art, idx) => {
+            const dims = parseArtworkDimensions(art.dimensions);
+
+            return (
+              <div
+                key={art.id}
+                className="bg-white rounded-2xl border border-[#DDD6C8] shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between"
+              >
+                <div>
+                    {/* Artwork Thumbnail */}
+                  <div className="relative aspect-[4/3] bg-[#FAF8F5] overflow-hidden">
+                    <Image src={art.imageUrl} alt={art.title} fill className="object-cover" />
+                    <span className="absolute top-3 left-3 px-2.5 py-1 bg-black/80 text-[#C5A880] text-[10px] font-bold font-mono rounded">
+                      #{idx + 1}
+                    </span>
+                    <span className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/80 text-white text-[10px] font-mono rounded">
+                      {formatDimensionsInCm(art.dimensions, lang)}
+                    </span>
+                  </div>
+
+                  {/* Content info */}
+                  <div className="p-5 space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-6 h-6 rounded-full overflow-hidden border border-[#C5A880] shadow-sm flex items-center justify-center bg-white"
+                        title={art.artist?.country || 'Country'}
+                      >
+                        <CountryFlag country={art.artist?.country} size="badge" shape="circle" />
+                      </div>
+                      <p className="text-xs text-[#5A554A] font-bold truncate">{art.artist?.name || 'Artist'}</p>
+                    </div>
+
+                    <h3 className="font-serif text-lg font-bold text-[#1A1918] leading-snug">
+                      {art.title}
+                    </h3>
+
+                    <p className="text-[11px] text-[#7A7468]">
+                      {art.medium} • {formatDimensionsInCm(art.dimensions, lang)} • {art.yearCreated}
+                    </p>
+
+                    {art.concept && (
+                      <p className="text-xs text-[#6E685C] italic line-clamp-3 bg-[#FAF8F5] p-3 rounded-lg border border-[#EAE4D8] font-serif">
+                        "{art.concept}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="p-5 pt-0 border-t border-[#F0ECE4] flex items-center justify-between pt-3">
+                  <button
+                    onClick={() => handleOpenEdit(art)}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#1A1918] border border-[#D5CEC0] rounded-lg text-xs font-semibold transition-all"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                    <span>{lang === 'th' ? 'แก้ไขรายละเอียด' : 'Edit Info'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleRemoveArtwork(art.id, art.title)}
+                    className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                    title="Remove from Exhibition"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredCurrentArtworks.length === 0 && (
+            <div className="col-span-full p-12 text-center bg-white rounded-2xl border border-dashed border-[#DDD6C8] space-y-4">
+              <Palette className="w-10 h-10 text-[#8C6D3F] mx-auto opacity-50" />
+              <h3 className="font-serif text-lg font-bold text-[#1A1918]">
+                {lang === 'th' ? 'ไม่พบผลงานที่ตรงกับการค้นหา' : 'No artworks found'}
+              </h3>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODE 2: TABLE VIEW (ตารางจัดการผลงานในนิทรรศการ) */}
+      {viewMode === 'table' && (
+        <div className="bg-white rounded-2xl border border-[#E0D9CD] shadow-sm overflow-hidden animate-fade-in">
+          <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#1A1918] text-[#E5D2B8] text-xs font-bold uppercase tracking-wider border-b border-[#33302C]">
+                  <th className="py-4 px-3 w-10 text-center">#</th>
+                  <th className="py-4 px-4">{lang === 'th' ? 'ผลงานศิลปะ' : 'Artwork'}</th>
+                  <th className="py-4 px-4">{lang === 'th' ? 'ศิลปินผู้สร้างสรรค์' : 'Artist'}</th>
+                  <th className="py-4 px-3 text-center w-16">{lang === 'th' ? 'สัญชาติ' : 'Country'}</th>
+                  <th className="py-4 px-4">{lang === 'th' ? 'เทคนิค / วัสดุ' : 'Medium'}</th>
+                  <th className="py-4 px-4">{lang === 'th' ? 'ขนาดผลงาน (เซ็นติเมตร)' : 'Dimensions (cm)'}</th>
+                  <th className="py-4 px-3 text-center">{lang === 'th' ? 'ปี' : 'Year'}</th>
+                  <th className="py-4 px-4 text-right">{lang === 'th' ? 'การจัดการ' : 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F0ECE4] text-xs text-[#2C2925]">
+                {filteredCurrentArtworks.map((art, idx) => {
+                  return (
+                    <tr
+                      key={art.id}
+                      className="hover:bg-[#FAF8F5] transition-colors group"
+                    >
+                      {/* # Index */}
+                      <td className="py-4 px-3 text-center font-mono text-[#8C8477] font-semibold">
+                        #{idx + 1}
+                      </td>
+
+                      {/* Thumbnail & Title */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-[#D5CEC0] bg-[#FAF8F5] shadow-sm shrink-0">
+                            <Image
+                              src={art.imageUrl}
+                              alt={art.title}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                          <div>
+                            <span className="font-serif text-sm font-bold text-[#1A1918] block leading-snug">
+                              {art.title}
+                            </span>
+                            {art.concept && (
+                              <span className="text-[11px] text-[#7A7468] line-clamp-1 max-w-[220px] italic">
+                                "{art.concept}"
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Artist Name */}
+                      <td className="py-4 px-4 font-semibold text-[#1A1918]">
+                        {art.artist?.name || 'Unknown Artist'}
+                      </td>
+
+                      {/* Country Flag Bubble */}
+                      <td className="py-4 px-3 text-center">
+                        <div
+                          className="inline-flex w-7 h-7 rounded-full overflow-hidden border border-[#C5A880] shadow-sm items-center justify-center bg-white"
+                          title={art.artist?.country || 'Country'}
+                        >
+                          <CountryFlag country={art.artist?.country} size="badge" shape="circle" />
+                        </div>
+                      </td>
+
+                      {/* Medium */}
+                      <td className="py-4 px-4 text-[#4A453C]">
+                        {art.medium || 'Oil on Canvas'}
+                      </td>
+
+                      {/* Real Dimensions in Centimeters */}
+                      <td className="py-4 px-4 font-mono font-medium text-[#1A1918]">
+                        <span className="inline-block bg-[#FAF8F5] text-[#8C6D3F] border border-[#DDD6C8] px-2.5 py-1 rounded-md shadow-sm font-semibold">
+                          {formatDimensionsInCm(art.dimensions, lang)}
+                        </span>
+                      </td>
+
+                      {/* Year */}
+                      <td className="py-4 px-3 text-center font-mono text-[#7A7468]">
+                        {art.yearCreated || '2026'}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-4 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleOpenEdit(art)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#1A1918] border border-[#D5CEC0] rounded-lg text-xs font-semibold transition-all shadow-sm"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                            <span>{lang === 'th' ? 'แก้ไข' : 'Edit'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleRemoveArtwork(art.id, art.title)}
+                            className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Remove from Exhibition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Import Excel / CSV Modal */}
+      {isBatchImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-4xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B] max-h-[90vh] flex flex-col justify-between">
+            <div>
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[#E3DED4] pb-4 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-800">
+                    <FileSpreadsheet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold">
+                      {lang === 'th' ? 'ระบบนำเข้าข้อมูลแบบกลุ่ม' : 'Bulk Batch Import'}
+                    </span>
+                    <h2 className="font-serif text-2xl font-bold text-[#1A1918]">
+                      {lang === 'th' ? 'นำเข้าข้อมูลผลงานจาก Excel / CSV' : 'Import Artworks from Excel / CSV'}
+                    </h2>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsBatchImportModalOpen(false)}
+                  className="p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA]"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Toolbar: Template download & File Upload */}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white rounded-xl border border-[#E0D9CD] mb-4">
+                <div className="text-xs text-[#5A554A]">
+                  <span className="font-bold text-[#1A1918] block mb-0.5">
+                    {lang === 'th' ? 'วิธีนำเข้าข้อมูล:' : 'How to import:'}
+                  </span>
+                  {lang === 'th'
+                    ? '1. คัดลอกตารางจาก Excel (Ctrl+C) แล้ววางลงในกล่องด้านล่าง หรือ 2. อัปโหลดไฟล์ .csv'
+                    : '1. Copy table from Excel (Ctrl+C) and paste below, or 2. Upload a .csv file.'}
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={handleDownloadSampleTemplate}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#8C6D3F] border border-[#D5CEC0] rounded-lg text-xs font-semibold transition-all shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'ดาวน์โหลดไฟล์แม่แบบ Excel' : 'Download Sample CSV'}</span>
+                  </button>
+
+                  <label className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold cursor-pointer transition-all shadow-sm">
+                    <Upload className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>{lang === 'th' ? 'เลือกไฟล์ CSV' : 'Upload CSV'}</span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv,.txt,.tsv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Paste Box */}
+              <div className="space-y-2 mb-4">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A]">
+                  {lang === 'th'
+                    ? 'วางข้อมูลตารางจาก Excel ที่นี่ (Copy & Paste Text):'
+                    : 'Paste Excel Table Text Here:'}
+                </label>
+                <textarea
+                  rows={4}
+                  value={rawPastedText}
+                  onChange={(e) => parseExcelText(e.target.value)}
+                  placeholder={`ชื่อผลงาน\tศิลปิน\tประเทศ\tเทคนิค\tขนาด\tปี\tแนวคิดผลงาน\tURL รูปภาพ\nแสงอรุณเหนือวิหาร\tสมชาย ใจเย็น\tThailand\tOil on Canvas\t120 x 180 cm.\t2026\tภาพสะท้อนแสงแรก...\thttps://...`}
+                  className="w-full p-3 bg-white border border-[#D5CFC3] rounded-xl font-mono text-xs text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-emerald-700 leading-relaxed"
+                />
+              </div>
+
+              {/* Live Preview Table */}
+              {parsedRows.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-[#1A1918]">
+                    <span className="flex items-center gap-1.5 text-emerald-800">
+                      <TableIcon className="w-4 h-4" />
+                      <span>{lang === 'th' ? `ตรวจพบข้อมูลผลงานพร้อมนำเข้า (${parsedRows.length} รายการ):` : `Ready to import (${parsedRows.length} rows):`}</span>
+                    </span>
+                    <span className="text-[11px] text-[#7A7468]">
+                      {lang === 'th' ? 'ตรวจสอบความถูกต้องก่อนกดนำเข้า' : 'Preview before executing import'}
+                    </span>
+                  </div>
+
+                  <div className="max-h-[220px] overflow-y-auto border border-[#DDD6C8] rounded-xl bg-white shadow-inner">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#FAF8F5] border-b border-[#DDD6C8] sticky top-0 text-[10px] uppercase font-bold text-[#7A7468]">
+                        <tr>
+                          <th className="p-2.5">#</th>
+                          <th className="p-2.5">{lang === 'th' ? 'ชื่อผลงาน' : 'Title'}</th>
+                          <th className="p-2.5">{lang === 'th' ? 'ศิลปิน' : 'Artist'}</th>
+                          <th className="p-2.5">{lang === 'th' ? 'ขนาด (W×H)' : 'Dimensions'}</th>
+                          <th className="p-2.5">{lang === 'th' ? 'เทคนิค' : 'Medium'}</th>
+                          <th className="p-2.5">URL ภาพ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#F0ECE4]">
+                        {parsedRows.map((row, rIdx) => (
+                          <tr key={rIdx} className="hover:bg-[#FAF8F5] transition-colors">
+                            <td className="p-2.5 font-mono text-[#8C6D3F] font-bold">#{rIdx + 1}</td>
+                            <td className="p-2.5 font-serif font-bold text-[#1A1918] max-w-[140px] truncate">{row.title}</td>
+                            <td className="p-2.5 text-[#5A554A] max-w-[120px] truncate">{row.artistName} ({row.artistCountry})</td>
+                            <td className="p-2.5 font-mono text-[11px] text-emerald-800 font-semibold">{row.dimensions}</td>
+                            <td className="p-2.5 text-[#7A7468] max-w-[110px] truncate">{row.medium}</td>
+                            <td className="p-2.5 font-mono text-[10px] text-blue-600 max-w-[130px] truncate">{row.imageUrl}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="pt-4 border-t border-[#E3DED4] flex items-center justify-between mt-4">
+              <span className="text-xs text-[#7A7468]">
+                {lang === 'th' ? 'ระบบจะสร้างข้อมูลศิลปินและจัดผัง 3D เริ่มต้นให้อัตโนมัติ' : 'Artists and 3D wall coordinates will be generated automatically.'}
+              </span>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsBatchImportModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
+                >
+                  {t.inquiryModal.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteBatchImport}
+                  disabled={parsedRows.length === 0 || loading}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all disabled:opacity-50 active:scale-95"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{loading ? (lang === 'th' ? 'กำลังนำเข้าข้อมูล...' : 'Importing...') : (lang === 'th' ? `นำเข้าทั้งหมด (${parsedRows.length} ชิ้น)` : `Import All (${parsedRows.length})`)}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Artwork Modal (Choose from Library or Create New) */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-2xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl overflow-hidden p-6 text-[#1E1D1B] max-h-[85vh] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-[#E3DED4] pb-4 mb-4">
+                <div>
+                  <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold">
+                    {lang === 'th' ? 'เพิ่มผลงานเข้านิทรรศการ' : 'Add Artwork to Exhibition'}
+                  </span>
+                  <h2 className="font-serif text-xl font-bold text-[#1A1918]">
+                    {lang === 'th' ? 'เลือกผลงานจากคลังศิลปกรรม' : 'Select from Artworks Library'}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA]"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Create brand new or excel import buttons */}
+              <div className="mb-4 p-3.5 bg-white border border-[#E0D9CD] rounded-xl flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs text-[#5A554A]">
+                  <span className="font-bold text-[#1A1918] block">{lang === 'th' ? 'ต้องการนำเข้าผลงานชุดใหม่?' : 'Want to add new artworks?'}</span>
+                  {lang === 'th' ? 'สร้างผลงานใหม่ หรือนำเข้าจากตาราง Excel' : 'Create single artwork or import Excel table.'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setIsAddModalOpen(false);
+                      setIsBatchImportModalOpen(true);
+                    }}
+                    className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-all shadow-sm"
+                  >
+                    📊 {lang === 'th' ? 'Excel Import' : 'Excel Import'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAddModalOpen(false);
+                      setArtworkForm({
+                        title: '',
+                        artistId: '',
+                        artistName: 'สมโภชน์ บุญส่งประเสริฐ',
+                        medium: 'Oil on Canvas',
+                        dimensions: '120 x 180 cm.',
+                        yearCreated: 2026,
+                        concept: '',
+                        description: '',
+                        imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop',
+                      });
+                      setIsCreateNewModalOpen(true);
+                    }}
+                    className="px-3.5 py-1.5 bg-[#8C6D3F] hover:bg-[#A3804C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-all shadow-sm"
+                  >
+                    ➕ {lang === 'th' ? 'สร้างใหม่' : 'Create New'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Available Library Artworks */}
+              <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+                {availableLibrary.map((art) => (
+                  <div
+                    key={art.id}
+                    className="p-3 bg-white border border-[#E8E2D6] rounded-xl flex items-center justify-between gap-3 hover:border-[#8C6D3F] transition-all"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative w-12 h-12 rounded-lg bg-[#1A1918] overflow-hidden shrink-0">
+                        <Image src={art.imageUrl} alt={art.title} fill className="object-cover" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-serif text-xs font-bold text-[#1A1918] truncate">
+                          {art.title}
+                        </h4>
+                        <p className="text-[11px] text-[#6E685C] truncate">{art.artist?.name}</p>
+                        <p className="text-[10px] text-[#8C8477] font-mono">{art.dimensions}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleLinkArtwork(art.id)}
+                      disabled={loading}
+                      className="px-3.5 py-1.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider shrink-0 transition-all"
+                    >
+                      {lang === 'th' ? 'เพิ่มเข้างาน' : 'Select'}
+                    </button>
+                  </div>
+                ))}
+
+                {availableLibrary.length === 0 && (
+                  <div className="p-6 text-center text-xs text-[#7A7468]">
+                    {lang === 'th' ? 'ผลงานในคลังทั้งหมดถูกเพิ่มเข้านิทรรศการนี้แล้ว' : 'All library artworks are already added to this exhibition.'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#E3DED4] text-right mt-4">
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
+              >
+                {t.inquiryModal.cancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Artwork Details / Create Brand New Modal */}
+      {(editingArtwork || isCreateNewModalOpen) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-2xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B] max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setEditingArtwork(null);
+                setIsCreateNewModalOpen(false);
+              }}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="border-b border-[#E3DED4] pb-4 mb-6">
+              <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold">
+                {editingArtwork ? (lang === 'th' ? 'แก้ไขรายละเอียดผลงาน' : 'Edit Artwork Details') : (lang === 'th' ? 'สร้างผลงานศิลปกรรมใหม่' : 'Create New Artwork')}
+              </span>
+              <h2 className="font-serif text-2xl font-bold text-[#1A1918] mt-1">
+                {editingArtwork ? editingArtwork.title : (lang === 'th' ? 'กรอกข้อมูลผลงาน' : 'Artwork Information')}
+              </h2>
+            </div>
+
+            {/* Smart Auto-Detect Paste Bar */}
+            <div className="mb-5 p-3.5 bg-[#FAF3E8] border border-[#E5D7C2] rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#8C6D3F] flex items-center gap-1.5">
+                  <Wand2 className="w-4 h-4 text-[#8C6D3F]" />
+                  <span>{lang === 'th' ? '🪄 วางข้อมูลแยกช่องอัตโนมัติ (Smart Auto-Detect Paste)' : 'Smart Auto-Detect Paste'}</span>
+                </span>
+                <span className="text-[10px] text-[#7A7468]">
+                  {lang === 'th' ? 'คัดลอกจาก Excel หรือแถวข้อความแล้ววางที่นี่' : 'Paste text row from Excel'}
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={smartPasteInput}
+                  onChange={(e) => handleSmartPaste(e.target.value)}
+                  placeholder={lang === 'th' ? 'วางแถวข้อมูลจาก Excel เช่น Fassih Keiso	Australia	fassihkeiso@yahoo.com	03.04.2017	Mixed Media	120 x 100	cm.	This Work Deals...' : 'Paste row from Excel...'}
+                  className="flex-1 px-3 py-1.5 bg-white border border-[#D5CFC3] rounded-lg text-xs text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F] placeholder-[#A0988A]"
+                />
+                {smartPasteInput && (
+                  <button
+                    type="button"
+                    onClick={() => setSmartPasteInput('')}
+                    className="px-2.5 py-1 text-xs text-[#7A7468] hover:text-[#1A1918] bg-white border border-[#D5CFC3] rounded-lg"
+                  >
+                    {lang === 'th' ? 'ล้าง' : 'Clear'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <form onSubmit={editingArtwork ? handleSubmitEdit : handleCreateAndLinkNewArtwork} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
+                  {lang === 'th' ? 'ชื่อผลงานศิลปะ' : 'Artwork Title'} <span className="text-rose-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={artworkForm.title}
+                  onChange={(e) => setArtworkForm({ ...artworkForm, title: e.target.value })}
+                  placeholder={lang === 'th' ? 'เช่น แสงเงาแห่งกรุงเก่า' : 'e.g. Echoes of Ayutthaya'}
+                  className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-sm font-serif font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
+                />
+              </div>
+
+              {/* Artist Name & Creator Selector */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
+                  {lang === 'th' ? 'ชื่อศิลปินผู้สร้างสรรค์ (Artist / Creator)' : 'Artist / Creator'} <span className="text-rose-600">*</span>
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    value={artworkForm.artistId || (allArtists.find((a) => a.name === artworkForm.artistName)?.id || '')}
+                    onChange={(e) => {
+                      const selected = allArtists.find((a) => a.id === e.target.value);
+                      if (selected) {
+                        setArtworkForm({ ...artworkForm, artistId: selected.id, artistName: selected.name });
+                      } else {
+                        setArtworkForm({ ...artworkForm, artistId: '' });
+                      }
+                    }}
+                    className="sm:w-1/2 px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-medium text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
+                  >
+                    <option value="">{lang === 'th' ? '-- เลือกศิลปินจากฐานข้อมูล --' : '-- Select Existing Artist --'}</option>
+                    {allArtists.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.country || 'Thailand'})
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="text"
+                    required
+                    value={artworkForm.artistName}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, artistName: e.target.value, artistId: '' })}
+                    placeholder={lang === 'th' ? 'หรือพิมพ์ระบุชื่อศิลปิน...' : 'Or enter custom artist name...'}
+                    className="flex-1 px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-semibold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
+                    {lang === 'th' ? 'เทคนิค / วัสดุ (Medium)' : 'Medium'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={artworkForm.medium}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, medium: e.target.value })}
+                    placeholder="Oil on Canvas"
+                    className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
+                    {lang === 'th' ? 'ขนาดผลงานจริง (Dimensions: W x H)' : 'Real Dimensions'} <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={artworkForm.dimensions}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, dimensions: e.target.value })}
+                    placeholder="120 x 180 cm."
+                    className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
+                  {lang === 'th' ? 'ปีที่สร้างสรรค์ (Year Created)' : 'Year Created'}
+                </label>
+                <input
+                  type="number"
+                  value={artworkForm.yearCreated}
+                  onChange={(e) => setArtworkForm({ ...artworkForm, yearCreated: parseInt(e.target.value) || 2026 })}
+                  className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              {/* Drag & Drop / File Picker / ImageKit Upload */}
+              <ImageUploadDropzone
+                value={artworkForm.imageUrl}
+                onChange={(url) => setArtworkForm({ ...artworkForm, imageUrl: url })}
+                titleHint={artworkForm.title || 'artwork'}
+              />
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
+                  {lang === 'th' ? 'แนวความคิดผลงาน (Artwork Concept & Statement)' : 'Concept Narrative'}
+                </label>
+                <textarea
+                  rows={4}
+                  value={artworkForm.concept}
+                  onChange={(e) => setArtworkForm({ ...artworkForm, concept: e.target.value })}
+                  placeholder={lang === 'th' ? 'อธิบายแนวคิด แรงบันดาลใจ และสุนทรียศาสตร์ของผลงานชิ้นนี้...' : 'Describe artistic inspiration and concept...'}
+                  className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-serif leading-relaxed focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-[#E5E0D5] flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingArtwork(null);
+                    setIsCreateNewModalOpen(false);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
+                >
+                  {t.inquiryModal.cancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all disabled:opacity-50"
+                >
+                  {loading ? (lang === 'th' ? 'กำลังบันทึก...' : 'Saving...') : (lang === 'th' ? 'บันทึกข้อมูล' : 'Save Details')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

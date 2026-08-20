@@ -1,0 +1,422 @@
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
+import * as schema from './schema';
+import path from 'path';
+
+const dbPath = path.resolve(process.cwd(), 'art_gallery.sqlite');
+const client = createClient({
+  url: `file:${dbPath}`,
+});
+const db = drizzle(client, { schema });
+
+async function seed() {
+  console.log('🌱 Seeding multiple curated exhibitions for Museum Grand Lobby...');
+
+  // Drop and recreate tables
+  await client.executeMultiple(`
+    DROP TABLE IF EXISTS inquiries;
+    DROP TABLE IF EXISTS exhibition_artworks;
+    DROP TABLE IF EXISTS artworks;
+    DROP TABLE IF EXISTS exhibitions;
+    DROP TABLE IF EXISTS users;
+
+    CREATE TABLE users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      role TEXT CHECK(role IN ('admin', 'curator', 'artist')) DEFAULT 'artist',
+      country TEXT,
+      flag_emoji TEXT,
+      bio TEXT,
+      avatar_url TEXT,
+      social_links TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS exhibitions (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      curator_note TEXT,
+      banner_url TEXT,
+      catalog_pdf_url TEXT,
+      start_date DATETIME NOT NULL,
+      end_date DATETIME NOT NULL,
+      status TEXT CHECK(status IN ('upcoming', 'active', 'archived')) DEFAULT 'upcoming',
+      theme_config TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS artworks (
+      id TEXT PRIMARY KEY,
+      artist_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      concept TEXT,
+      year_created INTEGER,
+      medium TEXT,
+      dimensions TEXT,
+      cloudinary_public_id TEXT NOT NULL,
+      image_url TEXT NOT NULL,
+      model_3d_url TEXT,
+      price REAL,
+      status TEXT CHECK(status IN ('available', 'reserved', 'sold', 'not_for_sale')) DEFAULT 'available',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (artist_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS exhibition_artworks (
+      exhibition_id TEXT NOT NULL,
+      artwork_id TEXT NOT NULL,
+      display_order INTEGER DEFAULT 0,
+      wall_position TEXT,
+      PRIMARY KEY (exhibition_id, artwork_id),
+      FOREIGN KEY (exhibition_id) REFERENCES exhibitions(id) ON DELETE CASCADE,
+      FOREIGN KEY (artwork_id) REFERENCES artworks(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS inquiries (
+      id TEXT PRIMARY KEY,
+      artwork_id TEXT NOT NULL,
+      visitor_name TEXT NOT NULL,
+      visitor_email TEXT NOT NULL,
+      message TEXT,
+      status TEXT CHECK(status IN ('pending', 'contacted', 'completed')) DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (artwork_id) REFERENCES artworks(id) ON DELETE CASCADE
+    );
+  `);
+
+  // Insert Curators and Artists
+  const usersList = [
+    {
+      id: 'curator-1',
+      name: 'Ms. Anchalee S. (อัญชลี ศรีกาญจน์)',
+      email: 'anchalee.s@artvara.gallery',
+      role: 'curator' as const,
+      country: 'Thailand',
+      flagEmoji: '🇹🇭',
+      bio: 'Senior Curator at ARTVARA Gallery with over 15 years of experience in Southeast Asian and International contemporary heritage art curation.',
+      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ website: 'https://artvara.gallery/anchalee', instagram: '@anchalee_curates' }),
+    },
+    {
+      id: 'curator-2',
+      name: 'Dr. Marcus Vance (ดร. มาร์คัส แวนซ์)',
+      email: 'marcus.vance@artvara.gallery',
+      role: 'curator' as const,
+      country: 'United Kingdom',
+      flagEmoji: '🇬🇧',
+      bio: 'Guest International Curator specializing in Asian modernism, riverine cultural geographies, and transnational abstract movements.',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ website: 'https://artvara.gallery/marcus' }),
+    },
+    {
+      id: 'artist-1',
+      name: 'Fassih Keiso',
+      email: 'fassihkeiso@yahoo.com',
+      role: 'artist' as const,
+      country: 'Australia',
+      flagEmoji: '🇦🇺',
+      bio: 'Australian-Syrian interdisciplinary artist examining the intersections of cultural heritage, ancient monuments, and contemporary geopolitical conflicts.',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ instagram: '@fassih_keiso_art' }),
+    },
+    {
+      id: 'artist-2',
+      name: 'Somchai Jaiyen (สมชาย ใจเย็น)',
+      email: 'somchai.jaiyen@artsiam.com',
+      role: 'artist' as const,
+      country: 'Thailand',
+      flagEmoji: '🇹🇭',
+      bio: 'Master of atmospheric landscape oil paintings, celebrated for his dramatic play of sunlight across historical Siamese landmarks.',
+      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ instagram: '@somchai_oilart' }),
+    },
+    {
+      id: 'artist-3',
+      name: 'Sasithol Arivarat (ศศิธร อารีวรัตน์)',
+      email: 'sasithol.a@studio.th',
+      role: 'artist' as const,
+      country: 'Thailand',
+      flagEmoji: '🇹🇭',
+      bio: 'Contemporary impressionist who blends traditional Siamese gold leaf techniques with textured European impasto on Belgian linen.',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ instagram: '@sasithol_art' }),
+    },
+    {
+      id: 'artist-4',
+      name: 'Arunee Thammarat (อรุณี ธรรมรัตน์)',
+      email: 'artdes@ayutthayarevival.org',
+      role: 'artist' as const,
+      country: 'France / Thailand',
+      flagEmoji: '🇫🇷',
+      bio: 'Portrait artist known for reviving royal court attires and evocative historical portraiture with classical chiaroscuro lighting.',
+      avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ instagram: '@artdes_siamelegance' }),
+    },
+    {
+      id: 'artist-5',
+      name: 'Sarawathudam (สราวุธ อุดมศิลป์)',
+      email: 'sarawathudam@templeart.th',
+      role: 'artist' as const,
+      country: 'Thailand',
+      flagEmoji: '🇹🇭',
+      bio: 'Sculptor and mixed-media painter exploring Buddhist philosophy and the impermanence of sacred ruins.',
+      avatarUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ instagram: '@sarawathudam' }),
+    },
+    {
+      id: 'artist-6',
+      name: 'Akhil Namwan (อคิล น้ำหวาน)',
+      email: 'akhil.namwan@gallery.th',
+      role: 'artist' as const,
+      country: 'Thailand',
+      flagEmoji: '🇹🇭',
+      bio: 'Ayutthaya native whose work captures the tranquil morning mists shrouding the royal stupas of Wat Phra Si Sanphet.',
+      avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ instagram: '@akhil_namwan' }),
+    },
+    {
+      id: 'artist-7',
+      name: 'Elena Rossi (เอเลนา รอสซี)',
+      email: 'elena.rossi@firenzeart.it',
+      role: 'artist' as const,
+      country: 'Italy',
+      flagEmoji: '🇮🇹',
+      bio: 'Italian classical preservation painter exploring ancient stupas and maritime trade aesthetics through renaissance tempera and gold leaf.',
+      avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ instagram: '@elena_rossi_studio' }),
+    },
+    {
+      id: 'artist-8',
+      name: 'Kenji Takahashi (เคนจิ ทาคานาชิ)',
+      email: 'kenji.t@tokyoart.jp',
+      role: 'artist' as const,
+      country: 'Japan',
+      flagEmoji: '🇯🇵',
+      bio: 'Contemporary Japanese minimalist sculptor and ink painter investigating tranquility, geometric stillness, and natural stone textures.',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop',
+      socialLinks: JSON.stringify({ instagram: '@kenji_zen_art' }),
+    },
+  ];
+
+  await db.insert(schema.users).values(usersList);
+
+  // Insert 3 Exhibitions
+  const exhibitionsList = [
+    {
+      id: 'exh-01',
+      title: 'The Golden Age of Ayutthaya: A Curated Collection (ยุคทองแห่งกรุงศรีอยุธยา)',
+      slug: 'the-golden-age-of-ayutthaya',
+      curatorNote: `อยุธยา ราชธานีอันยิ่งใหญ่ของสยามประเทศระหว่างปี พ.ศ. 1893 ถึง 2310 คือประจักษ์พยานแห่งความรุ่งเรืองทางศิลปวัฒนธรรม ความศรัทธา และเส้นทางการค้าทางทะเลระดับนานาชาติ
+
+ในนิทรรศการ 'The Golden Age of Ayutthaya' หอศิลป์ ARTVARA ได้รวบรวมผลงานของศิลปินชั้นครูทั้งไทยและต่างประเทศ เพื่อถ่ายทอดจิตวิญญาณแห่งมหาเจดีย์ แม่น้ำเจ้าพระยา และความสงบนิ่งของพุทธสถาปัตยกรรมผ่านภาพจิตรกรรมสีน้ำมัน ทองคำเปลว และแสงเงา Chiaroscuro อันทรงคุณค่า`,
+      bannerUrl: 'https://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1600&auto=format&fit=crop',
+      catalogPdfUrl: '/api/exhibitions/the-golden-age-of-ayutthaya/catalog',
+      startDate: '2026-08-01',
+      endDate: '2026-10-31',
+      status: 'active' as const,
+      themeConfig: JSON.stringify({ wallTexture: 'wood-warm', wallColor: '#2B1E16', floorColor: '#E6E0D4', spotlightIntensity: 1.8 }),
+    },
+    {
+      id: 'exh-02',
+      title: 'Siam Contemporary: Horizons of Light & Form (สยามร่วมสมัย: ขอบฟ้าแห่งแสงและรูปทรง)',
+      slug: 'siam-contemporary-horizons',
+      curatorNote: `การสำรวจมิติใหม่ของศิลปะร่วมสมัยในเอเชียตะวันออกเฉียงใต้ ที่ผสมผสานความเรียบง่ายแบบเซน (Zen Minimalism) เข้ากับรูปทรงนามธรรมและมวลสารทางวัฒนธรรมดั้งเดิม
+
+นำเสนอบทสนทนาระหว่างศิลปินไทย ญี่ปุ่น และยุโรป ที่ร่วมกันตีความความเงียบสงบ แสงธรรมชาติ และการเปลี่ยนแปลงของสัจธรรมชีวิตผ่านสื่อผสมและงานประติมากรรมสมัยใหม่`,
+      bannerUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1600&auto=format&fit=crop',
+      catalogPdfUrl: '/api/exhibitions/siam-contemporary-horizons/catalog',
+      startDate: '2026-11-01',
+      endDate: '2027-01-31',
+      status: 'active' as const,
+      themeConfig: JSON.stringify({ wallTexture: 'gallery-white', wallColor: '#1F1E1B', floorColor: '#DDD7CC', spotlightIntensity: 2.0 }),
+    },
+    {
+      id: 'exh-03',
+      title: 'Monsoon Whispers: Riverine Chronicles (เสียงกระซิบแห่งสายฝนและสายนที)',
+      slug: 'monsoon-whispers-southeast-asia',
+      curatorNote: `วิถีชีวิตริมสายน้ำเจ้าพระยาและแม่น้ำโขง ภายใต้การโอบกอดของฤดูมรสุมและแสงสะท้อนแห่งธรรมชาติ
+
+นิทรรศการนี้รวบรวมผลงานภาพเขียนสีน้ำและอะคริลิกที่บันทึกความทรงจำของสายน้ำ ชุมชนริมน้ำ และพรรณไม้โบราณที่เชื่อมโยงอดีตกับปัจจุบันไว้อย่างนุ่มนวล`,
+      bannerUrl: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?q=80&w=1600&auto=format&fit=crop',
+      catalogPdfUrl: '/api/exhibitions/monsoon-whispers-southeast-asia/catalog',
+      startDate: '2026-05-01',
+      endDate: '2026-07-31',
+      status: 'archived' as const,
+      themeConfig: JSON.stringify({ wallTexture: 'warm-stone', wallColor: '#26221D', floorColor: '#E2DBD0', spotlightIntensity: 1.6 }),
+    },
+  ];
+
+  await db.insert(schema.exhibitions).values(exhibitionsList);
+
+  // Insert Artworks for Exhibitions
+  const artworksList = [
+    // Exhibition 1 (Ayutthaya)
+    {
+      id: 'art-01',
+      artistId: 'artist-1',
+      title: '03.04.2017 (Echoes of Palmyra)',
+      description: 'Mixed media composition on textured canvas depicting the preservation of sacred head statues amid archaeological resilience.',
+      concept: 'This Work Deals With The Impact Of Wars On Human Race Culture And Humanity. The Destruction Of World Cultural Heritage. The Image Is One Of The Head Statues That Destroyed During The Destruction Of Palmyra, The Archaeological Site During The War In Syria.',
+      yearCreated: 2017,
+      medium: 'Mixed Media',
+      dimensions: '120 x 100 cm.',
+      cloudinaryPublicId: 'artvara/keiso-palmyra-03042017',
+      imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop',
+      price: 240000,
+      status: 'available' as const,
+    },
+    {
+      id: 'art-02',
+      artistId: 'artist-2',
+      title: 'Sunrise at Wat Chaiwatthanaram',
+      description: 'Luminous depiction of the magnificent Khmer-style prangs bathed in early morning golden light reflecting over the Chao Phraya river bank.',
+      concept: 'Captures the ephemeral morning mist dissolving into radiant golden light across the sacred stupas of Ayutthaya, symbolizing spiritual rebirth and the timeless endurance of Siamese heritage.',
+      yearCreated: 2026,
+      medium: 'Oil on Canvas',
+      dimensions: '120 x 180 cm.',
+      cloudinaryPublicId: 'artvara/sunrise-wat-chaiwatthanaram',
+      imageUrl: 'https://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1200&auto=format&fit=crop',
+      price: 185000,
+      status: 'available' as const,
+    },
+    {
+      id: 'art-03',
+      artistId: 'artist-4',
+      title: 'Lady of the Royal Siamese Court',
+      description: 'Fine historical portrait of a noblewoman dressed in handwoven gold-threaded sabai and antique royal regalia.',
+      concept: 'Revives the dignified grace of 17th-century Siamese court life through classical chiaroscuro techniques, honoring the silk weavers and cultural emissaries of ancient Ayutthaya.',
+      yearCreated: 2025,
+      medium: 'Oil on Wood Panel',
+      dimensions: '80 x 110 cm.',
+      cloudinaryPublicId: 'artvara/lady-court-portrait',
+      imageUrl: 'https://images.unsplash.com/photo-1578925518470-4def7a0f08bb?q=80&w=1200&auto=format&fit=crop',
+      price: 160000,
+      status: 'reserved' as const,
+    },
+    {
+      id: 'art-04',
+      artistId: 'artist-3',
+      title: 'Whispers of the Chao Phraya',
+      description: 'Atmospheric view of historic river trade routes glowing beneath pagoda silhouettes at dusk.',
+      concept: 'Explores the Chao Phraya river as a living artery connecting international maritime traders from Persia, Europe, and Asia to the bustling royal island of Siam.',
+      yearCreated: 2025,
+      medium: 'Acrylic & Gold Leaf on Linen',
+      dimensions: '100 x 150 cm.',
+      cloudinaryPublicId: 'artvara/whispers-chao-phraya',
+      imageUrl: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?q=80&w=1200&auto=format&fit=crop',
+      price: 140000,
+      status: 'available' as const,
+    },
+    {
+      id: 'art-05',
+      artistId: 'artist-5',
+      title: 'Sanctuary of the Ancient Bodhi',
+      description: 'The sacred sandstone Buddha head gently embraced by overgrown Bodhi tree roots at Wat Mahathat.',
+      concept: 'Reflects on the Buddhist philosophy of Anicca (impermanence) and natural harmony, where sacred sandstone sculptures seamlessly merge into living tree roots over centuries.',
+      yearCreated: 2026,
+      medium: 'Mixed Media & Mineral Pigment',
+      dimensions: '110 x 110 cm.',
+      cloudinaryPublicId: 'artvara/sanctuary-ancient-bodhi',
+      imageUrl: 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?q=80&w=1200&auto=format&fit=crop',
+      price: 95000,
+      status: 'available' as const,
+    },
+    {
+      id: 'art-06',
+      artistId: 'artist-6',
+      title: 'The Golden Chedi in Morning Mist',
+      description: 'Panoramic composition showcasing the towering main chedi emerging through soft golden haze.',
+      concept: 'Captures the serene solitude of early morning temple grounds in Ayutthaya, meditating on silence, sacred architecture, and spatial infinity.',
+      yearCreated: 2025,
+      medium: 'Oil on Linen',
+      dimensions: '130 x 190 cm.',
+      cloudinaryPublicId: 'artvara/golden-chedi-mist',
+      imageUrl: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=1200&auto=format&fit=crop',
+      price: 210000,
+      status: 'sold' as const,
+    },
+    {
+      id: 'art-07',
+      artistId: 'artist-7',
+      title: 'Sacred Stupas & Celestial Horizons',
+      description: 'Richly textured gold leaf and tempera depicting weathered brick arches reaching toward twilight skies.',
+      concept: 'A cross-cultural Italian-Siamese synthesis investigating architectural proportions, golden ratio geometry, and sacred spiritual ascension across global heritage sites.',
+      yearCreated: 2026,
+      medium: 'Egg Tempera & 24K Gold Leaf on Wood',
+      dimensions: '100 x 120 cm.',
+      cloudinaryPublicId: 'artvara/sacred-stupas-celestial',
+      imageUrl: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?q=80&w=1200&auto=format&fit=crop',
+      price: 190000,
+      status: 'available' as const,
+    },
+
+    // Exhibition 2 (Contemporary Horizons)
+    {
+      id: 'art-08',
+      artistId: 'artist-8',
+      title: 'Zenith of Silence (ความเงียบงันแห่งเซน)',
+      description: 'Monochromatic ink on raw Japanese washi mounted on cedar wood, capturing infinite stillness.',
+      concept: 'Meditates on the void and breath between strokes, creating a visual sanctuary of calm in a chaotic digital world.',
+      yearCreated: 2026,
+      medium: 'Japanese Sumi Ink & Mineral Pigment',
+      dimensions: '140 x 140 cm.',
+      cloudinaryPublicId: 'artvara/zenith-silence',
+      imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=1200&auto=format&fit=crop',
+      price: 175000,
+      status: 'available' as const,
+    },
+    {
+      id: 'art-09',
+      artistId: 'artist-7',
+      title: 'Architectonic Luminescence',
+      description: 'Luminous geometric abstraction inspired by ancient temple archways and Renaissance perspective lines.',
+      concept: 'Exploring structural spirituality through mineral gilding and linear depth.',
+      yearCreated: 2026,
+      medium: 'Oil & Pure Gold Leaf on Linen',
+      dimensions: '110 x 160 cm.',
+      cloudinaryPublicId: 'artvara/architectonic-luminescence',
+      imageUrl: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?q=80&w=1200&auto=format&fit=crop',
+      price: 210000,
+      status: 'available' as const,
+    },
+  ];
+
+  await db.insert(schema.artworks).values(artworksList);
+
+  // Link Artworks to Exhibition 1
+  const exh1Artworks = [
+    { exhibitionId: 'exh-01', artworkId: 'art-01', displayOrder: 1, wallPosition: JSON.stringify({ x: 0, y: 2.0, z: -6.85, rotationY: 0, wallIndex: 0, scale: 1.2 }) },
+    { exhibitionId: 'exh-01', artworkId: 'art-02', displayOrder: 2, wallPosition: JSON.stringify({ x: -3.8, y: 2.0, z: -6.85, rotationY: 0, wallIndex: 0, scale: 1.0 }) },
+    { exhibitionId: 'exh-01', artworkId: 'art-04', displayOrder: 3, wallPosition: JSON.stringify({ x: 3.8, y: 2.0, z: -6.85, rotationY: 0, wallIndex: 0, scale: 1.0 }) },
+    { exhibitionId: 'exh-01', artworkId: 'art-03', displayOrder: 4, wallPosition: JSON.stringify({ x: 6.85, y: 2.0, z: -2.8, rotationY: -Math.PI / 2, wallIndex: 1, scale: 0.9 }) },
+    { exhibitionId: 'exh-01', artworkId: 'art-06', displayOrder: 5, wallPosition: JSON.stringify({ x: 6.85, y: 2.0, z: 2.8, rotationY: -Math.PI / 2, wallIndex: 1, scale: 1.2 }) },
+    { exhibitionId: 'exh-01', artworkId: 'art-05', displayOrder: 6, wallPosition: JSON.stringify({ x: -6.85, y: 2.0, z: -2.8, rotationY: Math.PI / 2, wallIndex: 3, scale: 1.0 }) },
+    { exhibitionId: 'exh-01', artworkId: 'art-07', displayOrder: 7, wallPosition: JSON.stringify({ x: -6.85, y: 2.0, z: 2.8, rotationY: Math.PI / 2, wallIndex: 3, scale: 1.0 }) },
+  ];
+  await db.insert(schema.exhibitionArtworks).values(exh1Artworks);
+
+  // Link Artworks to Exhibition 2
+  const exh2Artworks = [
+    { exhibitionId: 'exh-02', artworkId: 'art-08', displayOrder: 1, wallPosition: JSON.stringify({ x: 0, y: 2.0, z: -6.85, rotationY: 0, wallIndex: 0, scale: 1.2 }) },
+    { exhibitionId: 'exh-02', artworkId: 'art-09', displayOrder: 2, wallPosition: JSON.stringify({ x: 4.0, y: 2.0, z: -6.85, rotationY: 0, wallIndex: 0, scale: 1.0 }) },
+    { exhibitionId: 'exh-02', artworkId: 'art-01', displayOrder: 3, wallPosition: JSON.stringify({ x: -4.0, y: 2.0, z: -6.85, rotationY: 0, wallIndex: 0, scale: 1.0 }) },
+  ];
+  await db.insert(schema.exhibitionArtworks).values(exh2Artworks);
+
+  // Link Artworks to Exhibition 3
+  const exh3Artworks = [
+    { exhibitionId: 'exh-03', artworkId: 'art-04', displayOrder: 1, wallPosition: JSON.stringify({ x: 0, y: 2.0, z: -6.85, rotationY: 0, wallIndex: 0, scale: 1.2 }) },
+    { exhibitionId: 'exh-03', artworkId: 'art-02', displayOrder: 2, wallPosition: JSON.stringify({ x: 4.0, y: 2.0, z: -6.85, rotationY: 0, wallIndex: 0, scale: 1.0 }) },
+  ];
+  await db.insert(schema.exhibitionArtworks).values(exh3Artworks);
+
+  console.log('✨ Seeded 3 curated exhibitions for Grand Lobby successfully!');
+}
+
+seed().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
