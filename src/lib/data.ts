@@ -1,7 +1,6 @@
 import { db, schema } from '@/db';
 import { eq, desc, asc, or } from 'drizzle-orm';
 import { Exhibition, Artwork, User, Inquiry, WallPosition } from '@/types/exhibition';
-import { FALLBACK_EXHIBITIONS, FALLBACK_ARTWORKS, FALLBACK_USERS } from './fallbackData';
 
 export async function getExhibitionBySlug(slug: string): Promise<Exhibition | null> {
   try {
@@ -71,9 +70,7 @@ export async function getExhibitionBySlug(slug: string): Promise<Exhibition | nu
     console.error('Error fetching exhibition by slug from DB:', error);
   }
 
-  // Fallback to static curated exhibition
-  const fallback = FALLBACK_EXHIBITIONS.find((e) => e.slug === slug || e.id === slug);
-  return fallback || null;
+  return null;
 }
 
 export async function getExhibitionById(id: string): Promise<Exhibition | null> {
@@ -91,8 +88,7 @@ export async function getExhibitionById(id: string): Promise<Exhibition | null> 
     console.error('Error fetching exhibition by ID from DB:', error);
   }
 
-  const fallback = FALLBACK_EXHIBITIONS.find((e) => e.id === id || e.slug === id);
-  return fallback || null;
+  return null;
 }
 
 export async function getAllExhibitions(): Promise<Exhibition[]> {
@@ -118,7 +114,7 @@ export async function getAllExhibitions(): Promise<Exhibition[]> {
     console.error('Error fetching exhibitions from DB:', error);
   }
 
-  return FALLBACK_EXHIBITIONS;
+  return [];
 }
 
 export async function getAllArtworks(): Promise<Artwork[]> {
@@ -142,7 +138,7 @@ export async function getAllArtworks(): Promise<Artwork[]> {
     console.error('Error fetching all artworks from DB:', error);
   }
 
-  return FALLBACK_ARTWORKS;
+  return [];
 }
 
 export async function getAllArtists(): Promise<User[]> {
@@ -160,7 +156,7 @@ export async function getAllArtists(): Promise<User[]> {
     console.error('Error fetching artists from DB:', error);
   }
 
-  return FALLBACK_USERS.filter((u) => u.role === 'artist');
+  return [];
 }
 
 export async function getArtistProfile(artistId: string) {
@@ -224,27 +220,7 @@ export async function getArtistProfile(artistId: string) {
     console.error('Error fetching artist profile from DB:', error);
   }
 
-  // Fallback for artist profile
-  const fallbackArtist = FALLBACK_USERS.find((u) => u.id === artistId) || FALLBACK_USERS[1];
-  const fallbackArtworks = FALLBACK_ARTWORKS.filter((a) => a.artistId === fallbackArtist.id);
-  return {
-    artist: fallbackArtist,
-    artworks: fallbackArtworks.map((a) => ({
-      ...a,
-      exhibitions: [
-        {
-          id: 'exh-01',
-          title: 'The Golden Age of Ayutthaya: A Curated Collection',
-          slug: 'the-golden-age-of-ayutthaya',
-          status: 'active',
-          startDate: '2026-08-01',
-          endDate: '2026-10-31',
-          bannerUrl: 'https://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1600&auto=format&fit=crop',
-        },
-      ],
-    })),
-    participatingExhibitions: [FALLBACK_EXHIBITIONS[0]],
-  };
+  return null;
 }
 
 export async function getAllArtistsWithStats() {
@@ -270,13 +246,7 @@ export async function getAllArtistsWithStats() {
     console.error('Error fetching artists with stats from DB:', error);
   }
 
-  return FALLBACK_USERS.filter((u) => u.role === 'artist').map((artist) => ({
-    ...artist,
-    artworkCount: 1,
-    exhibitionCount: 1,
-    exhibitions: [FALLBACK_EXHIBITIONS[0]],
-    previewArtworks: FALLBACK_ARTWORKS.filter((a) => a.artistId === artist.id),
-  }));
+  return [];
 }
 
 export async function getAllCurators(): Promise<User[]> {
@@ -292,7 +262,7 @@ export async function getAllCurators(): Promise<User[]> {
     console.error('Error fetching curators from DB:', error);
   }
 
-  return FALLBACK_USERS.filter((u) => u.role === 'curator');
+  return [];
 }
 
 export async function getAllCuratorsWithStats() {
@@ -324,17 +294,7 @@ export async function getAllCuratorsWithStats() {
     console.error('Error fetching curators with stats from DB:', error);
   }
 
-  return FALLBACK_USERS.filter((u) => u.role === 'curator').map((c) => ({
-    ...c,
-    exhibitionCount: 3,
-    curatedExhibitions: FALLBACK_EXHIBITIONS.map((e) => ({
-      id: e.id,
-      title: e.title,
-      slug: e.slug,
-      status: e.status,
-      bannerUrl: e.bannerUrl,
-    })),
-  }));
+  return [];
 }
 
 export async function getAllInquiries(): Promise<Inquiry[]> {

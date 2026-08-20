@@ -4,8 +4,9 @@ import React from 'react';
 import Link from 'next/link';
 import { Exhibition, Artwork, User, Inquiry } from '@/types/exhibition';
 import { useLanguage } from '@/context/LanguageContext';
-import { Eye, Box, FileText, Layers, Inbox, Palette, Users, Sparkles, ExternalLink } from 'lucide-react';
+import { Eye, Box, FileText, Layers, Inbox, Palette, Users, Sparkles, ExternalLink, Trash2, CheckCircle2 } from 'lucide-react';
 import { formatDateRange } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 interface AdminDashboardClientProps {
   exhibitions: Exhibition[];
@@ -21,10 +22,49 @@ export function AdminDashboardClient({
   inquiries,
 }: AdminDashboardClientProps) {
   const { lang, t } = useLanguage();
+  const router = useRouter();
+  const [clearing, setClearing] = React.useState(false);
+  const [notification, setNotification] = React.useState<string | null>(null);
+
   const activeExh = exhibitions.find((e) => e.status === 'active') || exhibitions[0];
+
+  const handleClearMockupData = async () => {
+    const confirmMsg =
+      lang === 'th'
+        ? '⚠️ คุณต้องการล้างข้อมูล Mockup ทั้งหมด (นิทรรศการ, ศิลปิน, ผลงาน, ข้อความติดต่อ) ใช่หรือไม่?\n\nการกระทำนี้จะล้างข้อมูลทั้งหมดในฐานข้อมูล'
+        : '⚠️ Are you sure you want to clear all mockup data (exhibitions, artists, artworks, inquiries)?';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setClearing(true);
+    try {
+      const res = await fetch('/api/admin/clear-mockup', { method: 'POST' });
+      if (res.ok) {
+        setNotification(lang === 'th' ? 'ล้างข้อมูล Mockup ทั้งหมดเรียบร้อยแล้ว' : 'All mockup data cleared');
+        setTimeout(() => {
+          router.refresh();
+          window.location.reload();
+        }, 1200);
+      } else {
+        alert('Failed to clear database');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error clearing database');
+    } finally {
+      setClearing(false);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      {notification && (
+        <div className="p-4 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-semibold flex items-center gap-2 animate-slide-up shadow">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-700" />
+          <span>{notification}</span>
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#DCD5C8] pb-6">
         <div>
@@ -37,6 +77,16 @@ export function AdminDashboardClient({
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleClearMockupData}
+            disabled={clearing}
+            className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all disabled:opacity-50"
+            title="Clear all mockup data"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{clearing ? (lang === 'th' ? 'กำลังล้างข้อมูล...' : 'Clearing...') : (lang === 'th' ? 'ล้างข้อมูล Mockup ทั้งหมด' : 'Clear All Mockups')}</span>
+          </button>
+
           {activeExh && (
             <Link
               href={`/exhibitions/${activeExh.slug}`}
