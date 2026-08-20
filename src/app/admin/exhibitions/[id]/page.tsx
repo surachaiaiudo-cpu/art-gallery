@@ -75,7 +75,7 @@ export default function AdminExhibitionBuilderPage({
   const floorPlanRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    fetch('/api/exhibitions/the-golden-age-of-ayutthaya')
+    fetch(`/api/exhibitions/${params.id}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.exhibition) {

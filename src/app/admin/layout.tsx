@@ -71,15 +71,7 @@ export default function AdminLayout({
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
             >
               <Sparkles className="w-4 h-4 text-[#C5A880]" />
-              <span>{lang === 'th' ? 'จัดการนิทรรศการ' : 'Exhibitions'}</span>
-            </Link>
-
-            <Link
-              href="/admin/exhibitions/exh-01"
-              className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <Layers className="w-4 h-4 text-[#C5A880]" />
-              <span>{t.admin.wallBuilder}</span>
+              <span>{lang === 'th' ? 'จัดการนิทรรศการ & ผัง 3D' : 'Exhibitions & 3D'}</span>
             </Link>
 
             <Link
@@ -113,21 +105,13 @@ export default function AdminLayout({
               <Inbox className="w-4 h-4 text-[#C5A880]" />
               <span>{t.admin.inquiries}</span>
             </Link>
-
-            <Link
-              href="/catalog/the-golden-age-of-ayutthaya"
-              className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <FileText className="w-4 h-4 text-[#C5A880]" />
-              <span>{t.admin.catalogPreview}</span>
-            </Link>
           </nav>
         </div>
 
         {/* Back to Public Gallery */}
         <div className="pt-6 border-t border-[#33302C]">
           <Link
-            href="/exhibitions/the-golden-age-of-ayutthaya"
+            href="/"
             className="flex items-center gap-2 text-xs font-semibold text-[#8C8578] hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
