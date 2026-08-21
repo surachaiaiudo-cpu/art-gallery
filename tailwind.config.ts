@@ -31,11 +31,15 @@ const config: Config = {
           gold: '#C5A880',
           border: '#E2DFD7',
           muted: '#737067',
-        }
+        },
       },
       fontFamily: {
-        serif: ['var(--font-playfair)', 'Playfair Display', 'Sukhumvit Set', 'Sukhumvit', 'Noto Sans Thai', 'Georgia', 'serif'],
-        sans: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', '-apple-system', 'BlinkMacSystemFont', 'Noto Sans Thai', 'Prompt', 'Thonburi', 'sans-serif'],
+        heading: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', '-apple-system', 'BlinkMacSystemFont', 'Prompt', 'Noto Sans Thai', 'sans-serif'],
+        sukhumvit: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', '-apple-system', 'BlinkMacSystemFont', 'Prompt', 'Noto Sans Thai', 'sans-serif'],
+        sans: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', '-apple-system', 'BlinkMacSystemFont', 'Prompt', 'Noto Sans Thai', 'sans-serif'],
+        body: ['var(--font-maitree)', 'Maitree', 'Noto Serif Thai', 'Georgia', 'serif'],
+        maitree: ['var(--font-maitree)', 'Maitree', 'Noto Serif Thai', 'Georgia', 'serif'],
+        serif: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', 'Prompt', 'Noto Sans Thai', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',

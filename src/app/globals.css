@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Prompt:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Maitree:wght@200;300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    --font-sukhumvit: 'Sukhumvit Set', 'Sukhumvit', -apple-system, BlinkMacSystemFont, 'Noto Sans Thai', 'Prompt', 'Thonburi', sans-serif;
-    --font-playfair: 'Playfair Display', 'Sukhumvit Set', 'Sukhumvit', 'Noto Sans Thai', Georgia, serif;
+    --font-sukhumvit: 'Sukhumvit Set', 'Sukhumvit', -apple-system, BlinkMacSystemFont, 'Prompt', 'Noto Sans Thai', 'Thonburi', sans-serif;
+    --font-maitree: var(--font-maitree, 'Maitree'), 'Maitree', 'Noto Serif Thai', Georgia, serif;
     --background: #f7f6f2;
     --foreground: #181716;
   }
@@ -15,14 +15,30 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-sukhumvit);
+    font-family: var(--font-maitree);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
 
-  h1, h2, h3, h4, .font-serif {
-    font-family: var(--font-playfair);
+  /* หัวข้อทั้งหมดใช้สุขุมวิท (Sukhumvit) */
+  h1, h2, h3, h4, h5, h6,
+  .font-heading,
+  .font-sukhumvit,
+  .font-serif {
+    font-family: var(--font-sukhumvit) !important;
+  }
+
+  /* เนื้อหา ข้อความ และย่อหน้าใช้ Maitree */
+  p, span, div, a, button, input, textarea, select, label,
+  .font-body,
+  .font-maitree {
+    font-family: var(--font-maitree);
+  }
+
+  /* รักษาสุขุมวิทสำหรับหัวเรื่องและแท็กเฉพาะ */
+  h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
+    font-family: inherit;
   }
 }
 
