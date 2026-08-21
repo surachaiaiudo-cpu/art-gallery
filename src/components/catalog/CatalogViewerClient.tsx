@@ -1094,6 +1094,18 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         })}
       </main>
 
+      {/* Floating Action Button for 100% Quick Access on any device/scroll */}
+      <div className="no-print fixed bottom-6 right-6 z-40">
+        <button
+          onClick={handleSaveVectorPDF100Percent}
+          className="flex items-center gap-2.5 px-6 py-3.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-full font-bold text-sm shadow-2xl transition-all hover:scale-105 active:scale-95 ring-4 ring-white/50"
+          title="คลิกเพื่อบันทึกไฟล์ Vector PDF ตรงตามหน้าเว็บ 100%"
+        >
+          <Printer className="w-5 h-5 text-[#FFFDF9]" />
+          <span>🖨️ บันทึก Vector PDF (ตรงตามเว็บ 100%)</span>
+        </button>
+      </div>
+
       <div className="no-print">
         <Footer exhibition={exhibition} />
       </div>
