@@ -61,22 +61,30 @@ export async function POST(req: NextRequest) {
       bannerUrl,
       startDate,
       endDate,
-      status = 'active',
-      roomSize = 'medium',
-      enable3D = true,
+      status,
+      roomSize,
+      enable3D,
+      catalogFooterText,
+      catalogPlateFooterText,
     } = body;
 
-    if (!title || !slug) {
-      return NextResponse.json({ error: 'Title and Slug are required' }, { status: 400 });
+    if (!title || !title.trim()) {
+      return NextResponse.json({ error: 'Exhibition title is required' }, { status: 400 });
     }
 
     const newId = `exh-${Date.now()}`;
-    const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const cleanSlug = (slug || title)
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || `exhibition-${Date.now()}`;
 
     const themeConfig = JSON.stringify({
       roomSize: roomSize || 'medium',
-      enable3D: enable3D !== false,
-      wallTexture: 'wood-warm',
+      enable3D: enable3D !== undefined ? Boolean(enable3D) : true,
+      catalogFooterText: catalogFooterText || '',
+      catalogPlateFooterText: catalogPlateFooterText || '',
+      wallTexture: 'concrete-smooth',
       wallColor: '#2B1E16',
       floorColor: '#E6E0D4',
       spotlightIntensity: 1.8,
@@ -106,7 +114,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, title, curatorNote, bannerUrl, startDate, endDate, status, roomSize, enable3D } = body;
+    const { id, title, curatorNote, bannerUrl, startDate, endDate, status, roomSize, enable3D, catalogFooterText, catalogPlateFooterText } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Exhibition ID is required' }, { status: 400 });
@@ -132,6 +140,12 @@ export async function PUT(req: NextRequest) {
     }
     if (enable3D !== undefined) {
       updatedTheme.enable3D = Boolean(enable3D);
+    }
+    if (catalogFooterText !== undefined) {
+      updatedTheme.catalogFooterText = catalogFooterText;
+    }
+    if (catalogPlateFooterText !== undefined) {
+      updatedTheme.catalogPlateFooterText = catalogPlateFooterText;
     }
 
     const imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY;

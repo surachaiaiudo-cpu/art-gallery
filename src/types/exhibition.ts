@@ -50,6 +50,34 @@ export interface ExhibitionThemeConfig {
   ambientAudioUrl?: string;
   roomSize?: 'small' | 'medium' | 'large';
   enable3D?: boolean;
+  catalogFooterText?: string;
+  catalogPlateFooterText?: string;
+}
+
+export function getCatalogFooterText(exhibition?: Exhibition | null): string {
+  if (!exhibition) return 'International Art Festival and Art Exhibition in Thailand • ARTVARA Online Gallery';
+  if (exhibition.themeConfig) {
+    try {
+      const parsed = JSON.parse(exhibition.themeConfig);
+      if (parsed.catalogFooterText && parsed.catalogFooterText.trim()) {
+        return parsed.catalogFooterText.trim();
+      }
+    } catch {}
+  }
+  return 'International Art Festival and Art Exhibition in Thailand • ARTVARA Online Gallery';
+}
+
+export function getCatalogPlateFooterText(exhibition?: Exhibition | null): string {
+  if (!exhibition) return 'ARTVARA Catalog';
+  if (exhibition.themeConfig) {
+    try {
+      const parsed = JSON.parse(exhibition.themeConfig);
+      if (parsed.catalogPlateFooterText && parsed.catalogPlateFooterText.trim()) {
+        return parsed.catalogPlateFooterText.trim();
+      }
+    } catch {}
+  }
+  return 'ARTVARA Catalog';
 }
 
 export interface Exhibition {

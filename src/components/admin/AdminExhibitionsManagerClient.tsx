@@ -23,6 +23,7 @@ import {
   X,
   ExternalLink,
   Palette,
+  BookOpen,
 } from 'lucide-react';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
 
@@ -52,6 +53,8 @@ export function AdminExhibitionsManagerClient({
     status: 'active' as 'active' | 'archived' | 'upcoming',
     roomSize: 'medium' as 'small' | 'medium' | 'large',
     enable3D: true,
+    catalogFooterText: '',
+    catalogPlateFooterText: '',
   });
 
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -83,6 +86,8 @@ export function AdminExhibitionsManagerClient({
       status: 'active',
       roomSize: 'medium',
       enable3D: true,
+      catalogFooterText: 'International Art Festival and Art Exhibition in Thailand • ARTVARA Online Gallery',
+      catalogPlateFooterText: 'ARTVARA Catalog',
     });
     setIsCreateModalOpen(true);
   };
@@ -92,11 +97,15 @@ export function AdminExhibitionsManagerClient({
     setEditingExhibition(exh);
     let rSize: 'small' | 'medium' | 'large' = 'medium';
     let e3D = true;
+    let footerText = '';
+    let plateFooter = '';
     if (exh.themeConfig) {
       try {
         const parsed = JSON.parse(exh.themeConfig);
         if (parsed.roomSize) rSize = parsed.roomSize;
         if (typeof parsed.enable3D === 'boolean') e3D = parsed.enable3D;
+        if (parsed.catalogFooterText) footerText = parsed.catalogFooterText;
+        if (parsed.catalogPlateFooterText) plateFooter = parsed.catalogPlateFooterText;
       } catch {}
     }
 
@@ -110,6 +119,8 @@ export function AdminExhibitionsManagerClient({
       status: exh.status as any,
       roomSize: rSize,
       enable3D: e3D,
+      catalogFooterText: footerText,
+      catalogPlateFooterText: plateFooter,
     });
   };
 
@@ -582,6 +593,40 @@ export function AdminExhibitionsManagerClient({
                       : 'Drag & drop exhibition cover banner or click to upload to ImageKit CDN'
                   }
                 />
+              </div>
+
+              {/* Catalog Footer Text Settings */}
+              <div className="p-4 rounded-xl bg-[#F4EFE6] border border-[#DDD6C8] space-y-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#1A1918]">
+                  <BookOpen className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                  <span>{lang === 'th' ? 'ข้อความ Footer ในสูจิบัตร / E-Catalog' : 'Catalog Footer Text Settings'}</span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#5A554A] mb-1">
+                    {lang === 'th' ? 'ข้อความ Footer ท้ายหน้าปกสูจิบัตร (Cover Page Footer)' : 'Cover Page Footer Text'}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.catalogFooterText}
+                    onChange={(e) => setFormData({ ...formData, catalogFooterText: e.target.value })}
+                    placeholder="International Art Festival and Art Exhibition in Thailand • ARTVARA Online Gallery"
+                    className="w-full px-3 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs text-[#1A1918] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#5A554A] mb-1">
+                    {lang === 'th' ? 'ข้อความกำกับเพลทแต่ละหน้า (Plate Footer Prefix)' : 'Plate Footer Prefix Text'}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.catalogPlateFooterText}
+                    onChange={(e) => setFormData({ ...formData, catalogPlateFooterText: e.target.value })}
+                    placeholder="ARTVARA Catalog"
+                    className="w-full px-3 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs text-[#1A1918] focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>

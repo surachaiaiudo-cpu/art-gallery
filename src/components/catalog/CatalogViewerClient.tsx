@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { Exhibition } from '@/types/exhibition';
+import { Exhibition, getCatalogFooterText, getCatalogPlateFooterText } from '@/types/exhibition';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import { ArrowLeft, BookOpen, Download, Printer, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Download, Printer, CheckCircle2, Edit3, X, Save, Sparkles } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 
@@ -14,7 +14,13 @@ interface CatalogViewerClientProps {
 }
 
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
-  const [downloaded, setDownloaded] = React.useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  const [coverFooter, setCoverFooter] = useState(getCatalogFooterText(exhibition));
+  const [plateFooter, setPlateFooter] = useState(getCatalogPlateFooterText(exhibition));
 
   const artworks = exhibition.artworks || [];
   const curator = exhibition.curator;
@@ -23,6 +29,37 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
     setDownloaded(true);
     window.print();
     setTimeout(() => setDownloaded(false), 4000);
+  };
+
+  const handleSaveFooterText = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      const res = await fetch('/api/admin/exhibitions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: exhibition.id,
+          catalogFooterText: coverFooter,
+          catalogPlateFooterText: plateFooter,
+        }),
+      });
+
+      if (res.ok) {
+        setSavedSuccess(true);
+        setTimeout(() => {
+          setSavedSuccess(false);
+          setIsEditModalOpen(false);
+        }, 1200);
+      } else {
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อความ Footer');
+      }
+    } catch (err) {
+      console.error('Error saving catalog footer text:', err);
+      alert('เกิดข้อผิดพลาดในการบันทึก');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -90,8 +127,19 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </span>
             </div>
 
-            {/* Print & Download Buttons */}
-            <div className="flex items-center gap-2">
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Edit Footer Text Button */}
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-semibold tracking-wider shadow-sm transition-all active:scale-95"
+                title="แก้ไขข้อความ Footer ท้ายหน้าสูจิบัตร"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                <span>แก้ไขข้อความ Footer</span>
+              </button>
+
+              {/* Print & Download Buttons */}
               <button
                 onClick={handlePrintPDF}
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#1F1D1A] hover:bg-[#38342E] text-white rounded-full text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-95"
@@ -119,6 +167,99 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           </div>
         </div>
       </div>
+
+      {/* Edit Footer Modal */}
+      {isEditModalOpen && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-lg bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B]">
+            <button
+              onClick={() => setIsEditModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="border-b border-[#E3DED4] pb-3.5 mb-5 flex items-center gap-2">
+              <div className="p-2 bg-[#8C6D3F]/10 rounded-lg text-[#8C6D3F]">
+                <Edit3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif text-lg font-bold text-[#1A1918]">
+                  แก้ไขข้อความ Footer ของสูจิบัตร
+                </h3>
+                <p className="text-[11px] text-[#7A7468]">
+                  ปรับแต่งข้อความท้ายหน้าปก และข้อความกำกับเพลทผลงานแต่ละหน้า
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveFooterText} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#4A443A] mb-1">
+                  1. ข้อความ Footer ท้ายหน้าปกสูจิบัตร (Cover Footer)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={coverFooter}
+                  onChange={(e) => setCoverFooter(e.target.value)}
+                  placeholder="เช่น International Art Festival and Art Exhibition in Thailand • 18th Poh-Chang Art Festival"
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#D5CEC0] rounded-xl text-xs text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
+                />
+                <span className="text-[10px] text-[#8C8477] mt-1 block">
+                  จะแสดงที่แถบท้ายสุดของหน้าปกสูจิบัตร
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#4A443A] mb-1">
+                  2. ข้อความกำกับเพลทแต่ละหน้า (Artwork Plate Prefix)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={plateFooter}
+                  onChange={(e) => setPlateFooter(e.target.value)}
+                  placeholder="เช่น ARTVARA Catalog หรือ 18th Poh-Chang Art Festival Catalog"
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#D5CEC0] rounded-xl text-xs text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
+                />
+                <span className="text-[10px] text-[#8C8477] mt-1 block">
+                  จะแสดงนำหน้า เช่น: &quot;{plateFooter || 'ARTVARA Catalog'} • Plate #1&quot;
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-[#E8E2D6] flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-xl text-xs font-semibold tracking-wider uppercase shadow transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {savedSuccess ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <span>บันทึกสำเร็จ!</span>
+                    </>
+                  ) : saving ? (
+                    <span>กำลังบันทึก...</span>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 text-[#C5A880]" />
+                      <span>บันทึกข้อความ</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Main A4 Visual Catalog Viewer */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-16">
@@ -162,9 +303,10 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             </div>
           </div>
 
+          {/* Dynamic Cover Footer Text */}
           <div className="pt-6 border-t border-[#E8E2D6] text-center">
-            <p className="text-[10px] text-[#8A8376] uppercase tracking-widest">
-              International Art Festival and Art Exhibition in Thailand • ARTVARA Online Gallery
+            <p className="text-[10px] text-[#8A8376] uppercase tracking-widest leading-relaxed">
+              {coverFooter}
             </p>
           </div>
         </section>
@@ -271,9 +413,9 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </svg>
               </div>
 
-              {/* Bottom Footer Row */}
+              {/* Bottom Footer Row: Dynamic Plate Prefix & Page Number */}
               <div className="relative z-10 mt-6 pt-3 border-t border-[#F0ECE4] flex items-center justify-between text-[10px] text-[#A69F92]">
-                <span>ARTVARA Catalog • Plate #{idx + 1} {art.price ? `• ${formatPrice(art.price)}` : ''}</span>
+                <span>{plateFooter || 'ARTVARA Catalog'} • Plate #{idx + 1} {art.price ? `• ${formatPrice(art.price)}` : ''}</span>
                 <span className="font-mono">{pageNum}</span>
               </div>
             </section>
