@@ -133,6 +133,9 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               t.style.letterSpacing = 'normal';
               t.style.wordSpacing = 'normal';
               t.style.transform = 'none';
+              t.style.overflow = 'visible';
+              (t.style as any).webkitLineClamp = 'unset';
+              (t.style as any).lineClamp = 'unset';
             });
           },
         });
@@ -1025,7 +1028,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
                     {/* Concept Block (Optional: Only rendered if provided by artist, otherwise left blank) */}
                     {(art.concept?.trim() || art.description?.trim()) && (
-                      <div className="pt-0.5 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] line-clamp-3">
+                      <div className="pt-0.5 pb-1 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] break-words">
                         <span className="font-bold text-[#000000]">Concept : </span>
                         <span>{art.concept?.trim() || art.description?.trim()}</span>
                       </div>
