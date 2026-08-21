@@ -5,15 +5,7 @@ import Link from 'next/link';
 import { Download, Eye, Box, BookOpen, Shield, GalleryHorizontal, Home, ArrowLeft } from 'lucide-react';
 import { Exhibition, is3DEnabled } from '@/types/exhibition';
 import { useLanguage } from '@/context/LanguageContext';
-import dynamicImport from 'next/dynamic';
-
-const DownloadCatalogPDFButton = dynamicImport(
-  () =>
-    import('@/components/catalog/DownloadCatalogPDFButton').then(
-      (mod) => mod.DownloadCatalogPDFButton
-    ),
-  { ssr: false }
-);
+import { DownloadCatalogPDFButton } from '@/components/catalog/DownloadCatalogPDFButton';
 
 interface NavbarProps {
   exhibition?: Exhibition | null;
