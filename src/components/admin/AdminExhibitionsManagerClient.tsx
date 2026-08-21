@@ -408,7 +408,7 @@ export function AdminExhibitionsManagerClient({
               </div>
 
               {/* Action Buttons Toolbar */}
-              <div className="p-5 pt-0 space-y-2 border-t border-[#F0ECE4]">
+              <div className="p-5 pt-0 space-y-2.5 border-t border-[#F0ECE4]">
                 <div className="grid grid-cols-2 gap-2 pt-3">
                   {/* Curate Artworks button */}
                   <Link
@@ -429,36 +429,46 @@ export function AdminExhibitionsManagerClient({
                   </Link>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-2">
-                    {/* Edit button */}
-                    <button
-                      onClick={() => handleOpenEdit(exh)}
-                      className="p-1.5 text-[#6E685C] hover:text-[#1A1918] hover:bg-[#FAF8F5] rounded transition-colors"
-                      title="Edit Exhibition Info"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
+                {/* Edit Exhibition & Peer Reviewers Button */}
+                <button
+                  onClick={() => handleOpenEdit(exh)}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#FAF8F5] hover:bg-[#F2ECE0] text-[#1A1918] border border-[#DDD6C8] hover:border-[#8C6D3F] rounded-lg text-xs font-bold transition-all shadow-xs"
+                >
+                  <GraduationCap className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                  <span>{lang === 'th' ? 'แก้ไขข้อมูล & คณะกรรมการผู้ทรงคุณวุฒิ' : 'Edit Info & Peer Reviewers'}</span>
+                </button>
 
-                    {/* Delete button */}
-                    <button
-                      onClick={() => handleDeleteExhibition(exh.id)}
-                      className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded transition-colors"
-                      title="Delete Exhibition"
+                <div className="flex items-center justify-between pt-1 border-t border-[#F4EFE6] text-xs">
+                  <div className="flex items-center gap-3">
+                    {/* Catalog link */}
+                    <Link
+                      href={`/catalog/${exh.slug}`}
+                      target="_blank"
+                      className="text-[11px] font-semibold text-[#8C6D3F] hover:underline flex items-center gap-1"
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      <BookOpen className="w-3 h-3" />
+                      <span>{lang === 'th' ? 'สูจิบัตร PDF' : 'Catalog'}</span>
+                    </Link>
+
+                    {/* Public link */}
+                    <Link
+                      href={`/exhibitions/${exh.slug}`}
+                      target="_blank"
+                      className="text-[11px] font-semibold text-[#6E685C] hover:text-[#1A1918] hover:underline flex items-center gap-1"
+                    >
+                      <span>{lang === 'th' ? 'ชมหน้าเว็บ' : 'View Live'}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
                   </div>
 
-                  {/* Public link */}
-                  <Link
-                    href={`/exhibitions/${exh.slug}`}
-                    target="_blank"
-                    className="text-[11px] font-semibold text-[#8C6D3F] hover:underline flex items-center gap-1"
+                  {/* Delete button */}
+                  <button
+                    onClick={() => handleDeleteExhibition(exh.id)}
+                    className="p-1 text-[#A8A295] hover:text-rose-600 rounded transition-colors"
+                    title="Delete Exhibition"
                   >
-                    <span>{lang === 'th' ? 'ชมหน้าเว็บ' : 'View Live'}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </Link>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>

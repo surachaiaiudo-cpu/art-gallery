@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Exhibition, getCatalogFooterText, getCatalogPlateFooterText, getExhibitionPeerReviewers } from '@/types/exhibition';
+import { Exhibition, getCatalogFooterText, getCatalogPlateFooterText, getExhibitionPeerReviewers, PeerReviewer } from '@/types/exhibition';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import {
@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   GraduationCap,
   Award,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
@@ -38,16 +40,21 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0 });
   const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPeerReviewModalOpen, setIsPeerReviewModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [savingReviewers, setSavingReviewers] = useState(false);
+  const [savedReviewersSuccess, setSavedReviewersSuccess] = useState(false);
 
   const [coverFooter, setCoverFooter] = useState(getCatalogFooterText(exhibition));
   const [plateFooter, setPlateFooter] = useState(getCatalogPlateFooterText(exhibition));
+  const [peerReviewersList, setPeerReviewersList] = useState<PeerReviewer[]>(
+    getExhibitionPeerReviewers(exhibition)
+  );
 
   const artworks = exhibition.artworks || [];
   const curator = exhibition.curator;
-  const peerReviewers = getExhibitionPeerReviewers(exhibition);
-  const hasReviewers = peerReviewers.length > 0;
+  const hasReviewers = peerReviewersList.length > 0;
 
   // Direct High-Resolution Full Page A4 PDF File Generator supporting Standard and PDF/X-1a:2001
   const handleExportPDF = async (profile: PDFExportProfile = 'standard') => {
@@ -114,7 +121,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           logging: false,
           windowWidth: 1200,
           onclone: (clonedDoc) => {
-            // Ensure typography inside cloned DOM has generous line-height and no overflow clipping
             const clonedPages = clonedDoc.querySelectorAll<HTMLElement>('.catalog-a4-page');
             clonedPages.forEach((p) => {
               p.style.boxShadow = 'none';
@@ -152,7 +158,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       setTimeout(() => setDownloaded(false), 5000);
     } catch (err) {
       console.error('Error generating PDF:', err);
-      // Fallback to browser print if canvas error
       window.print();
     } finally {
       setIsGeneratingPdf(false);
@@ -203,6 +208,64 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       alert('เกิดข้อผิดพลาดในการบันทึก');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Add / Edit / Remove Peer Reviewers
+  const handleAddReviewer = () => {
+    if (peerReviewersList.length >= 6) {
+      alert('สามารถเพิ่มผู้ทรงคุณวุฒิได้สูงสุด 6 ท่าน');
+      return;
+    }
+    setPeerReviewersList([
+      ...peerReviewersList,
+      {
+        name: '',
+        academicTitle: '',
+        institution: '',
+        country: 'Thailand',
+        role: peerReviewersList.length === 0 ? 'ประธานกรรมการผู้ทรงคุณวุฒิ' : 'กรรมการผู้ทรงคุณวุฒิ',
+      },
+    ]);
+  };
+
+  const handleUpdateReviewer = (index: number, field: keyof PeerReviewer, value: string) => {
+    const updated = [...peerReviewersList];
+    updated[index] = { ...updated[index], [field]: value };
+    setPeerReviewersList(updated);
+  };
+
+  const handleRemoveReviewer = (index: number) => {
+    setPeerReviewersList(peerReviewersList.filter((_, i) => i !== index));
+  };
+
+  const handleSavePeerReviewers = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSavingReviewers(true);
+      const res = await fetch('/api/admin/exhibitions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: exhibition.id,
+          peerReviewers: peerReviewersList,
+        }),
+      });
+
+      if (res.ok) {
+        setSavedReviewersSuccess(true);
+        setTimeout(() => {
+          setSavedReviewersSuccess(false);
+          setIsPeerReviewModalOpen(false);
+        }, 1200);
+      } else {
+        alert('เกิดข้อผิดพลาดในการบันทึกผู้ทรงคุณวุฒิ');
+      }
+    } catch (err) {
+      console.error('Error saving peer reviewers:', err);
+      alert('เกิดข้อผิดพลาดในการบันทึก');
+    } finally {
+      setSavingReviewers(false);
     }
   };
 
@@ -419,8 +482,18 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </span>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons Toolbar */}
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Direct Peer Reviewers Editor Button */}
+              <button
+                onClick={() => setIsPeerReviewModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-bold tracking-wider shadow-sm transition-all active:scale-95"
+                title="จัดการรายชื่อคณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Peer Reviewers)"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                <span>ผู้ทรงคุณวุฒิ ({peerReviewersList.length})</span>
+              </button>
+
               {/* Edit Footer Text Button */}
               <button
                 onClick={() => setIsEditModalOpen(true)}
@@ -428,7 +501,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 title="แก้ไขข้อความ Footer ท้ายหน้าสูจิบัตร"
               >
                 <Edit3 className="w-3.5 h-3.5 text-[#8C6D3F]" />
-                <span>แก้ไขข้อความ Footer</span>
+                <span>แก้ไข Footer</span>
               </button>
 
               {/* Download PDF Button with Standard / PDF/X-1a selector */}
@@ -467,6 +540,171 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           </div>
         </div>
       </div>
+
+      {/* Edit Peer Reviewers Modal */}
+      {isPeerReviewModalOpen && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-2xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B] max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsPeerReviewModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="border-b border-[#E3DED4] pb-3.5 mb-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-[#8C6D3F]/10 rounded-xl text-[#8C6D3F]">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-[#1A1918]">
+                    จัดการคณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Peer Reviewers)
+                  </h3>
+                  <p className="text-[11px] text-[#7A7468]">
+                    กำหนดรายชื่อ 3 - 5 ท่าน เพื่อแสดงบนหน้าเว็บและแทรกในเล่มสูจิบัตรพิมพ์ A4 (Page 2)
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddReviewer}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-[#FAF6EE] text-[#8C6D3F] border border-[#D5CEC0] rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>เพิ่มผู้ทรงคุณวุฒิ</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePeerReviewers} className="space-y-4">
+              {peerReviewersList.length === 0 ? (
+                <div className="py-8 text-center text-xs text-[#8C8477] border border-dashed border-[#D5CEC0] rounded-xl bg-white/60 space-y-2">
+                  <p>ยังไม่มีรายชื่อคณะกรรมการผู้ทรงคุณวุฒิในนิทรรศการนี้</p>
+                  <button
+                    type="button"
+                    onClick={handleAddReviewer}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1A1918] text-white rounded-lg text-xs font-semibold shadow-sm hover:bg-[#33302C] transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>คลิกเพื่อเพิ่มผู้ทรงคุณวุฒิท่านแรก</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                  {peerReviewersList.map((reviewer, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 bg-white border border-[#DDD6C8] rounded-2xl space-y-3 shadow-sm relative group"
+                    >
+                      <div className="flex items-center justify-between border-b border-[#F0ECE4] pb-2">
+                        <span className="text-xs font-bold text-[#8C6D3F] flex items-center gap-1.5">
+                          <Award className="w-3.5 h-3.5" />
+                          {reviewer.role || `ผู้ทรงคุณวุฒิท่านที่ ${idx + 1}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReviewer(idx)}
+                          className="p-1 text-[#A8A295] hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          title="ลบรายชื่อ"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#5A554A] mb-1">
+                            คำนำหน้า / ตำแหน่งวิชาการ
+                          </label>
+                          <input
+                            type="text"
+                            value={reviewer.academicTitle || ''}
+                            onChange={(e) => handleUpdateReviewer(idx, 'academicTitle', e.target.value)}
+                            placeholder="เช่น ศ.เกียรติคุณ / รศ.ดร. / ผศ."
+                            className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD6C8] rounded-xl text-xs text-[#1A1918] focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label className="block text-[10px] font-semibold text-[#5A554A] mb-1">
+                            ชื่อ - นามสกุล <span className="text-rose-600">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={reviewer.name}
+                            onChange={(e) => handleUpdateReviewer(idx, 'name', e.target.value)}
+                            placeholder="เช่น ปรีชา เถาทอง หรือ Prof. John Doe"
+                            className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD6C8] rounded-xl text-xs font-semibold text-[#1A1918] focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#5A554A] mb-1">
+                            สังกัด / สถาบัน / มหาวิทยาลัย
+                          </label>
+                          <input
+                            type="text"
+                            value={reviewer.institution || ''}
+                            onChange={(e) => handleUpdateReviewer(idx, 'institution', e.target.value)}
+                            placeholder="เช่น มหาวิทยาลัยศิลปากร / Poh-Chang"
+                            className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD6C8] rounded-xl text-xs text-[#1A1918] focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#5A554A] mb-1">
+                            บทบาทในคณะกรรมการ
+                          </label>
+                          <input
+                            type="text"
+                            value={reviewer.role || ''}
+                            onChange={(e) => handleUpdateReviewer(idx, 'role', e.target.value)}
+                            placeholder="เช่น ประธานกรรมการผู้ทรงคุณวุฒิ"
+                            className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD6C8] rounded-xl text-xs text-[#1A1918] focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-[#E8E2D6] flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsPeerReviewModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingReviewers}
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-xl text-xs font-semibold tracking-wider uppercase shadow transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {savedReviewersSuccess ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <span>บันทึกสำเร็จ!</span>
+                    </>
+                  ) : savingReviewers ? (
+                    <span>กำลังบันทึก...</span>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 text-[#C5A880]" />
+                      <span>บันทึกรายชื่อผู้ทรงคุณวุฒิ</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Edit Footer Modal */}
       {isEditModalOpen && (
@@ -601,7 +839,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <p className="text-[11px] text-[#555555] font-medium pt-0.5 leading-normal">
                   Peer Review Committee:{' '}
                   <span className="font-semibold text-[#000000]">
-                    {peerReviewers.map((r) => [r.academicTitle, r.name].filter(Boolean).join(' ')).join(' • ')}
+                    {peerReviewersList.map((r) => [r.academicTitle, r.name].filter(Boolean).join(' ')).join(' • ')}
                   </span>
                 </p>
               )}
@@ -645,7 +883,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </div>
 
                 <div className="space-y-2.5 pt-1">
-                  {peerReviewers.map((reviewer, idx) => (
+                  {peerReviewersList.map((reviewer, idx) => (
                     <div
                       key={idx}
                       className="p-3 bg-[#FAFAFA] border border-[#E8E8E8] rounded-lg flex items-center justify-between gap-4"
