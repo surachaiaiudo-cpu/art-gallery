@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Download, Eye, Box, BookOpen, Shield, GalleryHorizontal, Home, ArrowLeft } from 'lucide-react';
 import { Exhibition, is3DEnabled } from '@/types/exhibition';
 import { useLanguage } from '@/context/LanguageContext';
+import { DownloadCatalogPDFButton } from '@/components/catalog/DownloadCatalogPDFButton';
 
 interface NavbarProps {
   exhibition?: Exhibition | null;
@@ -130,16 +131,8 @@ export function Navbar({
                 <span>{t.actions.readCatalog}</span>
               </Link>
 
-              {/* PDF Download Button */}
-              <a
-                href={`/api/exhibitions/${exhibition.slug}/catalog`}
-                download={`${exhibition.slug}-catalog.pdf`}
-                className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase bg-[#F2EFE9] hover:bg-[#E5DFD3] text-[#2C2925] border border-[#D0CABE] transition-all shadow-sm active:scale-95"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">{t.actions.downloadPdf}</span>
-                <span className="xs:hidden">PDF</span>
-              </a>
+              {/* PDF Download Button (A4 Print-Ready with 1.5 cm Margins & White Background) */}
+              <DownloadCatalogPDFButton exhibition={exhibition} variant="navbar" />
             </>
           )}
 
