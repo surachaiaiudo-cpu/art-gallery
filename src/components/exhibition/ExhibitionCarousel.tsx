@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 import { formatDimensionsInCm } from '@/lib/utils';
 
 interface ExhibitionCarouselProps {
@@ -190,16 +191,8 @@ export function ExhibitionCarousel({ exhibition }: ExhibitionCarouselProps) {
 
                 <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-[#EAE4D8]">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative w-11 h-11 bg-[#2C2925] rounded-full border border-[#C5A880] overflow-hidden shrink-0 shadow">
-                      <Image
-                        src={
-                          artist?.avatarUrl ||
-                          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop'
-                        }
-                        alt={artist?.name || 'Artist'}
-                        fill
-                        className="object-cover"
-                      />
+                    <div className="border border-[#C5A880] rounded-full shadow shrink-0">
+                      <ArtistAvatar name={artist?.name} avatarUrl={artist?.avatarUrl} size="md" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-sans text-sm font-bold text-[#1A1918] truncate">

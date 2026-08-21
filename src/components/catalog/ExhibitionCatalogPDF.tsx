@@ -252,14 +252,13 @@ export function ExhibitionCatalogPDF({ exhibition }: ExhibitionCatalogPDFProps) 
 
             {/* Bottom Row: Artist Photo on Left, Details on Right */}
             <View style={styles.bottomInfoRow}>
-              {/* Artist Portrait Photo */}
-              <Image
-                src={
-                  artist?.avatarUrl ||
-                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop'
-                }
-                style={styles.artistPhoto}
-              />
+              {/* Artist Portrait Photo (Only if present, no mockup) */}
+              {artist?.avatarUrl && !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') && (
+                <Image
+                  src={artist.avatarUrl}
+                  style={styles.artistPhoto}
+                />
+              )}
 
               {/* Artist Info & Artwork Specs & Concept */}
               <View style={styles.infoTextColumn}>

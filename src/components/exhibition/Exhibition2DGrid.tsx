@@ -10,6 +10,7 @@ import { ArtworkInquiryModal } from './ArtworkInquiryModal';
 import { useLanguage } from '@/context/LanguageContext';
 import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, Award, Calendar, Palette } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 import { formatDateRange, formatDimensionsInCm } from '@/lib/utils';
 
 interface Exhibition2DGridProps {
@@ -256,16 +257,8 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                             title={lang === 'th' ? `คลิกเพื่อดูผลงานทั้งหมดของ ${artist.name}` : `View all works by ${artist.name}`}
                           >
                             <div className="relative shrink-0">
-                              <div className="relative w-12 h-14 bg-[#2C2925] rounded-lg overflow-hidden shadow group-hover/artist:scale-105 transition-transform border border-[#C5A880]/50">
-                                <Image
-                                  src={
-                                    artist.avatarUrl ||
-                                    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop'
-                                  }
-                                  alt={artist.name || 'Artist'}
-                                  fill
-                                  className="object-cover"
-                                />
+                              <div className="border border-[#C5A880]/50 rounded-full shadow group-hover/artist:scale-105 transition-transform">
+                                <ArtistAvatar name={artist.name} avatarUrl={artist.avatarUrl} size="md" />
                               </div>
                               {/* Real Flag Badge */}
                               <div

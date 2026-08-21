@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
+import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 import { cleanEmail, cleanText } from '@/lib/utils';
 
 interface ArtistWithStats extends User {
@@ -584,13 +585,8 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                   <div className="relative bg-[#26201B] p-5 text-white flex items-center gap-4">
                     {/* Avatar with Floating Real Flag Badge */}
                     <div className="relative shrink-0">
-                      <div className="relative w-16 h-16 rounded-full border-2 border-[#C5A880] overflow-hidden shadow-lg">
-                        <Image
-                          src={artist.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop'}
-                          alt={artist.name}
-                          fill
-                          className="object-cover"
-                        />
+                      <div className="border-2 border-[#C5A880] rounded-full shadow-lg">
+                        <ArtistAvatar name={artist.name} avatarUrl={artist.avatarUrl} size="xl" />
                       </div>
                       {/* Real Flag Badge */}
                       <div
@@ -715,13 +711,8 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                       {/* Artist Avatar & Name */}
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#C5A880] shadow shrink-0">
-                            <Image
-                              src={artist.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop'}
-                              alt={artist.name}
-                              fill
-                              className="object-cover"
-                            />
+                          <div className="border-2 border-[#C5A880] rounded-full shadow shrink-0">
+                            <ArtistAvatar name={artist.name} avatarUrl={artist.avatarUrl} size="md" />
                           </div>
                           <div>
                             <span className="font-serif text-sm font-bold text-[#1A1918] block leading-snug">

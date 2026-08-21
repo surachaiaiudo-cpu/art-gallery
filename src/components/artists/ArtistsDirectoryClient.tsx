@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 
 interface ArtistWithStats extends User {
   artworkCount: number;
@@ -213,13 +214,8 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
                   {/* Header Banner with Avatar and Flag Bubble */}
                   <div className="relative bg-[#2A231C] p-6 text-white flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4 min-w-0">
-                      <div className="relative w-16 h-16 rounded-full border-2 border-[#C5A880] overflow-hidden shadow-lg group-hover:scale-105 transition-transform shrink-0">
-                        <Image
-                          src={artist.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop'}
-                          alt={artist.name}
-                          fill
-                          className="object-cover"
-                        />
+                      <div className="border-2 border-[#C5A880] rounded-full shadow-lg group-hover:scale-105 transition-transform shrink-0">
+                        <ArtistAvatar name={artist.name} avatarUrl={artist.avatarUrl} size="xl" />
                       </div>
 
                       <div className="min-w-0">
@@ -329,13 +325,8 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
                           href={`/artists/${artist.id}`}
                           className="flex items-center gap-3 group-hover:text-[#8C6D3F] transition-colors"
                         >
-                          <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-[#C5A880] shadow shrink-0">
-                            <Image
-                              src={artist.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop'}
-                              alt={artist.name}
-                              fill
-                              className="object-cover"
-                            />
+                          <div className="border-2 border-[#C5A880] rounded-full shadow shrink-0">
+                            <ArtistAvatar name={artist.name} avatarUrl={artist.avatarUrl} size="md" />
                           </div>
                           <div>
                             <span className="font-serif text-sm font-bold text-[#1A1918] group-hover:text-[#8C6D3F] block leading-snug">

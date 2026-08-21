@@ -9,6 +9,7 @@ import { ArtworkLightbox } from '@/components/exhibition/ArtworkLightbox';
 import { ArtworkInquiryModal } from '@/components/exhibition/ArtworkInquiryModal';
 import { formatDateRange, parseArtworkDimensions, formatDimensionsInCm } from '@/lib/utils';
 import { CountryFlag } from '@/components/ui/CountryFlag';
+import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 import {
   ArrowLeft,
   Calendar,
@@ -97,13 +98,8 @@ export function ArtistProfileClient({
         <div className="max-w-5xl mx-auto relative z-10 flex flex-col md:flex-row items-center md:items-start gap-8">
           {/* Avatar with Floating Real Flag Badge */}
           <div className="relative shrink-0">
-            <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-full border-4 border-[#C5A880] overflow-hidden shadow-2xl">
-              <Image
-                src={artist.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop'}
-                alt={artist.name}
-                fill
-                className="object-cover"
-              />
+            <div className="border-4 border-[#C5A880] rounded-full shadow-2xl">
+              <ArtistAvatar name={artist.name} avatarUrl={artist.avatarUrl} size="2xl" />
             </div>
             {/* Real Flag Badge */}
             <div

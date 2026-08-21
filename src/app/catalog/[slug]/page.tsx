@@ -152,18 +152,21 @@ export default async function CatalogViewerPage({
 
                 {/* Bottom Section: Artist Avatar on Left, Specs & Concept on Right */}
                 <div className="flex flex-col sm:flex-row items-start gap-6 pt-2">
-                  {/* Artist Photo */}
-                  <div className="relative w-24 h-28 sm:w-28 sm:h-32 bg-[#2B2824] rounded-sm overflow-hidden shrink-0 shadow">
-                    <Image
-                      src={
-                        artist?.avatarUrl ||
-                        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop'
-                      }
-                      alt={artist?.name || 'Artist'}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+                  {/* Artist Photo / Avatar */}
+                  {artist?.avatarUrl && !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') ? (
+                    <div className="relative w-24 h-28 sm:w-28 sm:h-32 bg-[#2B2824] rounded-sm overflow-hidden shrink-0 shadow">
+                      <Image
+                        src={artist.avatarUrl}
+                        alt={artist?.name || 'Artist'}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-[#2B2824] rounded-xl flex items-center justify-center font-serif text-2xl font-bold text-[#E8DAC5] border border-[#C5A880]/30 shrink-0 shadow">
+                      {artist?.name?.charAt(0).toUpperCase() || 'A'}
+                    </div>
+                  )}
 
                   {/* Details Column */}
                   <div className="flex-1 space-y-2 text-xs text-[#3D3A34]">
