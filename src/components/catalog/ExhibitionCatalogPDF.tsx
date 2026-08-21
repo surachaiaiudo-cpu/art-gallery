@@ -35,8 +35,11 @@ Font.register({
   ],
 });
 
-// Disable font hyphenation splits
-Font.registerHyphenationCallback((word) => [word]);
+// Helper to normalize Thai text Unicode encoding for perfect diacritic alignment
+function cleanThaiText(text?: string | null): string {
+  if (!text) return '';
+  return String(text).normalize('NFC');
+}
 
 // A4 Dimensions: 210mm x 297mm (595.28pt x 841.89pt in 72 DPI PDF coordinates)
 const styles = StyleSheet.create({
