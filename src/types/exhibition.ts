@@ -41,6 +41,16 @@ export interface Artwork {
   wallPosition?: WallPosition | null;
 }
 
+export interface PeerReviewer {
+  id?: string;
+  name: string;
+  academicTitle?: string;
+  institution?: string;
+  country?: string;
+  avatarUrl?: string;
+  role?: string;
+}
+
 export interface ExhibitionThemeConfig {
   wallTexture?: string;
   wallColor?: string;
@@ -52,6 +62,7 @@ export interface ExhibitionThemeConfig {
   enable3D?: boolean;
   catalogFooterText?: string;
   catalogPlateFooterText?: string;
+  peerReviewers?: PeerReviewer[];
 }
 
 export function getCatalogFooterText(exhibition?: Exhibition | null): string {
@@ -78,6 +89,17 @@ export function getCatalogPlateFooterText(exhibition?: Exhibition | null): strin
     } catch {}
   }
   return '';
+}
+
+export function getExhibitionPeerReviewers(exhibition?: Exhibition | null): PeerReviewer[] {
+  if (!exhibition || !exhibition.themeConfig) return [];
+  try {
+    const parsed = JSON.parse(exhibition.themeConfig);
+    if (Array.isArray(parsed.peerReviewers) && parsed.peerReviewers.length > 0) {
+      return parsed.peerReviewers;
+    }
+  } catch {}
+  return [];
 }
 
 export interface Exhibition {

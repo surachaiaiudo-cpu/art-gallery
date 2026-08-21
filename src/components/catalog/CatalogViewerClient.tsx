@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Exhibition, getCatalogFooterText, getCatalogPlateFooterText } from '@/types/exhibition';
+import { Exhibition, getCatalogFooterText, getCatalogPlateFooterText, getExhibitionPeerReviewers } from '@/types/exhibition';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import {
@@ -18,6 +18,8 @@ import {
   Loader2,
   FileText,
   ShieldCheck,
+  GraduationCap,
+  Award,
 } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
@@ -44,6 +46,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
   const artworks = exhibition.artworks || [];
   const curator = exhibition.curator;
+  const peerReviewers = getExhibitionPeerReviewers(exhibition);
+  const hasReviewers = peerReviewers.length > 0;
 
   // Direct High-Resolution Full Page A4 PDF File Generator supporting Standard and PDF/X-1a:2001
   const handleExportPDF = async (profile: PDFExportProfile = 'standard') => {
@@ -593,6 +597,14 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                   Curated by: <span className="font-semibold text-[#000000]">{curator.name}</span>
                 </p>
               )}
+              {hasReviewers && (
+                <p className="text-[11px] text-[#555555] font-medium pt-0.5 leading-normal">
+                  Peer Review Committee:{' '}
+                  <span className="font-semibold text-[#000000]">
+                    {peerReviewers.map((r) => [r.academicTitle, r.name].filter(Boolean).join(' ')).join(' • ')}
+                  </span>
+                </p>
+              )}
               <p className="text-[11px] text-[#666666] leading-normal">
                 {formatDateRange(exhibition.startDate, exhibition.endDate)}
               </p>
@@ -607,10 +619,93 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           </div>
         </section>
 
-        {/* 1 Artwork Plate Per Page (A4, 210mm x 297mm, 15mm Margins, 8 Inches Boundary, Flag Above Photo) */}
+        {/* Page 2: Academic Peer Review Board & Curatorial Statement (Rendered when exhibition has peer reviewers) */}
+        {hasReviewers && (
+          <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border">
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="border-b border-[#E0E0E0] pb-3">
+                <span className="font-serif text-2xl font-bold tracking-[0.15em] text-[#000000] block">
+                  ARTVARA
+                </span>
+                <span className="text-[9px] uppercase tracking-widest text-[#666666] mt-0.5 block">
+                  Academic Peer Review Board & Curatorial Statement
+                </span>
+              </div>
+
+              {/* Peer Review Board List */}
+              <div className="space-y-3">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-[0.15em] text-[#000000] block">
+                    คณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Peer Review Committee)
+                  </span>
+                  <p className="text-[10px] text-[#666666] mt-0.5">
+                    รายนามคณะกรรมการผู้ทรงคุณวุฒิในการพิจารณาและประเมินผลงานศิลปกรรมในนิทรรศการ
+                  </p>
+                </div>
+
+                <div className="space-y-2.5 pt-1">
+                  {peerReviewers.map((reviewer, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 bg-[#FAFAFA] border border-[#E8E8E8] rounded-lg flex items-center justify-between gap-4"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-[#000000] bg-[#EAEAEA] px-1.5 py-0.5 rounded">
+                            {reviewer.role || (idx === 0 ? 'ประธานกรรมการ' : `กรรมการผู้ทรงคุณวุฒิ`)}
+                          </span>
+                          <h4 className="font-serif text-xs font-bold text-[#000000]">
+                            {[reviewer.academicTitle, reviewer.name].filter(Boolean).join(' ')}
+                          </h4>
+                        </div>
+                        {reviewer.institution && (
+                          <p className="text-[10px] text-[#555555] mt-1">
+                            {reviewer.institution}
+                          </p>
+                        )}
+                      </div>
+
+                      {reviewer.country && (
+                        <span className="text-[10px] font-mono text-[#777777] shrink-0">
+                          {reviewer.country}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Curatorial Statement Block */}
+              {exhibition.curatorNote && (
+                <div className="space-y-2 pt-2 border-t border-[#E8E8E8]">
+                  <span className="text-xs font-bold uppercase tracking-[0.15em] text-[#000000] block">
+                    คำนำภัณฑารักษ์ (Curatorial Statement)
+                  </span>
+                  <p className="text-[11px] text-[#333333] leading-relaxed font-serif italic whitespace-pre-line max-h-[75mm] overflow-hidden">
+                    "{exhibition.curatorNote}"
+                  </p>
+                  {curator?.name && (
+                    <p className="text-[10px] font-bold text-[#000000] text-right pt-1">
+                      — {curator.name} (Curator)
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer Row for Page 2 */}
+            <div className="pt-2 border-t border-[#E5E5E5] flex items-center justify-between text-[10px] text-[#777777]">
+              <span>{plateFooter || 'Editorial & Academic Accreditation Board'}</span>
+              <span className="font-mono text-[#555555] font-semibold">2</span>
+            </div>
+          </section>
+        )}
+
+        {/* Artwork Plates Per Page (A4, 210mm x 297mm, 15mm Margins, 8 Inches Boundary, Flag Above Photo) */}
         {artworks.map((art, idx) => {
           const artist = art.artist;
-          const pageNum = idx + 2;
+          const pageNum = hasReviewers ? idx + 3 : idx + 2;
           const hasRealPhoto =
             artist?.avatarUrl &&
             !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&

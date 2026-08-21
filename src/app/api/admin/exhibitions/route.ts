@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
       enable3D,
       catalogFooterText,
       catalogPlateFooterText,
+      peerReviewers,
     } = body;
 
     if (!title || !title.trim()) {
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
       enable3D: enable3D !== undefined ? Boolean(enable3D) : true,
       catalogFooterText: catalogFooterText || '',
       catalogPlateFooterText: catalogPlateFooterText || '',
+      peerReviewers: Array.isArray(peerReviewers) ? peerReviewers : [],
       wallTexture: 'concrete-smooth',
       wallColor: '#2B1E16',
       floorColor: '#E6E0D4',
@@ -114,7 +116,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, title, curatorNote, bannerUrl, startDate, endDate, status, roomSize, enable3D, catalogFooterText, catalogPlateFooterText } = body;
+    const { id, title, curatorNote, bannerUrl, startDate, endDate, status, roomSize, enable3D, catalogFooterText, catalogPlateFooterText, peerReviewers } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Exhibition ID is required' }, { status: 400 });
@@ -146,6 +148,9 @@ export async function PUT(req: NextRequest) {
     }
     if (catalogPlateFooterText !== undefined) {
       updatedTheme.catalogPlateFooterText = catalogPlateFooterText;
+    }
+    if (peerReviewers !== undefined) {
+      updatedTheme.peerReviewers = Array.isArray(peerReviewers) ? peerReviewers : [];
     }
 
     const imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY;

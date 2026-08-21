@@ -3,12 +3,12 @@
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Exhibition, Artwork } from '@/types/exhibition';
+import { Exhibition, Artwork, getExhibitionPeerReviewers } from '@/types/exhibition';
 import { ArtistIndexSidebar } from './ArtistIndexSidebar';
 import { ArtworkLightbox } from './ArtworkLightbox';
 import { ArtworkInquiryModal } from './ArtworkInquiryModal';
 import { useLanguage } from '@/context/LanguageContext';
-import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, Award, Calendar, Palette } from 'lucide-react';
+import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, Award, Calendar, Palette, GraduationCap, Users, ShieldCheck } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 import { formatDateRange, formatDimensionsInCm } from '@/lib/utils';
@@ -27,6 +27,7 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
 
   const artworks = exhibition.artworks || [];
   const artists = exhibition.artists || [];
+  const peerReviewers = getExhibitionPeerReviewers(exhibition);
 
   // Artworks count by artist
   const artworksCountByArtist = useMemo(() => {
@@ -46,9 +47,9 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
   }, [artworks, selectedArtistId]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Exhibition Header - Luxury Museum Layout */}
-      <div className="mb-10 sm:mb-12 border-b border-[#E2DDD3] pb-8">
+      <div className="mb-10 sm:mb-12 border-b border-[#E2DDD3] pb-8 space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="space-y-3 max-w-4xl">
             {/* Top Category Badge */}
@@ -85,6 +86,13 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                 <Palette className="w-3.5 h-3.5 text-[#8C6D3F]" />
                 <span>{artworks.length} {lang === 'th' ? 'ผลงานศิลปะ' : 'Artworks'}</span>
               </div>
+
+              {peerReviewers.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-[#FAF6EE] text-[#8C6D3F] font-bold px-3 py-1 rounded-lg border border-[#E5D7BF] shadow-sm">
+                  <GraduationCap className="w-3.5 h-3.5 text-[#8C6D3F] shrink-0" />
+                  <span>{peerReviewers.length} {lang === 'th' ? 'ผู้ทรงคุณวุฒิประเมิน (Peer Reviewers)' : 'Peer Reviewers'}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -102,7 +110,7 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
 
         {/* Collapsible Curator Statement Box */}
         {showCuratorNote && exhibition.curatorNote && (
-          <div className="mt-6 p-6 sm:p-8 bg-[#FAF8F5] border-l-4 border-l-[#C5A880] border border-[#DDD7CC] rounded-2xl shadow-sm animate-slide-up space-y-3">
+          <div className="p-6 sm:p-8 bg-[#FAF8F5] border-l-4 border-l-[#C5A880] border border-[#DDD7CC] rounded-2xl shadow-sm animate-slide-up space-y-3">
             <div className="flex items-center justify-between border-b border-[#EAE4D8] pb-3">
               <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#8C7149] font-bold">
                 <Award className="w-4 h-4 text-[#C5A880]" />
@@ -114,6 +122,49 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
             </div>
             <div className="text-xs sm:text-sm text-[#474239] leading-relaxed whitespace-pre-line font-serif italic max-w-4xl pt-1">
               "{exhibition.curatorNote}"
+            </div>
+          </div>
+        )}
+
+        {/* Peer Reviewers Panel (คณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน 3 - 5 ท่าน) */}
+        {peerReviewers.length > 0 && (
+          <div className="p-5 sm:p-6 bg-gradient-to-b from-[#FAF8F5] to-white border border-[#E5D7BF] rounded-2xl shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-[#EAE4D8] pb-3">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#8C6D3F] font-bold">
+                <GraduationCap className="w-4 h-4 text-[#8C6D3F]" />
+                <span>{lang === 'th' ? 'คณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Peer Review Committee)' : 'Academic Peer Review Committee'}</span>
+              </div>
+              <span className="text-[11px] text-[#8C8477] font-mono">
+                {peerReviewers.length} {lang === 'th' ? 'ท่าน' : 'Members'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+              {peerReviewers.map((reviewer, idx) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-xl bg-white border border-[#EAE4D8] hover:border-[#8C6D3F] transition-all shadow-xs space-y-1.5 flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-[#8C6D3F] bg-[#FAF6EE] px-2 py-0.5 rounded">
+                        {reviewer.role || (idx === 0 ? 'ประธานกรรมการ' : 'กรรมการผู้ทรงคุณวุฒิ')}
+                      </span>
+                      {reviewer.country && <CountryFlag country={reviewer.country} size="xs" />}
+                    </div>
+
+                    <h4 className="font-serif text-xs font-bold text-[#1A1918] leading-snug">
+                      {[reviewer.academicTitle, reviewer.name].filter(Boolean).join(' ')}
+                    </h4>
+                  </div>
+
+                  {reviewer.institution && (
+                    <p className="text-[10px] text-[#6E685C] leading-tight pt-1 border-t border-[#F4F0E8]">
+                      {reviewer.institution}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
