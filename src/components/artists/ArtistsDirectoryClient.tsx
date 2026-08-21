@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { User, Artwork } from '@/types/exhibition';
@@ -19,6 +19,9 @@ import {
   ExternalLink,
   Layers,
   ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
@@ -39,22 +42,60 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'country-asc' | 'country-desc' | 'artworks-desc' | 'default'>('name-asc');
 
-  const countries = Array.from(new Set(artists.map((a) => a.country || 'Thailand')));
+  const countries = useMemo(() => {
+    const set = new Set<string>();
+    artists.forEach((a) => {
+      if (a.country && a.country.trim()) set.add(a.country.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'th'));
+  }, [artists]);
 
-  const filteredArtists = artists.filter((artist) => {
-    const q = searchQuery.toLowerCase();
-    const matchesQuery =
-      artist.name.toLowerCase().includes(q) ||
-      (artist.country || '').toLowerCase().includes(q) ||
-      (artist.email || '').toLowerCase().includes(q) ||
-      (artist.bio || '').toLowerCase().includes(q) ||
-      artist.previewArtworks.some((art) => art.title.toLowerCase().includes(q));
+  const filteredArtists = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    const filtered = artists.filter((artist) => {
+      const matchesQuery =
+        !q ||
+        artist.name.toLowerCase().includes(q) ||
+        (artist.country || '').toLowerCase().includes(q) ||
+        (artist.email || '').toLowerCase().includes(q) ||
+        (artist.bio || '').toLowerCase().includes(q) ||
+        artist.previewArtworks.some((art) => art.title.toLowerCase().includes(q));
 
-    const matchesCountry = selectedCountry === 'all' || (artist.country || 'Thailand') === selectedCountry;
+      const matchesCountry =
+        selectedCountry === 'all' || (artist.country || 'Thailand').trim() === selectedCountry;
 
-    return matchesQuery && matchesCountry;
-  });
+      return matchesQuery && matchesCountry;
+    });
+
+    return filtered.sort((a, b) => {
+      if (sortBy === 'name-asc') {
+        return a.name.localeCompare(b.name, 'th');
+      }
+      if (sortBy === 'name-desc') {
+        return b.name.localeCompare(a.name, 'th');
+      }
+      if (sortBy === 'country-asc') {
+        const cA = (a.country || 'Thailand').trim();
+        const cB = (b.country || 'Thailand').trim();
+        const cComp = cA.localeCompare(cB, 'th');
+        if (cComp !== 0) return cComp;
+        return a.name.localeCompare(b.name, 'th');
+      }
+      if (sortBy === 'country-desc') {
+        const cA = (a.country || 'Thailand').trim();
+        const cB = (b.country || 'Thailand').trim();
+        const cComp = cB.localeCompare(cA, 'th');
+        if (cComp !== 0) return cComp;
+        return a.name.localeCompare(b.name, 'th');
+      }
+      if (sortBy === 'artworks-desc') {
+        return (b.artworkCount || 0) - (a.artworkCount || 0);
+      }
+      return 0;
+    });
+  }, [artists, searchQuery, selectedCountry, sortBy]);
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#1E1D1B] pb-24">
@@ -143,14 +184,14 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {/* Country Filter */}
             <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#DDD6C8] px-3 py-2 rounded-xl text-xs">
-              <Globe className="w-3.5 h-3.5 text-[#8C6D3F]" />
+              <Globe className="w-3.5 h-3.5 text-[#8C6D3F] shrink-0" />
               <select
                 value={selectedCountry}
                 onChange={(e) => setSelectedCountry(e.target.value)}
-                className="bg-transparent text-xs text-[#1A1918] focus:outline-none cursor-pointer font-medium"
+                className="bg-transparent text-xs text-[#1A1918] focus:outline-none cursor-pointer font-medium max-w-[130px] sm:max-w-none"
               >
                 <option value="all">{lang === 'th' ? 'ทุกสัญชาติ (All Countries)' : 'All Countries'}</option>
                 {countries.map((c) => (
@@ -160,6 +201,28 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
                 ))}
               </select>
             </div>
+
+            {/* Sort Selector */}
+            <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#DDD6C8] px-3 py-2 rounded-xl text-xs">
+              <ArrowUpDown className="w-3.5 h-3.5 text-[#8C6D3F] shrink-0" />
+              <select
+                value={sortBy}
+                onChange={(e: any) => setSortBy(e.target.value)}
+                className="bg-transparent text-xs text-[#1A1918] focus:outline-none cursor-pointer font-medium max-w-[160px] sm:max-w-none"
+              >
+                <option value="name-asc">{lang === 'th' ? '🔤 ชื่อศิลปิน (A → Z / ก → ฮ)' : '🔤 Name (A → Z)'}</option>
+                <option value="name-desc">{lang === 'th' ? '🔤 ชื่อศิลปิน (Z → A / ฮ → ก)' : '🔤 Name (Z → A)'}</option>
+                <option value="country-asc">{lang === 'th' ? '🌐 เรียงตามประเทศ (Country A → Z)' : '🌐 Country (A → Z)'}</option>
+                <option value="country-desc">{lang === 'th' ? '🌐 เรียงตามประเทศ (Country Z → A)' : '🌐 Country (Z → A)'}</option>
+                <option value="artworks-desc">{lang === 'th' ? '🎨 จำนวนผลงาน (มาก → น้อย)' : '🎨 Most Artworks'}</option>
+                <option value="default">{lang === 'th' ? '🕒 ลำดับเดิม (Default)' : '🕒 Default'}</option>
+              </select>
+            </div>
+
+            {/* Total Count Badge */}
+            <span className="text-xs text-[#7A7468] font-medium hidden sm:inline px-1">
+              {lang === 'th' ? `ศิลปิน ${filteredArtists.length} ท่าน` : `${filteredArtists.length} Artists`}
+            </span>
 
             {/* View Mode Toggle Buttons */}
             <div className="flex items-center bg-[#ECE6DC] p-1 rounded-xl border border-[#DDD6C8] text-xs font-semibold">
@@ -298,12 +361,61 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[#1A1918] text-[#E5D2B8] text-xs font-bold uppercase tracking-wider border-b border-[#33302C]">
-                    <th className="py-4 px-3 w-10 text-center">#</th>
-                    <th className="py-4 px-4">{lang === 'th' ? 'ศิลปิน' : 'Artist'}</th>
-                    <th className="py-4 px-3 text-center w-16">{lang === 'th' ? 'สัญชาติ' : 'Country'}</th>
+                    <th
+                      className="py-4 px-3 w-12 text-center cursor-pointer select-none hover:text-white transition-colors"
+                      onClick={() => setSortBy('default')}
+                      title={lang === 'th' ? 'เรียงตามลำดับเริ่มต้น' : 'Default Order'}
+                    >
+                      #
+                    </th>
+                    <th
+                      className="py-4 px-4 cursor-pointer select-none hover:text-white transition-colors"
+                      onClick={() => setSortBy(sortBy === 'name-asc' ? 'name-desc' : 'name-asc')}
+                      title={lang === 'th' ? 'คลิกเพื่อเรียงตามชื่อ ก-ฮ / A-Z' : 'Click to sort by Name'}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>{lang === 'th' ? 'ศิลปิน' : 'Artist'}</span>
+                        {sortBy === 'name-asc' ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-[#C5A880]" />
+                        ) : sortBy === 'name-desc' ? (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#C5A880]" />
+                        ) : (
+                          <ArrowUpDown className="w-3.5 h-3.5 text-[#6E685C] hover:text-[#C5A880]" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="py-4 px-3 text-center w-24 cursor-pointer select-none hover:text-white transition-colors"
+                      onClick={() => setSortBy(sortBy === 'country-asc' ? 'country-desc' : 'country-asc')}
+                      title={lang === 'th' ? 'คลิกเพื่อเรียงตามประเทศ' : 'Click to sort by Country'}
+                    >
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span>{lang === 'th' ? 'สัญชาติ' : 'Country'}</span>
+                        {sortBy === 'country-asc' ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-[#C5A880]" />
+                        ) : sortBy === 'country-desc' ? (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#C5A880]" />
+                        ) : (
+                          <ArrowUpDown className="w-3.5 h-3.5 text-[#6E685C] hover:text-[#C5A880]" />
+                        )}
+                      </div>
+                    </th>
                     <th className="py-4 px-4">{lang === 'th' ? 'ช่องทางติดต่อ (Email)' : 'Primary Contact'}</th>
                     <th className="py-4 px-4">{lang === 'th' ? 'ผลงานสร้างสรรค์' : 'Creative Works'}</th>
-                    <th className="py-4 px-3 text-center">{lang === 'th' ? 'จำนวนผลงาน' : 'Artworks'}</th>
+                    <th
+                      className="py-4 px-3 text-center cursor-pointer select-none hover:text-white transition-colors"
+                      onClick={() => setSortBy(sortBy === 'artworks-desc' ? 'default' : 'artworks-desc')}
+                      title={lang === 'th' ? 'คลิกเพื่อเรียงตามจำนวนผลงาน' : 'Click to sort by Artworks count'}
+                    >
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span>{lang === 'th' ? 'จำนวนผลงาน' : 'Artworks'}</span>
+                        {sortBy === 'artworks-desc' ? (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#C5A880]" />
+                        ) : (
+                          <ArrowUpDown className="w-3.5 h-3.5 text-[#6E685C] hover:text-[#C5A880]" />
+                        )}
+                      </div>
+                    </th>
                     <th className="py-4 px-4">{lang === 'th' ? 'นิทรรศการ' : 'Exhibitions'}</th>
                     <th className="py-4 px-4 text-right">{lang === 'th' ? 'ดูโปรไฟล์' : 'Action'}</th>
                   </tr>

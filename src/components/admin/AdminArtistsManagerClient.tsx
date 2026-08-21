@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { User, Artwork } from '@/types/exhibition';
@@ -26,6 +26,10 @@ import {
   FileText,
   UploadCloud,
   Users,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Filter,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
@@ -48,6 +52,8 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
   const [artists, setArtists] = useState<ArtistWithStats[]>(initialArtists);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'country-asc' | 'country-desc' | 'artworks-desc' | 'default'>('name-asc');
+  const [selectedCountry, setSelectedCountry] = useState<string>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingArtist, setEditingArtist] = useState<ArtistWithStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -443,15 +449,57 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
     }
   };
 
-  const filteredArtists = artists.filter((artist) => {
-    const q = searchQuery.toLowerCase();
-    return (
-      artist.name.toLowerCase().includes(q) ||
-      (artist.country || '').toLowerCase().includes(q) ||
-      (artist.email || '').toLowerCase().includes(q) ||
-      (artist.bio || '').toLowerCase().includes(q)
-    );
-  });
+  const countries = useMemo(() => {
+    const set = new Set<string>();
+    artists.forEach((a) => {
+      if (a.country && a.country.trim()) set.add(a.country.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'th'));
+  }, [artists]);
+
+  const filteredArtists = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    const filtered = artists.filter((artist) => {
+      const matchesQuery =
+        !q ||
+        artist.name.toLowerCase().includes(q) ||
+        (artist.country || '').toLowerCase().includes(q) ||
+        (artist.email || '').toLowerCase().includes(q) ||
+        (artist.bio || '').toLowerCase().includes(q);
+
+      const matchesCountry =
+        selectedCountry === 'all' || (artist.country || 'Thailand').trim() === selectedCountry;
+
+      return matchesQuery && matchesCountry;
+    });
+
+    return filtered.sort((a, b) => {
+      if (sortBy === 'name-asc') {
+        return a.name.localeCompare(b.name, 'th');
+      }
+      if (sortBy === 'name-desc') {
+        return b.name.localeCompare(a.name, 'th');
+      }
+      if (sortBy === 'country-asc') {
+        const cA = (a.country || 'Thailand').trim();
+        const cB = (b.country || 'Thailand').trim();
+        const cComp = cA.localeCompare(cB, 'th');
+        if (cComp !== 0) return cComp;
+        return a.name.localeCompare(b.name, 'th');
+      }
+      if (sortBy === 'country-desc') {
+        const cA = (a.country || 'Thailand').trim();
+        const cB = (b.country || 'Thailand').trim();
+        const cComp = cB.localeCompare(cA, 'th');
+        if (cComp !== 0) return cComp;
+        return a.name.localeCompare(b.name, 'th');
+      }
+      if (sortBy === 'artworks-desc') {
+        return (b.artworkCount || 0) - (a.artworkCount || 0);
+      }
+      return 0;
+    });
+  }, [artists, searchQuery, selectedCountry, sortBy]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 select-none">
@@ -507,10 +555,10 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
         </div>
       )}
 
-      {/* Toolbar: Search + View Mode Switcher */}
-      <div className="bg-white p-4 rounded-2xl border border-[#E0D9CD] shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+      {/* Toolbar: Search + Country Filter + Sort Selector + View Mode Switcher */}
+      <div className="bg-white p-4 rounded-2xl border border-[#E0D9CD] shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         {/* Search Input */}
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-[220px]">
           <Search className="w-4 h-4 text-[#8C6D3F] absolute left-3.5 top-3" />
           <input
             type="text"
@@ -529,12 +577,48 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
           )}
         </div>
 
-        {/* View Mode Toggle Buttons */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-[#7A7468] font-medium hidden sm:inline">
+        {/* Controls: Country Filter + Sort Selector + View Switcher */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Country Filter Dropdown */}
+          <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#DDD6C8] px-3 py-2 rounded-xl text-xs">
+            <Globe className="w-3.5 h-3.5 text-[#8C6D3F] shrink-0" />
+            <select
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="bg-transparent text-xs text-[#1A1918] focus:outline-none cursor-pointer font-medium max-w-[130px] sm:max-w-none"
+            >
+              <option value="all">{lang === 'th' ? 'ทุกสัญชาติ (All Countries)' : 'All Countries'}</option>
+              {countries.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sort By Dropdown */}
+          <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#DDD6C8] px-3 py-2 rounded-xl text-xs">
+            <ArrowUpDown className="w-3.5 h-3.5 text-[#8C6D3F] shrink-0" />
+            <select
+              value={sortBy}
+              onChange={(e: any) => setSortBy(e.target.value)}
+              className="bg-transparent text-xs text-[#1A1918] focus:outline-none cursor-pointer font-medium max-w-[160px] sm:max-w-none"
+            >
+              <option value="name-asc">{lang === 'th' ? '🔤 ชื่อศิลปิน (A → Z / ก → ฮ)' : '🔤 Name (A → Z)'}</option>
+              <option value="name-desc">{lang === 'th' ? '🔤 ชื่อศิลปิน (Z → A / ฮ → ก)' : '🔤 Name (Z → A)'}</option>
+              <option value="country-asc">{lang === 'th' ? '🌐 เรียงตามประเทศ (Country A → Z)' : '🌐 Country (A → Z)'}</option>
+              <option value="country-desc">{lang === 'th' ? '🌐 เรียงตามประเทศ (Country Z → A)' : '🌐 Country (Z → A)'}</option>
+              <option value="artworks-desc">{lang === 'th' ? '🎨 จำนวนผลงาน (มาก → น้อย)' : '🎨 Most Artworks'}</option>
+              <option value="default">{lang === 'th' ? '🕒 ลำดับเดิม (Default)' : '🕒 Default'}</option>
+            </select>
+          </div>
+
+          {/* Total Count Badge */}
+          <span className="text-xs text-[#7A7468] font-medium hidden sm:inline px-1">
             {lang === 'th' ? `ศิลปิน ${filteredArtists.length} ท่าน` : `${filteredArtists.length} Artists`}
           </span>
 
+          {/* View Mode Toggle Buttons */}
           <div className="flex items-center bg-[#ECE6DC] p-1 rounded-xl border border-[#DDD6C8] text-xs font-semibold">
             <button
               onClick={() => setViewMode('grid')}
@@ -679,11 +763,60 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#1A1918] text-[#E5D2B8] text-xs font-bold uppercase tracking-wider border-b border-[#33302C]">
-                  <th className="py-4 px-3 w-10 text-center">#</th>
-                  <th className="py-4 px-4">{lang === 'th' ? 'ศิลปิน' : 'Artist'}</th>
-                  <th className="py-4 px-3 text-center w-16">{lang === 'th' ? 'สัญชาติ' : 'Country'}</th>
+                  <th
+                    className="py-4 px-3 w-12 text-center cursor-pointer select-none hover:text-white transition-colors"
+                    onClick={() => setSortBy('default')}
+                    title={lang === 'th' ? 'เรียงตามลำดับเริ่มต้น' : 'Default Order'}
+                  >
+                    #
+                  </th>
+                  <th
+                    className="py-4 px-4 cursor-pointer select-none hover:text-white transition-colors"
+                    onClick={() => setSortBy(sortBy === 'name-asc' ? 'name-desc' : 'name-asc')}
+                    title={lang === 'th' ? 'คลิกเพื่อเรียงตามชื่อ ก-ฮ / A-Z' : 'Click to sort by Name'}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>{lang === 'th' ? 'ศิลปิน' : 'Artist'}</span>
+                      {sortBy === 'name-asc' ? (
+                        <ArrowUp className="w-3.5 h-3.5 text-[#C5A880]" />
+                      ) : sortBy === 'name-desc' ? (
+                        <ArrowDown className="w-3.5 h-3.5 text-[#C5A880]" />
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-[#6E685C] hover:text-[#C5A880]" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="py-4 px-3 text-center w-24 cursor-pointer select-none hover:text-white transition-colors"
+                    onClick={() => setSortBy(sortBy === 'country-asc' ? 'country-desc' : 'country-asc')}
+                    title={lang === 'th' ? 'คลิกเพื่อเรียงตามประเทศ' : 'Click to sort by Country'}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>{lang === 'th' ? 'สัญชาติ' : 'Country'}</span>
+                      {sortBy === 'country-asc' ? (
+                        <ArrowUp className="w-3.5 h-3.5 text-[#C5A880]" />
+                      ) : sortBy === 'country-desc' ? (
+                        <ArrowDown className="w-3.5 h-3.5 text-[#C5A880]" />
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-[#6E685C] hover:text-[#C5A880]" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-4 px-4">{lang === 'th' ? 'อีเมลติดต่อ' : 'Primary Email'}</th>
-                  <th className="py-4 px-3 text-center">{lang === 'th' ? 'ผลงาน' : 'Artworks'}</th>
+                  <th
+                    className="py-4 px-3 text-center cursor-pointer select-none hover:text-white transition-colors"
+                    onClick={() => setSortBy(sortBy === 'artworks-desc' ? 'default' : 'artworks-desc')}
+                    title={lang === 'th' ? 'คลิกเพื่อเรียงตามจำนวนผลงาน' : 'Click to sort by Artworks count'}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>{lang === 'th' ? 'ผลงาน' : 'Artworks'}</span>
+                      {sortBy === 'artworks-desc' ? (
+                        <ArrowDown className="w-3.5 h-3.5 text-[#C5A880]" />
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-[#6E685C] hover:text-[#C5A880]" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-4 px-4">{lang === 'th' ? 'นิทรรศการ' : 'Exhibitions'}</th>
                   <th className="py-4 px-4 text-center">{lang === 'th' ? 'โซเชียล' : 'Social'}</th>
                   <th className="py-4 px-4 text-right">{lang === 'th' ? 'การจัดการ' : 'Actions'}</th>
