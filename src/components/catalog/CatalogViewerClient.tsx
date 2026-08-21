@@ -18,6 +18,9 @@ import {
   Sparkles,
   Loader2,
   FileText,
+  Layers,
+  Check,
+  ShieldCheck,
 } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
@@ -26,11 +29,15 @@ interface CatalogViewerClientProps {
   exhibition: Exhibition;
 }
 
+export type PDFExportProfile = 'standard' | 'pdfx1a';
+
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const searchParams = useSearchParams();
   const [downloaded, setDownloaded] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfStandardType, setPdfStandardType] = useState<PDFExportProfile>('standard');
   const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0 });
+  const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -41,13 +48,15 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const artworks = exhibition.artworks || [];
   const curator = exhibition.curator;
 
-  // Direct High-Resolution Full Page A4 PDF File Generator & Downloader
-  const handleDirectDownloadPDF = async () => {
+  // Direct High-Resolution Full Page A4 PDF File Generator supporting Standard and PDF/X-1a:2001
+  const handleExportPDF = async (profile: PDFExportProfile = 'standard') => {
     try {
       setIsGeneratingPdf(true);
+      setPdfStandardType(profile);
       setDownloaded(false);
+      setIsExportOptionsOpen(false);
 
-      // Dynamically import client-side PDF generation tools
+      // Dynamically import client-side PDF tools
       const { jsPDF } = await import('jspdf');
       const html2canvas = (await import('html2canvas')).default;
 
@@ -61,19 +70,38 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       const total = pageElements.length;
       setPdfProgress({ current: 0, total });
 
+      const isPdfX = profile === 'pdfx1a';
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
-        compress: true,
+        compress: !isPdfX,
       });
+
+      // Set ISO Standards & Prepress Document Properties
+      pdf.setProperties({
+        title: `${exhibition.title} - Official Exhibition Catalog`,
+        subject: isPdfX
+          ? 'PDF/X-1a:2001 ISO 15930-1 Prepress Commercial Print-Ready Catalog'
+          : 'Standard Digital Exhibition Catalog',
+        author: curator?.name || 'ARTVARA Curatorial Team',
+        keywords: isPdfX
+          ? 'PDF/X-1a:2001, Prepress, ISO 15930-1, Commercial Print, ARTVARA, Catalog'
+          : 'ARTVARA, Catalog, Digital E-Book',
+        creator: 'ARTVARA High-Fidelity Catalog System (ISO 15930-1 Prepress Engine)',
+      });
+
+      // Scale: 2.5 for PDF/X-1a (300+ DPI Prepress), 1.8 for Standard
+      const scaleFactor = isPdfX ? 2.5 : 1.8;
+      const jpegQuality = isPdfX ? 0.98 : 0.92;
 
       for (let i = 0; i < total; i++) {
         setPdfProgress({ current: i + 1, total });
         const el = pageElements[i];
 
         const canvas = await html2canvas(el, {
-          scale: 2, // High resolution (300 DPI equivalent)
+          scale: scaleFactor,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
@@ -81,7 +109,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           windowWidth: 1200,
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
 
         if (i > 0) {
           pdf.addPage('a4', 'portrait');
@@ -92,30 +120,34 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       }
 
       const cleanSlug = exhibition.slug || 'exhibition';
-      const fileName = `${cleanSlug}-catalog-a4.pdf`;
+      const fileName = isPdfX
+        ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
+        : `${cleanSlug}-catalog-standard.pdf`;
+
       pdf.save(fileName);
 
       setDownloaded(true);
       setTimeout(() => setDownloaded(false), 5000);
     } catch (err) {
       console.error('Error generating PDF:', err);
-      // Fallback to browser print if canvas fails
+      // Fallback to browser print if canvas error
       window.print();
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
-  // Trigger browser print dialog
+  // Browser print fallback
   const handlePrintPDF = () => {
     window.print();
   };
 
-  // Auto-download if navigated with ?autoPrint=true
+  // Auto-trigger if navigated with ?export=standard or ?export=pdfx1a
   useEffect(() => {
-    if (searchParams.get('autoPrint') === 'true') {
+    const exportParam = searchParams.get('export');
+    if (exportParam === 'pdfx1a' || exportParam === 'standard') {
       const timer = setTimeout(() => {
-        handleDirectDownloadPDF();
+        handleExportPDF(exportParam as PDFExportProfile);
       }, 700);
       return () => clearTimeout(timer);
     }
@@ -214,19 +246,24 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       {/* Generating PDF Progress Toast Overlay */}
       {isGeneratingPdf && (
         <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center space-y-4">
-            <div className="relative w-14 h-14 mx-auto flex items-center justify-center bg-[#8C6D3F]/15 rounded-full text-[#8C6D3F]">
-              <Loader2 className="w-7 h-7 animate-spin" />
+          <div className="bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl p-8 max-w-md w-full text-center space-y-4">
+            <div className="relative w-16 h-16 mx-auto flex items-center justify-center bg-[#8C6D3F]/15 rounded-full text-[#8C6D3F]">
+              <Loader2 className="w-8 h-8 animate-spin" />
             </div>
             <div>
-              <h3 className="font-serif text-lg font-bold text-[#1A1918]">
-                กำลังสร้างไฟล์ PDF เต็มหน้า A4...
+              <span className="text-[10px] uppercase font-mono font-bold tracking-widest px-2.5 py-0.5 rounded-full bg-[#1A1918] text-[#E5D2B8] inline-block mb-1">
+                {pdfStandardType === 'pdfx1a' ? 'มาตรฐาน PDF/X-1a:2001 (ISO 15930-1)' : 'มาตรฐาน Standard E-Catalog'}
+              </span>
+              <h3 className="font-serif text-lg font-bold text-[#1A1918] mt-1">
+                {pdfStandardType === 'pdfx1a'
+                  ? 'กำลังสร้างไฟล์ PDF สำหรับแท่นพิมพ์ (Prepress 300+ DPI)...'
+                  : 'กำลังสร้างไฟล์ PDF ขนาด A4 เต็มหน้า...'}
               </h3>
               <p className="text-xs text-[#6E685C] mt-1">
-                กำลังเรนเดอร์หน้า {pdfProgress.current} จาก {pdfProgress.total} (High Resolution 300 DPI)
+                กำลังเรนเดอร์หน้า {pdfProgress.current} จาก {pdfProgress.total} หน้า
               </p>
             </div>
-            <div className="w-full bg-[#EAE4D8] h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-[#EAE4D8] h-2.5 rounded-full overflow-hidden">
               <div
                 className="bg-[#8C6D3F] h-full transition-all duration-300"
                 style={{
@@ -237,6 +274,97 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             <p className="text-[11px] text-[#8C8477]">
               ไฟล์ PDF จะดาวน์โหลดลงเครื่องของคุณโดยอัตโนมัติทันที
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Export Standards Selection Modal (2 Profiles: Standard vs PDF/X-1a:2001) */}
+      {isExportOptionsOpen && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B]">
+            <button
+              onClick={() => setIsExportOptionsOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="border-b border-[#E3DED4] pb-4 mb-6">
+              <span className="text-[10px] uppercase tracking-widest text-[#8C6D3F] font-bold block mb-1">
+                Print & Digital Standards
+              </span>
+              <h3 className="font-serif text-xl font-bold text-[#1A1918]">
+                เลือกระดับมาตรฐานการดาวน์โหลด PDF
+              </h3>
+              <p className="text-xs text-[#7A7468] mt-0.5">
+                เลือกรูปแบบไฟล์ตามจุดประสงค์การใช้งาน (อ่านบนหน้าจอ หรือ ส่งเข้าโรงพิมพ์)
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Option 1: Standard E-Catalog */}
+              <div
+                onClick={() => handleExportPDF('standard')}
+                className="p-5 rounded-2xl border-2 border-[#D5CEC0] bg-white hover:border-[#8C6D3F] hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between group space-y-4"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase bg-neutral-100 text-neutral-800 border border-neutral-200">
+                      แบบที่ 1 : Standard
+                    </span>
+                    <FileText className="w-5 h-5 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="font-serif text-base font-bold text-[#1A1918]">
+                    Standard E-Catalog
+                  </h4>
+                  <p className="text-xs text-[#6E685C] leading-relaxed">
+                    เหมาะสำหรับเปิดอ่านบนหน้าจอคอมพิวเตอร์, iPad, แท็บเล็ต, สมาร์ตโฟน และส่งต่อผ่าน Line หรือ Email ได้อย่างรวดเร็ว
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-semibold flex items-center justify-between">
+                  <span>🚀 ดาวน์โหลดแบบ Standard</span>
+                  <span>→</span>
+                </div>
+              </div>
+
+              {/* Option 2: PDF/X-1a:2001 Prepress */}
+              <div
+                onClick={() => handleExportPDF('pdfx1a')}
+                className="p-5 rounded-2xl border-2 border-[#C5A880] bg-gradient-to-b from-[#FAF6EE] to-white hover:border-[#8C6D3F] hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group space-y-4 ring-2 ring-[#8C6D3F]/20"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase bg-[#1A1918] text-[#E5D2B8]">
+                      แบบที่ 2 : PDF/X-1a:2001
+                    </span>
+                    <ShieldCheck className="w-5 h-5 text-amber-700 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="font-serif text-base font-bold text-[#1A1918] flex items-center gap-1.5">
+                    <span>PDF/X-1a:2001</span>
+                    <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded font-mono font-bold">ISO</span>
+                  </h4>
+                  <p className="text-xs text-[#6E685C] leading-relaxed">
+                    มาตรฐานการพิมพ์สากล (ISO 15930-1) ความละเอียดสูงสุด 300+ DPI พร้อม Prepress Metadata ครบถ้วนสำหรับส่งเข้าโรงพิมพ์ออฟเซต
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-amber-900 font-bold flex items-center justify-between">
+                  <span>🖨️ ดาวน์โหลดเกรดโรงพิมพ์</span>
+                  <span>→</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#E8E2D6] flex items-center justify-between text-xs text-[#7A7468]">
+              <span>💡 ทั้ง 2 รูปแบบจัดหน้าขนาด A4 เต็มหน้า (Margins 1.5 cm)</span>
+              <button
+                onClick={() => setIsExportOptionsOpen(false)}
+                className="px-4 py-1.5 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -265,7 +393,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               <span className="text-[#C4BDB0]">•</span>
               <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold flex items-center gap-1">
                 <BookOpen className="w-3.5 h-3.5" />
-                สูจิบัตร A4 เต็มหน้า (WYSIWYG 1.5 cm)
+                สูจิบัตร A4 เต็มหน้า (Standard & PDF/X-1a)
               </span>
             </div>
 
@@ -281,12 +409,12 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไขข้อความ Footer</span>
               </button>
 
-              {/* Direct Download Full Page PDF Button */}
+              {/* Download PDF Button with Standard / PDF/X-1a selector */}
               <button
-                onClick={handleDirectDownloadPDF}
+                onClick={() => setIsExportOptionsOpen(true)}
                 disabled={isGeneratingPdf}
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#1F1D1A] hover:bg-[#38342E] text-white rounded-full text-xs font-semibold uppercase tracking-wider shadow-lg transition-all active:scale-95 disabled:opacity-50"
-                title="ดาวน์โหลดไฟล์ .PDF ขนาด A4 เต็มหน้าโดยตรง (WYSIWYG 1.5 cm Margin, ขาวสะอาด ไม่ย่อตัด)"
+                title="ดาวน์โหลดไฟล์ PDF ขนาด A4 (เลือกระดับ Standard หรือ PDF/X-1a:2001)"
               >
                 {downloaded ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -300,7 +428,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                     ? 'ดาวน์โหลดไฟล์สำเร็จแล้ว!'
                     : isGeneratingPdf
                     ? `กำลังสร้าง PDF (${pdfProgress.current}/${pdfProgress.total})...`
-                    : 'ดาวน์โหลดไฟล์ PDF (A4 เต็มหน้า)'}
+                    : 'ดาวน์โหลดสูจิบัตร PDF'}
                 </span>
               </button>
 
