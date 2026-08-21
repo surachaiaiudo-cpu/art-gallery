@@ -538,16 +538,16 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         </div>
       )}
 
-      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4) */}
+      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4 - Pure K-Plate Text & Tints) */}
       <main className="w-full max-w-[210mm] mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16">
-        {/* Cover Page (A4, 210mm x 297mm, 15mm Padding) */}
-        <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#D5CEC0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
+        {/* Cover Page (A4, 210mm x 297mm, 15mm Padding, Pure K Black/Gray) */}
+        <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
           <div>
-            <div className="border-b border-[#E8E2D6] pb-3 mb-5">
-              <span className="font-serif text-3xl font-bold tracking-[0.2em] text-[#1A1918] block">
+            <div className="border-b border-[#E0E0E0] pb-3 mb-5">
+              <span className="font-serif text-3xl font-bold tracking-[0.2em] text-[#000000] block">
                 ARTVARA
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-[#8C8477] mt-1 block">
+              <span className="text-[10px] uppercase tracking-widest text-[#666666] mt-1 block">
                 International Art Festival & Curated Exhibition
               </span>
             </div>
@@ -564,26 +564,26 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             )}
 
             <div className="space-y-2 max-w-[170mm] mx-auto">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8C6D3F] block">
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#333333] block">
                 Official Exhibition Catalog (สูจิบัตร)
               </span>
-              <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#1A1918] leading-snug">
+              <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#000000] leading-snug">
                 {exhibition.title}
               </h1>
               {curator?.name && (
-                <p className="text-xs text-[#615B50] font-medium pt-1">
-                  Curated by: <span className="font-semibold text-[#1A1918]">{curator.name}</span>
+                <p className="text-xs text-[#444444] font-medium pt-1">
+                  Curated by: <span className="font-semibold text-[#000000]">{curator.name}</span>
                 </p>
               )}
-              <p className="text-[11px] text-[#8A8376]">
+              <p className="text-[11px] text-[#666666]">
                 {formatDateRange(exhibition.startDate, exhibition.endDate)}
               </p>
             </div>
           </div>
 
-          {/* Dynamic Cover Footer Text */}
-          <div className="pt-4 border-t border-[#E8E2D6] text-center">
-            <p className="text-[10px] text-[#8A8376] uppercase tracking-widest leading-relaxed">
+          {/* Dynamic Cover Footer Text - Pure K Tint */}
+          <div className="pt-4 border-t border-[#E0E0E0] text-center">
+            <p className="text-[10px] text-[#666666] uppercase tracking-widest leading-relaxed font-sans">
               {coverFooter}
             </p>
           </div>
@@ -601,7 +601,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           return (
             <section
               key={art.id}
-              className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#D5CEC0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border"
+              className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border"
             >
               <div>
                 {/* 1. Main Large Artwork Image (Positioned from top to 8-inch boundary, exactly 175mm tall) */}
@@ -614,12 +614,12 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                   />
                 </div>
 
-                {/* 2. Details Section (Starts at 8 inches from top of page) */}
+                {/* 2. Details Section (Starts at 8 inches from top of page - Pure K Black/Gray text) */}
                 <div className="relative z-10 flex flex-row items-start gap-5 pt-0.5">
                   {/* Left Column: Flag Image ON TOP, Artist Photo DIRECTLY BELOW */}
                   <div className="shrink-0 w-20 flex flex-col items-start">
                     {/* Flag Badge Image - Above Photo */}
-                    <div className="relative w-9 h-5 rounded-[2px] overflow-hidden border border-[#DDD6C8] shadow-sm mb-2 bg-neutral-100">
+                    <div className="relative w-9 h-5 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-sm mb-2 bg-[#F5F5F5]">
                       <img
                         src={getFlagImageUrl(artist?.country)}
                         alt={artist?.country || 'Flag'}
@@ -630,7 +630,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
                     {/* Artist Photo / Avatar (Below Flag) */}
                     {hasRealPhoto ? (
-                      <div className="relative w-20 h-24 bg-[#2B2824] rounded-lg overflow-hidden shadow">
+                      <div className="relative w-20 h-24 bg-[#1A1A1A] rounded-lg overflow-hidden shadow">
                         <img
                           src={artist!.avatarUrl!}
                           alt={artist?.name || 'Artist'}
@@ -639,36 +639,36 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                         />
                       </div>
                     ) : (
-                      <div className="w-20 h-24 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg flex items-center justify-center font-serif text-2xl font-bold text-[#8C6D3F] shadow-sm">
+                      <div className="w-20 h-24 bg-[#F8F8F8] border border-[#D0D0D0] rounded-lg flex items-center justify-center font-serif text-2xl font-bold text-[#333333] shadow-sm">
                         {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
                       </div>
                     )}
                   </div>
 
-                  {/* Right Column: Artist Info & Artwork Specs & Concept */}
-                  <div className="flex-1 space-y-1 text-xs text-[#3D3A34] min-w-0">
+                  {/* Right Column: Artist Info & Artwork Specs & Concept (Pure K-Plate Black/Grayscale) */}
+                  <div className="flex-1 space-y-1 text-xs text-[#222222] min-w-0">
                     <div>
-                      <h3 className="font-sans text-sm font-bold text-[#1A1918] leading-tight truncate">
+                      <h3 className="font-sans text-sm font-bold text-[#000000] leading-tight truncate">
                         {artist?.name || 'Artist'}
                       </h3>
                       {artist?.email && (
-                        <p className="text-[#7A7468] text-[10px] font-mono leading-tight">{artist.email}</p>
+                        <p className="text-[#666666] text-[10px] font-mono leading-tight">{artist.email}</p>
                       )}
-                      <p className="text-[#7A7468] text-[10px] leading-tight">{artist?.country || 'International'}</p>
+                      <p className="text-[#666666] text-[10px] leading-tight">{artist?.country || 'International'}</p>
                     </div>
 
                     <div className="pt-0.5">
-                      <h4 className="font-sans text-xs sm:text-sm font-bold text-[#1A1918] leading-tight truncate">
+                      <h4 className="font-sans text-xs sm:text-sm font-bold text-[#000000] leading-tight truncate">
                         {art.title}
                       </h4>
-                      <p className="text-[#5E584D] text-[10px] leading-tight">
+                      <p className="text-[#444444] text-[10px] leading-tight font-medium">
                         {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
                       </p>
                     </div>
 
                     {(art.concept || art.description) && (
-                      <div className="pt-0.5 text-[10px] sm:text-[11px] leading-relaxed text-[#423E37] line-clamp-3">
-                        <span className="font-bold text-[#1A1918]">Concept : </span>
+                      <div className="pt-0.5 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] line-clamp-3">
+                        <span className="font-bold text-[#000000]">Concept : </span>
                         <span>{art.concept || art.description}</span>
                       </div>
                     )}
@@ -681,8 +681,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id={`webWave1-${art.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#DDD5C7" stopOpacity="0.4" />
-                      <stop offset="100%" stopColor="#C5A880" stopOpacity="0.2" />
+                      <stop offset="0%" stopColor="#D0D0D0" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#B0B0B0" stopOpacity="0.2" />
                     </linearGradient>
                     <linearGradient id={`webWave2-${art.id}`} x1="0%" y1="100%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="#F5B28B" stopOpacity="0.4" />
@@ -694,13 +694,13 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </svg>
               </div>
 
-              {/* Bottom Footer Row: Custom Plate Footer & Page Number */}
-              <div className="relative z-10 mt-3 pt-2 border-t border-[#F0ECE4] flex items-center justify-between text-[10px] text-[#A69F92]">
+              {/* Bottom Footer Row: Pure K Grayscale Tints */}
+              <div className="relative z-10 mt-3 pt-2 border-t border-[#E5E5E5] flex items-center justify-between text-[10px] text-[#777777]">
                 <span>
                   {plateFooter ? plateFooter : ''}
                   {art.price ? (plateFooter ? ` • ${formatPrice(art.price)}` : formatPrice(art.price)) : ''}
                 </span>
-                <span className="font-mono">{pageNum}</span>
+                <span className="font-mono text-[#555555] font-semibold">{pageNum}</span>
               </div>
             </section>
           );
