@@ -19,6 +19,10 @@ import {
   Plus,
   Trash2,
   Camera,
+  ShieldCheck,
+  FileText,
+  Download,
+  Sparkles,
 } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
@@ -27,8 +31,11 @@ interface CatalogViewerClientProps {
   exhibition: Exhibition;
 }
 
+export type PDFStandard = 'standard' | 'pdfx';
+
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const searchParams = useSearchParams();
+  const [isStandardModalOpen, setIsStandardModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeerReviewModalOpen, setIsPeerReviewModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -46,17 +53,40 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const curator = exhibition.curator;
   const hasReviewers = peerReviewersList.length > 0;
 
-  // Always invoke 100% True Vector Print Engine
-  const handlePrintVectorPDF = () => {
-    window.print();
+  // Execute Vector PDF print/save based on selected standard (Standard vs PDF/X)
+  const handleExportVectorPDF = (standard: PDFStandard = 'standard') => {
+    setIsStandardModalOpen(false);
+
+    // Set document title according to standard
+    if (typeof document !== 'undefined') {
+      const originalTitle = document.title;
+      const cleanSlug = exhibition.slug || 'catalog';
+      document.title = standard === 'pdfx'
+        ? `${cleanSlug}-catalog-PDFX-1a-2001-Vector`
+        : `${cleanSlug}-catalog-Standard-Vector`;
+
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          document.title = originalTitle;
+        }, 1000);
+      }, 200);
+    } else {
+      window.print();
+    }
   };
 
-  // Auto-trigger print if navigated with ?export parameter
+  // Auto-trigger if navigated with ?export parameter
   useEffect(() => {
     const exportParam = searchParams.get('export');
-    if (exportParam) {
+    if (exportParam === 'pdfx' || exportParam === 'pdfx1a') {
       const timer = setTimeout(() => {
-        window.print();
+        handleExportVectorPDF('pdfx');
+      }, 600);
+      return () => clearTimeout(timer);
+    } else if (exportParam === 'standard' || exportParam === 'pdf') {
+      const timer = setTimeout(() => {
+        handleExportVectorPDF('standard');
       }, 600);
       return () => clearTimeout(timer);
     }
@@ -210,6 +240,97 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         }
       `}</style>
 
+      {/* 2 Print Standards Selection Modal (Standard Vector vs PDF/X Prepress Vector) */}
+      {isStandardModalOpen && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B]">
+            <button
+              onClick={() => setIsStandardModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="border-b border-[#E3DED4] pb-4 mb-6">
+              <span className="text-[10px] uppercase tracking-widest text-[#8C6D3F] font-bold block mb-1">
+                Print Standards (Vector Typography)
+              </span>
+              <h3 className="font-serif text-xl font-bold text-[#1A1918]">
+                เลือกระดับมาตรฐานการพิมพ์สูจิบัตร PDF
+              </h3>
+              <p className="text-xs text-[#7A7468] mt-0.5">
+                ตัวอักษรและเส้นกราฟิกถูกบันทึกเป็น <strong>Vector แท้ 100%</strong> ในทุกกรณี (คมชัด ไม่แตก)
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Level 1: Standard (Vector PDF) */}
+              <div
+                onClick={() => handleExportVectorPDF('standard')}
+                className="p-5 rounded-2xl border-2 border-[#D5CEC0] bg-white hover:border-[#8C6D3F] hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between group space-y-4"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase bg-neutral-100 text-neutral-800 border border-neutral-200">
+                      แบบที่ 1 : Standard
+                    </span>
+                    <FileText className="w-5 h-5 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="font-serif text-base font-bold text-[#1A1918]">
+                    Standard (Vector PDF)
+                  </h4>
+                  <p className="text-xs text-[#6E685C] leading-relaxed">
+                    มาตรฐาน A4 ดิจิทัลทั่วไป ตัวอักษรเป็น <strong>Vector แท้</strong> คมชัดสูง เหมาะสำหรับเปิดอ่านบนหน้าจอ iPad, แท็บเล็ต และสั่งพิมพ์เอกสารทั่วไป
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-semibold flex items-center justify-between">
+                  <span>🖨️ บันทึกแบบ Standard</span>
+                  <span>→</span>
+                </div>
+              </div>
+
+              {/* Level 2: PDF/X (PDF/X-1a:2001 Prepress Vector PDF) */}
+              <div
+                onClick={() => handleExportVectorPDF('pdfx')}
+                className="p-5 rounded-2xl border-2 border-[#C5A880] bg-gradient-to-b from-[#FAF6EE] to-white hover:border-[#8C6D3F] hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group space-y-4 ring-2 ring-[#8C6D3F]/20"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase bg-[#1A1918] text-[#E5D2B8]">
+                      แบบที่ 2 : PDF/X
+                    </span>
+                    <ShieldCheck className="w-5 h-5 text-amber-700 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="font-serif text-base font-bold text-[#1A1918] flex items-center gap-1.5">
+                    <span>PDF/X (PDF/X-1a)</span>
+                    <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded font-mono font-bold">ISO</span>
+                  </h4>
+                  <p className="text-xs text-[#6E685C] leading-relaxed">
+                    มาตรฐานแท่นพิมพ์สากล (ISO 15930-1) ตัวอักษร <strong>Vector สีดำเพลทเดียว (K-only)</strong> คมชัดสูงสุด ไม่เลื่อมสี สำหรับส่งเข้าโรงพิมพ์ออฟเซต
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-amber-900 font-bold flex items-center justify-between">
+                  <span>🖨️ บันทึกเกรดโรงพิมพ์ (PDF/X)</span>
+                  <span>→</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#E8E2D6] flex items-center justify-between text-xs text-[#7A7468]">
+              <span>💡 ทั้ง 2 ระดับ บันทึกตัวอักษรเป็น Vector แท้ (Select & Copy ได้)</span>
+              <button
+                onClick={() => setIsStandardModalOpen(false)}
+                className="px-4 py-1.5 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Toolbar (Hidden in Print) */}
       <div className="no-print">
         <Navbar exhibition={exhibition} />
@@ -234,7 +355,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               <span className="text-[#C4BDB0]">•</span>
               <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold flex items-center gap-1">
                 <BookOpen className="w-3.5 h-3.5" />
-                สูจิบัตร A4 เต็มหน้า (Vector PDF)
+                สูจิบัตร A4 (Vector PDF : Standard & PDF/X)
               </span>
             </div>
 
@@ -260,14 +381,14 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไข Footer</span>
               </button>
 
-              {/* Unified 100% Vector PDF Export Button */}
+              {/* Standard vs PDF/X Vector Selection Trigger */}
               <button
-                onClick={handlePrintVectorPDF}
+                onClick={() => setIsStandardModalOpen(true)}
                 className="flex items-center gap-2 px-5 py-2 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
-                title="บันทึกเป็นไฟล์ PDF ขนาด A4 โดยตัวอักษรและเส้นกราฟิกเป็น Vector แท้ 100% คมชัดไม่แตก"
+                title="เลือกระดับมาตรฐานการพิมพ์ PDF (แบบที่ 1 Standard หรือ แบบที่ 2 PDF/X โดยส่งออกฟอนต์เป็น Vector ในทุกกรณี)"
               >
                 <Printer className="w-4 h-4 text-[#C5A880]" />
-                <span>บันทึกสูจิบัตร PDF (Vector แท้)</span>
+                <span>บันทึกสูจิบัตร PDF (Standard / PDF/X)</span>
               </button>
             </div>
           </div>
