@@ -75,55 +75,22 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
         : `${cleanSlug}-catalog-Standard.pdf`;
 
-      // Try server-side Vector PDF API endpoint first
-      const endpoint = `/api/exhibitions/${encodeURIComponent(cleanSlug)}/catalog/pdf?standard=${standard}`;
-      const res = await fetch(endpoint);
+      // Generate 100% Vector PDF with EMBEDDED TrueType Vector Fonts (Sarabun)
+      const { generateEmbeddedVectorPDF } = await import('@/lib/vectorPdfGenerator');
+      const doc = await generateEmbeddedVectorPDF({
+        exhibition,
+        coverFooterText: coverFooter,
+        plateFooterText: plateFooter,
+        peerReviewers: peerReviewersList,
+        standard,
+        onProgress: (current, total) => setPdfProgress({ current, total }),
+      });
 
-      if (res.ok) {
-        setPdfProgress({ current: totalPages, total: totalPages });
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+      // Save directly to disk with embedded vector fonts
+      doc.save(fileName);
 
-        setDownloaded(true);
-        setTimeout(() => setDownloaded(false), 5000);
-      } else {
-        // Fallback to client-side ReactPDF vector stream
-        const { pdf } = await import('@react-pdf/renderer');
-        const { ExhibitionCatalogPDF } = await import('@/components/catalog/ExhibitionCatalogPDF');
-
-        setPdfProgress({ current: Math.ceil(totalPages / 2), total: totalPages });
-
-        const blob = await pdf(
-          <ExhibitionCatalogPDF
-            exhibition={exhibition}
-            coverFooterText={coverFooter}
-            plateFooterText={plateFooter}
-            peerReviewers={peerReviewersList}
-            standard={standard}
-          />
-        ).toBlob();
-
-        setPdfProgress({ current: totalPages, total: totalPages });
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-        setDownloaded(true);
-        setTimeout(() => setDownloaded(false), 5000);
-      }
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 5000);
     } catch (err) {
       console.error('Error generating Vector PDF download:', err);
       alert('เกิดข้อผิดพลาดในการสร้างไฟล์ Vector PDF');
