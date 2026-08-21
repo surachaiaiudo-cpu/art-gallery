@@ -690,13 +690,13 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                       </p>
                     </div>
 
-                    {/* Concept Block */}
-                    <div className="pt-0.5 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] line-clamp-3">
-                      <span className="font-bold text-[#000000]">Concept : </span>
-                      <span>
-                        {art.concept || art.description || 'This work deals with cultural heritage, spiritual presence, and historical memory.'}
-                      </span>
-                    </div>
+                    {/* Concept Block (Optional: Only rendered if provided by artist, otherwise left blank) */}
+                    {(art.concept?.trim() || art.description?.trim()) && (
+                      <div className="pt-0.5 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] line-clamp-3">
+                        <span className="font-bold text-[#000000]">Concept : </span>
+                        <span>{art.concept?.trim() || art.description?.trim()}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

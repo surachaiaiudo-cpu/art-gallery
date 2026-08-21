@@ -289,15 +289,17 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                         ) : null}
                       </div>
 
-                      {/* Concept Narrative Block */}
-                      <div className="bg-[#FAF8F5] p-5 rounded-xl border border-[#EAE4D8] space-y-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[#8C6D3F] block">
-                          {t.specs.concept} / Curatorial Statement:
-                        </span>
-                        <p className="text-xs sm:text-sm text-[#474239] leading-relaxed font-serif italic">
-                          "{artwork.concept || artwork.description || 'This work deals with cultural heritage, spiritual presence, and historical memory.'}"
-                        </p>
-                      </div>
+                      {/* Concept Narrative Block (Optional) */}
+                      {(artwork.concept?.trim() || artwork.description?.trim()) && (
+                        <div className="bg-[#FAF8F5] p-5 rounded-xl border border-[#EAE4D8] space-y-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-[#8C6D3F] block">
+                            {t.specs.concept} / Curatorial Statement:
+                          </span>
+                          <p className="text-xs sm:text-sm text-[#474239] leading-relaxed font-serif italic">
+                            "{artwork.concept?.trim() || artwork.description?.trim()}"
+                          </p>
+                        </div>
+                      )}
 
                       {/* Action Triggers */}
                       <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
