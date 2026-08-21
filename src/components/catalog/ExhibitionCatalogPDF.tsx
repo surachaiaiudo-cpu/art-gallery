@@ -13,19 +13,16 @@ import {
   LinearGradient,
   Stop,
 } from '@react-pdf/renderer';
-import path from 'path';
 import { Exhibition, PeerReviewer, getCatalogFooterText, getCatalogPlateFooterText, getExhibitionPeerReviewers } from '@/types/exhibition';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
-
-const fontsDir = path.join(process.cwd(), 'src', 'assets', 'fonts');
 
 // Register Sukhumvit / Prompt for Headings
 Font.register({
   family: 'HeadFont',
   fonts: [
-    { src: path.join(fontsDir, 'Prompt-Regular.ttf'), fontWeight: 'normal' },
-    { src: path.join(fontsDir, 'Prompt-Bold.ttf'), fontWeight: 'bold' },
+    { src: 'https://raw.githubusercontent.com/google/fonts/main/ofl/prompt/Prompt-Regular.ttf', fontWeight: 'normal' },
+    { src: 'https://raw.githubusercontent.com/google/fonts/main/ofl/prompt/Prompt-Bold.ttf', fontWeight: 'bold' },
   ],
 });
 
@@ -33,8 +30,8 @@ Font.register({
 Font.register({
   family: 'Maitree',
   fonts: [
-    { src: path.join(fontsDir, 'Maitree-Regular.ttf'), fontWeight: 'normal' },
-    { src: path.join(fontsDir, 'Maitree-Bold.ttf'), fontWeight: 'bold' },
+    { src: 'https://raw.githubusercontent.com/google/fonts/main/ofl/maitree/Maitree-Regular.ttf', fontWeight: 'normal' },
+    { src: 'https://raw.githubusercontent.com/google/fonts/main/ofl/maitree/Maitree-Bold.ttf', fontWeight: 'bold' },
   ],
 });
 
