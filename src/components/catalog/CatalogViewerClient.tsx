@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   BookOpen,
   Download,
+  Printer,
   CheckCircle2,
   Edit3,
   X,
@@ -471,11 +472,21 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไข Footer</span>
               </button>
 
+              {/* PRIMARY BUTTON: 100% WYSIWYG True Vector PDF */}
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
+                title="บันทึกเป็น Vector PDF ให้เหมือนที่แสดงบนหน้าเว็บแบบ 1:1 โดยตัวอักษรเป็น Vector แท้ ไม่แตก"
+              >
+                <Printer className="w-4 h-4 text-[#FFFDF9]" />
+                <span>🖨️ บันทึก Vector PDF (ตรงตามเว็บ 1:1)</span>
+              </button>
+
               {/* Direct Download PDF Button (Opens 2-Level Standard Selection Modal) */}
               <button
                 onClick={() => setIsStandardModalOpen(true)}
                 disabled={isGeneratingPdf}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-semibold uppercase tracking-wider shadow-md transition-all active:scale-95 disabled:opacity-50"
                 title="ดาวน์โหลดไฟล์ .pdf ลงเครื่องโดยตรง (เลือกระดับ Standard หรือ PDF/X-1a:2001)"
               >
                 {downloaded ? (
@@ -490,7 +501,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                     ? 'ดาวน์โหลดไฟล์สำเร็จแล้ว!'
                     : isGeneratingPdf
                     ? `กำลังสร้าง PDF (${pdfProgress.current}/${pdfProgress.total})...`
-                    : 'ดาวน์โหลดสูจิบัตร PDF'}
+                    : 'ดาวน์โหลดไฟล์ PDF'}
                 </span>
               </button>
             </div>
