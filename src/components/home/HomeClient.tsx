@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Exhibition } from '@/types/exhibition';
+import { Exhibition, is3DEnabled } from '@/types/exhibition';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { useLanguage } from '@/context/LanguageContext';
@@ -249,16 +249,28 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
                         </Link>
 
                         {/* 3. 3D Virtual Walk */}
-                        <Link
-                          href={`/exhibitions/${exh.slug}?mode=3d`}
-                          className="group/btn relative h-12 flex items-center justify-center bg-gradient-to-br from-[#C5A880] to-[#B39366] hover:brightness-110 text-[#1A1918] rounded-xl shadow-[0_3px_12px_rgba(197,168,128,0.35)] transition-all hover:scale-105 active:scale-95"
-                          title={t.modes.room3d}
-                        >
-                          <Box className="w-5 h-5 text-[#1A1918] group-hover/btn:scale-110 transition-transform" />
-                          <span className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-black/95 text-white text-[10px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-all scale-95 group-hover/btn:scale-100 pointer-events-none border border-white/15 shadow-2xl z-30">
-                            {t.modes.room3d}
-                          </span>
-                        </Link>
+                        {is3DEnabled(exh) ? (
+                          <Link
+                            href={`/exhibitions/${exh.slug}?mode=3d`}
+                            className="group/btn relative h-12 flex items-center justify-center bg-gradient-to-br from-[#C5A880] to-[#B39366] hover:brightness-110 text-[#1A1918] rounded-xl shadow-[0_3px_12px_rgba(197,168,128,0.35)] transition-all hover:scale-105 active:scale-95"
+                            title={t.modes.room3d}
+                          >
+                            <Box className="w-5 h-5 text-[#1A1918] group-hover/btn:scale-110 transition-transform" />
+                            <span className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-black/95 text-white text-[10px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-all scale-95 group-hover/btn:scale-100 pointer-events-none border border-white/15 shadow-2xl z-30">
+                              {t.modes.room3d}
+                            </span>
+                          </Link>
+                        ) : (
+                          <div
+                            className="group/btn relative h-12 flex items-center justify-center bg-[#EFECE6] text-[#A6A095] rounded-xl border border-[#DDD6C8] cursor-not-allowed opacity-60"
+                            title={lang === 'th' ? 'ปิดการแสดง 3D ชั่วคราว' : '3D Mode Disabled'}
+                          >
+                            <Box className="w-5 h-5 text-[#A6A095]" />
+                            <span className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-neutral-900 text-neutral-300 text-[10px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-all scale-95 group-hover/btn:scale-100 pointer-events-none shadow-2xl z-30">
+                              {lang === 'th' ? 'ปิดการแสดง 3D' : '3D Disabled'}
+                            </span>
+                          </div>
+                        )}
 
                         {/* 4. E-Catalog */}
                         <Link

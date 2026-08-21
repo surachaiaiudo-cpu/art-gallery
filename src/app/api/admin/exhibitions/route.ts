@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       endDate,
       status = 'active',
       roomSize = 'medium',
+      enable3D = true,
     } = body;
 
     if (!title || !slug) {
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
 
     const themeConfig = JSON.stringify({
       roomSize: roomSize || 'medium',
+      enable3D: enable3D !== false,
       wallTexture: 'wood-warm',
       wallColor: '#2B1E16',
       floorColor: '#E6E0D4',
@@ -104,7 +106,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, title, curatorNote, bannerUrl, startDate, endDate, status, roomSize } = body;
+    const { id, title, curatorNote, bannerUrl, startDate, endDate, status, roomSize, enable3D } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Exhibition ID is required' }, { status: 400 });
@@ -127,6 +129,9 @@ export async function PUT(req: NextRequest) {
 
     if (roomSize) {
       updatedTheme.roomSize = roomSize;
+    }
+    if (enable3D !== undefined) {
+      updatedTheme.enable3D = Boolean(enable3D);
     }
 
     const imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY;

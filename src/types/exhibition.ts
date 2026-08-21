@@ -48,6 +48,8 @@ export interface ExhibitionThemeConfig {
   ambientColor?: string;
   spotlightIntensity?: number;
   ambientAudioUrl?: string;
+  roomSize?: 'small' | 'medium' | 'large';
+  enable3D?: boolean;
 }
 
 export interface Exhibition {
@@ -76,4 +78,19 @@ export interface Inquiry {
   status: 'pending' | 'contacted' | 'completed';
   createdAt?: string | null;
   artworkTitle?: string;
+}
+
+export function is3DEnabled(exhibition?: Exhibition | null): boolean {
+  if (!exhibition) return true;
+  if (!exhibition.themeConfig) return true;
+  try {
+    const parsed =
+      typeof exhibition.themeConfig === 'string'
+        ? JSON.parse(exhibition.themeConfig)
+        : exhibition.themeConfig;
+    if (typeof parsed?.enable3D === 'boolean') {
+      return parsed.enable3D;
+    }
+  } catch {}
+  return true;
 }

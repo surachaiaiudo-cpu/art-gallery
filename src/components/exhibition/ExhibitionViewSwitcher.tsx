@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Exhibition } from '@/types/exhibition';
+import { Exhibition, is3DEnabled } from '@/types/exhibition';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Exhibition2DGrid } from './Exhibition2DGrid';
@@ -17,7 +17,8 @@ export function ExhibitionViewSwitcher({
   exhibition,
   initialMode = '2d',
 }: ExhibitionViewSwitcherProps) {
-  const [mode, setMode] = useState<'2d' | 'carousel' | '3d'>(initialMode);
+  const allowedInitialMode = !is3DEnabled(exhibition) && initialMode === '3d' ? '2d' : initialMode;
+  const [mode, setMode] = useState<'2d' | 'carousel' | '3d'>(allowedInitialMode);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F9F8F6] text-[#1E1D1B]">

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Exhibition } from '@/types/exhibition';
+import { Exhibition, is3DEnabled } from '@/types/exhibition';
 import { useLanguage } from '@/context/LanguageContext';
 import { formatDateRange } from '@/lib/utils';
 import {
@@ -51,6 +51,7 @@ export function AdminExhibitionsManagerClient({
     endDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
     status: 'active' as 'active' | 'archived' | 'upcoming',
     roomSize: 'medium' as 'small' | 'medium' | 'large',
+    enable3D: true,
   });
 
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -81,6 +82,7 @@ export function AdminExhibitionsManagerClient({
       endDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
       status: 'active',
       roomSize: 'medium',
+      enable3D: true,
     });
     setIsCreateModalOpen(true);
   };
@@ -89,10 +91,12 @@ export function AdminExhibitionsManagerClient({
   const handleOpenEdit = (exh: Exhibition) => {
     setEditingExhibition(exh);
     let rSize: 'small' | 'medium' | 'large' = 'medium';
+    let e3D = true;
     if (exh.themeConfig) {
       try {
         const parsed = JSON.parse(exh.themeConfig);
         if (parsed.roomSize) rSize = parsed.roomSize;
+        if (typeof parsed.enable3D === 'boolean') e3D = parsed.enable3D;
       } catch {}
     }
 
@@ -105,7 +109,36 @@ export function AdminExhibitionsManagerClient({
       endDate: exh.endDate ? exh.endDate.split('T')[0] : '',
       status: exh.status as any,
       roomSize: rSize,
+      enable3D: e3D,
     });
+  };
+
+  // Toggle 3D Mode Directly
+  const handleToggle3D = async (exh: Exhibition) => {
+    const current3D = is3DEnabled(exh);
+    const next3D = !current3D;
+    try {
+      const res = await fetch('/api/admin/exhibitions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: exh.id, enable3D: next3D }),
+      });
+      if (res.ok) {
+        showNotification(
+          'success',
+          next3D
+            ? lang === 'th'
+              ? `เปิดแสดงโหมด 3D สำหรับ "${exh.title}" แล้ว`
+              : `3D mode enabled for "${exh.title}"`
+            : lang === 'th'
+            ? `ปิดแสดงโหมด 3D สำหรับ "${exh.title}" แล้ว`
+            : `3D mode disabled for "${exh.title}"`
+        );
+        await refreshList();
+      }
+    } catch (err: any) {
+      showNotification('error', err.message || 'Error updating 3D mode');
+    }
   };
 
   // Submit Create or Edit
@@ -284,9 +317,19 @@ export function AdminExhibitionsManagerClient({
                       <span>{isActive ? (lang === 'th' ? 'กำลังจัดแสดง (ON)' : 'Active (ON)') : (lang === 'th' ? 'นิทรรศการย้อนหลัง (OFF)' : 'Archived (OFF)')}</span>
                     </button>
 
-                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold bg-black/70 text-[#C5A880] uppercase">
-                      3D: {rSize}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggle3D(exh)}
+                      className={`px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase transition-all flex items-center gap-1 shadow-sm ${
+                        is3DEnabled(exh)
+                          ? 'bg-amber-900/90 text-amber-200 border border-amber-500/40 hover:bg-amber-800'
+                          : 'bg-neutral-800/90 text-neutral-400 border border-neutral-600 hover:text-white'
+                      }`}
+                      title={lang === 'th' ? 'คลิกเพื่อเปิด/ปิดการแสดงผล 3D' : 'Click to toggle 3D display mode'}
+                    >
+                      <Box className="w-2.5 h-2.5 text-[#C5A880]" />
+                      <span>3D: {is3DEnabled(exh) ? (lang === 'th' ? 'เปิด (ON)' : 'ON') : (lang === 'th' ? 'ปิด (OFF)' : 'OFF')}</span>
+                    </button>
                   </div>
 
                   {/* Banner bottom info */}
@@ -490,6 +533,39 @@ export function AdminExhibitionsManagerClient({
                     <option value="large">🟣 ใหญ่ (Large 22m × 22m)</option>
                   </select>
                 </div>
+              </div>
+
+              {/* 3D Mode Toggle Switch */}
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#DDD6C8] flex items-center justify-between shadow-sm">
+                <div>
+                  <span className="font-bold text-xs text-[#1A1918] block flex items-center gap-1.5">
+                    <Box className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                    {lang === 'th' ? 'โหมดเข้าชมแบบ 3D Virtual Walk' : '3D Virtual Walk Mode'}
+                  </span>
+                  <span className="text-[11px] text-[#7A7468] block mt-0.5">
+                    {formData.enable3D
+                      ? lang === 'th'
+                        ? '🟢 เปิดให้ผู้ชมเดินชมห้อง 3D เสมือนจริง'
+                        : '🟢 3D Virtual Walk is enabled for visitors'
+                      : lang === 'th'
+                      ? '🔴 ปิดการแสดง 3D (ผู้ชมจะเข้าชมในโหมด 2D & Carousel เท่านั้น)'
+                      : '🔴 3D mode is disabled for visitors'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, enable3D: !formData.enable3D })}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    formData.enable3D ? 'bg-[#8C6D3F]' : 'bg-neutral-300'
+                  }`}
+                  title="Toggle 3D"
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      formData.enable3D ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
 
               <div>

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Download, Eye, Box, BookOpen, Shield, GalleryHorizontal, Home, ArrowLeft } from 'lucide-react';
-import { Exhibition } from '@/types/exhibition';
+import { Exhibition, is3DEnabled } from '@/types/exhibition';
 import { useLanguage } from '@/context/LanguageContext';
 
 interface NavbarProps {
@@ -68,17 +68,19 @@ export function Navbar({
               <GalleryHorizontal className="w-3.5 h-3.5" />
               <span>{t.modes.carousel}</span>
             </button>
-            <button
-              onClick={() => onModeChange('3d')}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider transition-all duration-200 ${
-                currentMode === '3d'
-                  ? 'bg-[#1A1918] text-white shadow-sm'
-                  : 'text-[#6B655B] hover:text-[#1A1918]'
-              }`}
-            >
-              <Box className="w-3.5 h-3.5" />
-              <span>{t.modes.room3d}</span>
-            </button>
+            {is3DEnabled(exhibition) && (
+              <button
+                onClick={() => onModeChange('3d')}
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider transition-all duration-200 ${
+                  currentMode === '3d'
+                    ? 'bg-[#1A1918] text-white shadow-sm'
+                    : 'text-[#6B655B] hover:text-[#1A1918]'
+                }`}
+              >
+                <Box className="w-3.5 h-3.5" />
+                <span>{t.modes.room3d}</span>
+              </button>
+            )}
           </div>
         )}
 
