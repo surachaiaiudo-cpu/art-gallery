@@ -74,36 +74,55 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
         : `${cleanSlug}-catalog-Standard.pdf`;
 
-      // Dynamically import @react-pdf/renderer and Vector Component
-      const { pdf } = await import('@react-pdf/renderer');
-      const { ExhibitionCatalogPDF } = await import('@/components/catalog/ExhibitionCatalogPDF');
+      // Try server-side Vector PDF API endpoint first
+      const endpoint = `/api/exhibitions/${encodeURIComponent(cleanSlug)}/catalog/pdf?standard=${standard}`;
+      const res = await fetch(endpoint);
 
-      setPdfProgress({ current: Math.ceil(totalPages / 2), total: totalPages });
+      if (res.ok) {
+        setPdfProgress({ current: totalPages, total: totalPages });
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
-      const blob = await pdf(
-        <ExhibitionCatalogPDF
-          exhibition={exhibition}
-          coverFooterText={coverFooter}
-          plateFooterText={plateFooter}
-          peerReviewers={peerReviewersList}
-          standard={standard}
-        />
-      ).toBlob();
+        setDownloaded(true);
+        setTimeout(() => setDownloaded(false), 5000);
+      } else {
+        // Fallback to client-side ReactPDF vector stream
+        const { pdf } = await import('@react-pdf/renderer');
+        const { ExhibitionCatalogPDF } = await import('@/components/catalog/ExhibitionCatalogPDF');
 
-      setPdfProgress({ current: totalPages, total: totalPages });
+        setPdfProgress({ current: Math.ceil(totalPages / 2), total: totalPages });
 
-      // Direct file download to disk
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+        const blob = await pdf(
+          <ExhibitionCatalogPDF
+            exhibition={exhibition}
+            coverFooterText={coverFooter}
+            plateFooterText={plateFooter}
+            peerReviewers={peerReviewersList}
+            standard={standard}
+          />
+        ).toBlob();
 
-      setDownloaded(true);
-      setTimeout(() => setDownloaded(false), 5000);
+        setPdfProgress({ current: totalPages, total: totalPages });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        setDownloaded(true);
+        setTimeout(() => setDownloaded(false), 5000);
+      }
     } catch (err) {
       console.error('Error generating Vector PDF download:', err);
       alert('เกิดข้อผิดพลาดในการสร้างไฟล์ Vector PDF');
