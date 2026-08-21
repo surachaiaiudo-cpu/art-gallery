@@ -62,24 +62,44 @@ export async function GET(
       compress: !isPdfX,
     });
 
-    // 2. Load and Embed Real TrueType Vector Fonts (Sarabun Regular & Bold)
+    // 2. Load and Embed Real TrueType Vector Fonts:
+    // Head: Sukhumvit / Prompt (Geometric Sans-serif)
+    // Body / Content: Maitree (Regular & Bold)
     const fontsDir = path.join(process.cwd(), 'src', 'assets', 'fonts');
-    const regularFontPath = path.join(fontsDir, 'Sarabun-Regular.ttf');
-    const boldFontPath = path.join(fontsDir, 'Sarabun-Bold.ttf');
 
-    if (fs.existsSync(regularFontPath)) {
-      const regBuf = fs.readFileSync(regularFontPath);
-      doc.addFileToVFS('Sarabun-Regular.ttf', regBuf.toString('base64'));
-      doc.addFont('Sarabun-Regular.ttf', 'Sarabun', 'normal');
+    // Embed Head Font (Sukhumvit / Prompt)
+    const promptBoldPath = path.join(fontsDir, 'Prompt-Bold.ttf');
+    const promptRegPath = path.join(fontsDir, 'Prompt-Regular.ttf');
+    if (fs.existsSync(promptBoldPath)) {
+      const bBuf = fs.readFileSync(promptBoldPath);
+      doc.addFileToVFS('HeadFont-Bold.ttf', bBuf.toString('base64'));
+      doc.addFont('HeadFont-Bold.ttf', 'HeadFont', 'bold');
+    }
+    if (fs.existsSync(promptRegPath)) {
+      const rBuf = fs.readFileSync(promptRegPath);
+      doc.addFileToVFS('HeadFont-Regular.ttf', rBuf.toString('base64'));
+      doc.addFont('HeadFont-Regular.ttf', 'HeadFont', 'normal');
     }
 
-    if (fs.existsSync(boldFontPath)) {
-      const boldBuf = fs.readFileSync(boldFontPath);
-      doc.addFileToVFS('Sarabun-Bold.ttf', boldBuf.toString('base64'));
-      doc.addFont('Sarabun-Bold.ttf', 'Sarabun', 'bold');
+    // Embed Content Font (Maitree)
+    const maitreeRegPath = path.join(fontsDir, 'Maitree-Regular.ttf');
+    const maitreeBoldPath = path.join(fontsDir, 'Maitree-Bold.ttf');
+    if (fs.existsSync(maitreeRegPath)) {
+      const mRegBuf = fs.readFileSync(maitreeRegPath);
+      doc.addFileToVFS('Maitree-Regular.ttf', mRegBuf.toString('base64'));
+      doc.addFont('Maitree-Regular.ttf', 'Maitree', 'normal');
+    }
+    if (fs.existsSync(maitreeBoldPath)) {
+      const mBoldBuf = fs.readFileSync(maitreeBoldPath);
+      doc.addFileToVFS('Maitree-Bold.ttf', mBoldBuf.toString('base64'));
+      doc.addFont('Maitree-Bold.ttf', 'Maitree', 'bold');
     }
 
-    doc.setFont('Sarabun', 'normal');
+    // Default fonts
+    const headFont = 'HeadFont';
+    const bodyFont = 'Maitree';
+
+    doc.setFont(headFont, 'bold');
 
     // Set ISO Document Properties
     doc.setProperties({
@@ -88,21 +108,19 @@ export async function GET(
         ? 'PDF/X-1a:2001 ISO 15930-1 Prepress Commercial Print-Ready Vector Catalog'
         : 'Standard Digital Vector Catalog',
       author: curator?.name || 'ARTVARA Curatorial Team',
-      keywords: 'ARTVARA, Exhibition Catalog, Vector Typography, Embedded TrueType Fonts, ISO 15930-1',
-      creator: 'ARTVARA High-Fidelity Vector Catalog Generator (Embedded TrueType Font Engine)',
+      keywords: 'ARTVARA, Exhibition Catalog, Vector Typography, Sukhumvit, Maitree, Embedded TrueType Fonts, ISO 15930-1',
+      creator: 'ARTVARA High-Fidelity Vector Catalog Generator (Sukhumvit + Maitree Typography Engine)',
     });
-
-    const primaryFont = 'Sarabun';
 
     // -------------------------------------------------------------
     // PAGE 1: COVER PAGE
     // -------------------------------------------------------------
-    doc.setFont(primaryFont, 'bold');
+    doc.setFont(headFont, 'bold');
     doc.setFontSize(22);
     doc.setTextColor(0, 0, 0);
     doc.text('ARTVARA', 105, 22, { align: 'center' });
 
-    doc.setFont(primaryFont, 'normal');
+    doc.setFont(bodyFont, 'normal');
     doc.setFontSize(8);
     doc.setTextColor(102, 102, 102);
     doc.text('INTERNATIONAL ART FESTIVAL & CURATED EXHIBITION', 105, 27, { align: 'center' });
@@ -124,13 +142,13 @@ export async function GET(
       yPos += 40;
     }
 
-    doc.setFont(primaryFont, 'bold');
+    doc.setFont(headFont, 'bold');
     doc.setFontSize(9);
     doc.setTextColor(51, 51, 51);
     doc.text('OFFICIAL EXHIBITION CATALOG (สูจิบัตร)', 105, yPos, { align: 'center' });
     yPos += 8;
 
-    doc.setFont(primaryFont, 'bold');
+    doc.setFont(headFont, 'bold');
     doc.setFontSize(18);
     doc.setTextColor(0, 0, 0);
     const titleLines = doc.splitTextToSize(exhibition.title, 170);
@@ -138,7 +156,7 @@ export async function GET(
     yPos += titleLines.length * 8 + 2;
 
     if (curator?.name) {
-      doc.setFont(primaryFont, 'normal');
+      doc.setFont(bodyFont, 'normal');
       doc.setFontSize(10);
       doc.setTextColor(68, 68, 68);
       doc.text(`Curated by: ${curator.name}`, 105, yPos, { align: 'center' });
@@ -146,7 +164,7 @@ export async function GET(
     }
 
     if (hasReviewers) {
-      doc.setFont(primaryFont, 'normal');
+      doc.setFont(bodyFont, 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(85, 85, 85);
       const revText = `Peer Review Committee: ${reviewers.map(r => [r.academicTitle, r.name].filter(Boolean).join(' ')).join(' • ')}`;
@@ -155,14 +173,14 @@ export async function GET(
       yPos += revLines.length * 4.5 + 2;
     }
 
-    doc.setFont(primaryFont, 'normal');
+    doc.setFont(bodyFont, 'normal');
     doc.setFontSize(9);
     doc.setTextColor(102, 102, 102);
     doc.text(formatDateRange(exhibition.startDate, exhibition.endDate), 105, yPos, { align: 'center' });
 
     doc.setDrawColor(224, 224, 224);
     doc.line(15, 280, 195, 280);
-    doc.setFont(primaryFont, 'normal');
+    doc.setFont(bodyFont, 'normal');
     doc.setFontSize(8);
     doc.setTextColor(102, 102, 102);
     doc.text(coverFooter, 105, 286, { align: 'center' });
@@ -173,12 +191,12 @@ export async function GET(
     if (hasReviewers) {
       doc.addPage('a4', 'portrait');
 
-      doc.setFont(primaryFont, 'bold');
+      doc.setFont(headFont, 'bold');
       doc.setFontSize(16);
       doc.setTextColor(0, 0, 0);
       doc.text('ARTVARA', 15, 22);
 
-      doc.setFont(primaryFont, 'normal');
+      doc.setFont(bodyFont, 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(102, 102, 102);
       doc.text('ACADEMIC PEER REVIEW BOARD & CURATORIAL STATEMENT', 15, 27);
@@ -186,12 +204,12 @@ export async function GET(
       doc.setDrawColor(224, 224, 224);
       doc.line(15, 30, 195, 30);
 
-      doc.setFont(primaryFont, 'bold');
+      doc.setFont(headFont, 'bold');
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
       doc.text('คณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Peer Review Committee)', 15, 38);
 
-      doc.setFont(primaryFont, 'normal');
+      doc.setFont(bodyFont, 'normal');
       doc.setFontSize(8);
       doc.setTextColor(102, 102, 102);
       doc.text('รายนามคณะกรรมการผู้ทรงคุณวุฒิในการพิจารณาและประเมินผลงานศิลปกรรมในนิทรรศการ', 15, 43);
@@ -213,13 +231,13 @@ export async function GET(
         } else {
           doc.setFillColor(239, 239, 239);
           doc.rect(17, cardY + 2, 10, 12, 'F');
-          doc.setFont(primaryFont, 'bold');
+          doc.setFont(headFont, 'bold');
           doc.setFontSize(9);
           doc.setTextColor(68, 68, 68);
           doc.text(rev.name?.trim().charAt(0).toUpperCase() || 'R', 22, cardY + 9.5, { align: 'center' });
         }
 
-        doc.setFont(primaryFont, 'bold');
+        doc.setFont(headFont, 'bold');
         doc.setFontSize(8.5);
         doc.setTextColor(0, 0, 0);
         const roleText = rev.role || (i === 0 ? 'ประธานกรรมการ' : 'กรรมการผู้ทรงคุณวุฒิ');
@@ -227,14 +245,14 @@ export async function GET(
         doc.text(`[${roleText}]  ${fullName}`, 30, cardY + 7);
 
         if (rev.institution) {
-          doc.setFont(primaryFont, 'normal');
+          doc.setFont(bodyFont, 'normal');
           doc.setFontSize(7.5);
           doc.setTextColor(85, 85, 85);
           doc.text(rev.institution, 30, cardY + 12);
         }
 
         if (rev.country) {
-          doc.setFont(primaryFont, 'normal');
+          doc.setFont(bodyFont, 'normal');
           doc.setFontSize(7.5);
           doc.setTextColor(119, 119, 119);
           doc.text(rev.country, 190, cardY + 9.5, { align: 'right' });
@@ -249,13 +267,13 @@ export async function GET(
         doc.line(15, cardY, 195, cardY);
         cardY += 6;
 
-        doc.setFont(primaryFont, 'bold');
+        doc.setFont(headFont, 'bold');
         doc.setFontSize(10);
         doc.setTextColor(0, 0, 0);
         doc.text('คำนำภัณฑารักษ์ (Curatorial Statement)', 15, cardY);
         cardY += 6;
 
-        doc.setFont(primaryFont, 'normal');
+        doc.setFont(bodyFont, 'normal');
         doc.setFontSize(8.5);
         doc.setTextColor(51, 51, 51);
         const noteLines = doc.splitTextToSize(`"${exhibition.curatorNote}"`, 180);
@@ -263,7 +281,7 @@ export async function GET(
         cardY += noteLines.length * 4.5;
 
         if (curator?.name) {
-          doc.setFont(primaryFont, 'bold');
+          doc.setFont(bodyFont, 'bold');
           doc.setFontSize(8);
           doc.setTextColor(0, 0, 0);
           doc.text(`— ${curator.name} (Curator)`, 195, cardY + 2, { align: 'right' });
@@ -272,7 +290,7 @@ export async function GET(
 
       doc.setDrawColor(229, 229, 229);
       doc.line(15, 282, 195, 282);
-      doc.setFont(primaryFont, 'normal');
+      doc.setFont(bodyFont, 'normal');
       doc.setFontSize(8);
       doc.setTextColor(119, 119, 119);
       doc.text(plateFooter || 'Editorial & Academic Accreditation Board', 15, 287);
@@ -301,9 +319,10 @@ export async function GET(
         }
       }
 
-      // 2. Details Section
+      // 2. Details Section (Starts at 196mm from top)
       const detailY = 196;
 
+      // Flag on top
       const flagUrl = getFlagImageUrl(artist?.country);
       if (flagUrl) {
         const flagB64 = await fetchImageAsBase64(flagUrl);
@@ -314,6 +333,7 @@ export async function GET(
         }
       }
 
+      // Artist Photo below Flag
       const hasRealPhoto =
         artist?.avatarUrl &&
         !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&
@@ -330,7 +350,7 @@ export async function GET(
         doc.setFillColor(248, 248, 248);
         doc.setDrawColor(208, 208, 208);
         doc.roundedRect(15, detailY + 9, 20, 24, 1.5, 1.5, 'FD');
-        doc.setFont(primaryFont, 'bold');
+        doc.setFont(headFont, 'bold');
         doc.setFontSize(14);
         doc.setTextColor(51, 51, 51);
         doc.text(artist?.name?.trim().charAt(0).toUpperCase() || 'A', 25, detailY + 24, { align: 'center' });
@@ -339,15 +359,15 @@ export async function GET(
       const textX = 40;
       let rightY = detailY + 2;
 
-      // Artist Name
-      doc.setFont(primaryFont, 'bold');
+      // Artist Name (HeadFont bold)
+      doc.setFont(headFont, 'bold');
       doc.setFontSize(11);
       doc.setTextColor(0, 0, 0);
       doc.text(artist?.name || 'Artist', textX, rightY);
       rightY += 4.5;
 
-      // Email & Country
-      doc.setFont(primaryFont, 'normal');
+      // Email & Country (Maitree normal)
+      doc.setFont(bodyFont, 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(102, 102, 102);
       if (artist?.email) {
@@ -357,41 +377,41 @@ export async function GET(
       doc.text(artist?.country || 'International', textX, rightY);
       rightY += 5.5;
 
-      // Artwork Title
-      doc.setFont(primaryFont, 'bold');
+      // Artwork Title (HeadFont bold)
+      doc.setFont(headFont, 'bold');
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
       doc.text(art.title, textX, rightY);
       rightY += 4.5;
 
-      // Medium & Specs
-      doc.setFont(primaryFont, 'normal');
+      // Medium & Specs (Maitree normal)
+      doc.setFont(bodyFont, 'normal');
       doc.setFontSize(8);
       doc.setTextColor(68, 68, 68);
       const specs = [art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ');
       doc.text(specs, textX, rightY);
       rightY += 5;
 
-      // Concept Block
+      // Concept Block (Maitree normal)
       const conceptText = art.concept?.trim() || art.description?.trim();
       if (conceptText) {
-        doc.setFont(primaryFont, 'bold');
+        doc.setFont(headFont, 'bold');
         doc.setFontSize(8);
         doc.setTextColor(0, 0, 0);
         doc.text('Concept : ', textX, rightY);
 
-        doc.setFont(primaryFont, 'normal');
+        doc.setFont(bodyFont, 'normal');
         doc.setTextColor(51, 51, 51);
         const conceptLines = doc.splitTextToSize(conceptText, 145);
         doc.text(conceptLines, textX + 14, rightY);
       }
 
-      // Plate Footer Row
+      // Plate Footer Row (Maitree normal)
       doc.setDrawColor(229, 229, 229);
       doc.setLineWidth(0.3);
       doc.line(15, 282, 195, 282);
 
-      doc.setFont(primaryFont, 'normal');
+      doc.setFont(bodyFont, 'normal');
       doc.setFontSize(8);
       doc.setTextColor(119, 119, 119);
       const footerLeft = [plateFooter, art.price ? formatPrice(art.price) : ''].filter(Boolean).join(' • ');
