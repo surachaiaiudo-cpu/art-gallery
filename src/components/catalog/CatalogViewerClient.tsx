@@ -454,14 +454,27 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไข Footer</span>
               </button>
 
-              {/* MAIN DOWNLOAD BUTTON: Directly executes 100% WYSIWYG True Vector PDF Export */}
+              {/* MAIN DOWNLOAD BUTTON: Directly Downloads .PDF File to Disk with Zero Print Popups */}
               <button
-                onClick={handleSaveVectorPDF100Percent}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
-                title="ดาวน์โหลด / บันทึกสูจิบัตร PDF (ตรงตามหน้าเว็บ 100% ฟอนต์ Vector แท้ คมกริบ ไม่แตก)"
+                onClick={() => handleDirectDownloadPDF('standard')}
+                disabled={isGeneratingPdf}
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95 disabled:opacity-50"
+                title="ดาวน์โหลดไฟล์ .pdf ลงเครื่องโดยตรงทันที (ฟอนต์ Vector แท้ Sukhumvit + Maitree ฝังในไฟล์ ไม่ผ่านหน้าต่างพิมพ์)"
               >
-                <Download className="w-4 h-4 text-[#C5A880]" />
-                <span>ดาวน์โหลดสูจิบัตร PDF</span>
+                {downloaded ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : isGeneratingPdf ? (
+                  <Loader2 className="w-4 h-4 text-[#C5A880] animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 text-[#C5A880]" />
+                )}
+                <span>
+                  {downloaded
+                    ? 'ดาวน์โหลดไฟล์สำเร็จแล้ว!'
+                    : isGeneratingPdf
+                    ? 'กำลังสร้างและดาวน์โหลด PDF...'
+                    : 'ดาวน์โหลดสูจิบัตร PDF'}
+                </span>
               </button>
             </div>
           </div>
@@ -1074,12 +1087,25 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       {/* Floating Action Button for 100% Quick Access on any device/scroll */}
       <div className="no-print fixed bottom-6 right-6 z-40">
         <button
-          onClick={handleSaveVectorPDF100Percent}
-          className="flex items-center gap-2.5 px-6 py-3.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-full font-bold text-sm shadow-2xl transition-all hover:scale-105 active:scale-95 ring-4 ring-white/50"
-          title="คลิกเพื่อบันทึกไฟล์ Vector PDF ตรงตามหน้าเว็บ 100%"
+          onClick={() => handleDirectDownloadPDF('standard')}
+          disabled={isGeneratingPdf}
+          className="flex items-center gap-2.5 px-6 py-3.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full font-bold text-sm shadow-2xl transition-all hover:scale-105 active:scale-95 ring-4 ring-white/50 disabled:opacity-50"
+          title="ดาวน์โหลดไฟล์ .pdf ลงเครื่องทันที (ฟอนต์ Vector แท้ Sukhumvit + Maitree)"
         >
-          <Printer className="w-5 h-5 text-[#FFFDF9]" />
-          <span>🖨️ บันทึก Vector PDF (ตรงตามเว็บ 100%)</span>
+          {downloaded ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          ) : isGeneratingPdf ? (
+            <Loader2 className="w-5 h-5 text-[#C5A880] animate-spin" />
+          ) : (
+            <Download className="w-5 h-5 text-[#C5A880]" />
+          )}
+          <span>
+            {downloaded
+              ? 'ดาวน์โหลดไฟล์สำเร็จแล้ว!'
+              : isGeneratingPdf
+              ? 'กำลังดาวน์โหลด PDF...'
+              : '📥 ดาวน์โหลดสูจิบัตร PDF'}
+          </span>
         </button>
       </div>
 
