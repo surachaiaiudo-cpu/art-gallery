@@ -57,113 +57,56 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const curator = exhibition.curator;
   const hasReviewers = peerReviewersList.length > 0;
 
-  // Direct File Download (.pdf) to device - No print dialog
+  // Direct File Download (100% Native Vector PDF with TrueType Vector Fonts) - No print dialog
   const handleDirectDownloadPDF = async (standard: PDFStandard = 'standard') => {
     try {
       setIsStandardModalOpen(false);
       setIsGeneratingPdf(true);
       setPdfStandardType(standard);
       setDownloaded(false);
-
-      // Wait for all web fonts to load completely to prevent font metrics squishing
-      if (typeof document !== 'undefined' && document.fonts) {
-        await document.fonts.ready;
-      }
-
-      // Dynamically import client-side PDF tools
-      const { jsPDF } = await import('jspdf');
-      const html2canvas = (await import('html2canvas')).default;
-
-      const pageElements = document.querySelectorAll<HTMLElement>('.catalog-a4-page');
-      if (!pageElements || pageElements.length === 0) {
-        alert('ไม่พบหน้าสูจิบัตรสำหรับดาวน์โหลด');
-        setIsGeneratingPdf(false);
-        return;
-      }
-
-      const total = pageElements.length;
-      setPdfProgress({ current: 0, total });
+      
+      const totalPages = (artworks.length || 0) + (hasReviewers ? 2 : 1);
+      setPdfProgress({ current: 1, total: totalPages });
 
       const isPdfX = standard === 'pdfx';
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: !isPdfX,
-      });
-
-      // Set ISO Standards & Prepress Document Properties
-      pdf.setProperties({
-        title: `${exhibition.title} - Official Exhibition Catalog`,
-        subject: isPdfX
-          ? 'PDF/X-1a:2001 ISO 15930-1 Prepress Commercial Print-Ready Catalog'
-          : 'Standard Digital Exhibition Catalog',
-        author: curator?.name || 'ARTVARA Curatorial Team',
-        keywords: isPdfX
-          ? 'PDF/X-1a:2001, Prepress, ISO 15930-1, Commercial Print, ARTVARA, Catalog'
-          : 'ARTVARA, Catalog, Digital E-Book',
-        creator: 'ARTVARA High-Fidelity Catalog System (ISO 15930-1 Prepress Engine)',
-      });
-
-      // High-resolution 300+ DPI scaling for crisp text and images
-      const scaleFactor = isPdfX ? 3.0 : 2.5;
-      const jpegQuality = isPdfX ? 0.98 : 0.94;
-
-      for (let i = 0; i < total; i++) {
-        setPdfProgress({ current: i + 1, total });
-        const el = pageElements[i];
-
-        const canvas = await html2canvas(el, {
-          scale: scaleFactor,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-          windowWidth: 1200,
-          onclone: (clonedDoc) => {
-            const clonedPages = clonedDoc.querySelectorAll<HTMLElement>('.catalog-a4-page');
-            clonedPages.forEach((p) => {
-              p.style.boxShadow = 'none';
-            });
-
-            const textEls = clonedDoc.querySelectorAll<HTMLElement>(
-              'h1, h2, h3, h4, h5, p, span, div'
-            );
-            textEls.forEach((t) => {
-              t.style.letterSpacing = 'normal';
-              t.style.wordSpacing = 'normal';
-              t.style.transform = 'none';
-              t.style.overflow = 'visible';
-              (t.style as any).webkitLineClamp = 'unset';
-              (t.style as any).lineClamp = 'unset';
-            });
-          },
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
-
-        if (i > 0) {
-          pdf.addPage('a4', 'portrait');
-        }
-
-        // Exact full A4 page: 210mm x 297mm
-        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-      }
-
       const cleanSlug = exhibition.slug || 'exhibition';
       const fileName = isPdfX
         ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
         : `${cleanSlug}-catalog-Standard.pdf`;
 
-      // Trigger direct file download
-      pdf.save(fileName);
+      // Dynamically import @react-pdf/renderer and Vector Component
+      const { pdf } = await import('@react-pdf/renderer');
+      const { ExhibitionCatalogPDF } = await import('@/components/catalog/ExhibitionCatalogPDF');
+
+      setPdfProgress({ current: Math.ceil(totalPages / 2), total: totalPages });
+
+      const blob = await pdf(
+        <ExhibitionCatalogPDF
+          exhibition={exhibition}
+          coverFooterText={coverFooter}
+          plateFooterText={plateFooter}
+          peerReviewers={peerReviewersList}
+          standard={standard}
+        />
+      ).toBlob();
+
+      setPdfProgress({ current: totalPages, total: totalPages });
+
+      // Direct file download to disk
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
       setDownloaded(true);
       setTimeout(() => setDownloaded(false), 5000);
     } catch (err) {
-      console.error('Error generating PDF download:', err);
-      alert('เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์ PDF');
+      console.error('Error generating Vector PDF download:', err);
+      alert('เกิดข้อผิดพลาดในการสร้างไฟล์ Vector PDF');
     } finally {
       setIsGeneratingPdf(false);
     }
