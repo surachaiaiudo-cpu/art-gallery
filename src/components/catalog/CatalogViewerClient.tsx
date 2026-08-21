@@ -204,6 +204,21 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
     }
   };
 
+  // 100% WYSIWYG Pure Vector PDF Export (Direct Browser Engine)
+  const handleSaveVectorPDF100Percent = () => {
+    if (typeof document !== 'undefined') {
+      const originalTitle = document.title;
+      const cleanSlug = exhibition.slug || 'catalog';
+      document.title = `${cleanSlug}-Official-A4-Vector-Catalog`;
+      window.print();
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1500);
+    } else {
+      window.print();
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F4F0] text-[#1E1D1B]">
       {/* 100% WYSIWYG A4 Layout Stylesheet */}
@@ -413,7 +428,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               <span className="text-[#C4BDB0]">•</span>
               <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold flex items-center gap-1">
                 <BookOpen className="w-3.5 h-3.5" />
-                สูจิบัตร A4 (Standard & PDF/X-1a)
+                สูจิบัตร A4 (Vector PDF แท้ 100%)
               </span>
             </div>
 
@@ -439,14 +454,14 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไข Footer</span>
               </button>
 
-              {/* PRIMARY BUTTON: 100% WYSIWYG True Vector PDF */}
+              {/* PRIMARY ACTION BUTTON: 100% WYSIWYG True Vector PDF */}
               <button
-                onClick={() => window.print()}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
-                title="บันทึกเป็น Vector PDF ให้เหมือนที่แสดงบนหน้าเว็บแบบ 1:1 โดยตัวอักษรเป็น Vector แท้ ไม่แตก"
+                onClick={handleSaveVectorPDF100Percent}
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-lg transition-all active:scale-95"
+                title="บันทึกเป็นไฟล์ Vector PDF ให้เหมือนที่แสดงบนหน้าเว็บแบบ 100% (ฟอนต์ Vector แท้ ไม่แตก)"
               >
                 <Printer className="w-4 h-4 text-[#FFFDF9]" />
-                <span>🖨️ บันทึก Vector PDF (ตรงตามเว็บ 1:1)</span>
+                <span>🖨️ บันทึก Vector PDF (ตรงตามเว็บ 100%)</span>
               </button>
 
               {/* Direct Download PDF Button (Opens 2-Level Standard Selection Modal) */}
