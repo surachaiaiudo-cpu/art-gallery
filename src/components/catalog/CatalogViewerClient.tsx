@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   FileText,
   Loader2,
+  Upload,
 } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
@@ -50,6 +51,10 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
   const [coverFooter, setCoverFooter] = useState(getCatalogFooterText(exhibition));
   const [plateFooter, setPlateFooter] = useState(getCatalogPlateFooterText(exhibition));
+  const [footerGraphicType, setFooterGraphicType] = useState<
+    'wave_gold' | 'wave_mono' | 'line_gold' | 'custom_image' | 'none'
+  >('wave_gold');
+  const [customFooterImageUrl, setCustomFooterImageUrl] = useState<string>('');
   const [peerReviewersList, setPeerReviewersList] = useState<PeerReviewer[]>(
     getExhibitionPeerReviewers(exhibition)
   );
@@ -57,6 +62,19 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const artworks = exhibition.artworks || [];
   const curator = exhibition.curator;
   const hasReviewers = peerReviewersList.length > 0;
+
+  const handleFooterImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setCustomFooterImageUrl(event.target.result as string);
+        setFooterGraphicType('custom_image');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Direct File Download (100% Native Vector PDF with Embedded TrueType Vector Fonts) - No print dialog
   const handleDirectDownloadPDF = async (standard: PDFStandard = 'standard') => {
@@ -83,6 +101,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           plateFooterText={plateFooter}
           peerReviewers={peerReviewersList}
           standard={standard}
+          footerGraphicType={footerGraphicType}
+          customFooterImageUrl={customFooterImageUrl}
         />
       ).toBlob();
 
@@ -814,6 +834,122 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </span>
               </div>
 
+              {/* 3. Footer Graphic / Image Customizer */}
+              <div className="pt-2 border-t border-[#E8E2D6] space-y-2.5">
+                <label className="block text-xs font-bold text-[#4A443A]">
+                  3. ภาพ / กราฟิกลายเส้น Footer ด้านล่างของสูจิบัตร
+                </label>
+
+                {/* Presets Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFooterGraphicType('wave_gold')}
+                    className={`p-2 rounded-xl text-left border text-xs font-semibold transition-all ${
+                      footerGraphicType === 'wave_gold'
+                        ? 'border-[#8C6D3F] bg-[#FAF6EE] text-[#8C6D3F] shadow-sm ring-1 ring-[#8C6D3F]'
+                        : 'border-[#DDD6C8] bg-white text-[#555] hover:bg-[#FAF8F5]'
+                    }`}
+                  >
+                    <span className="block text-sm mb-0.5">🌊</span>
+                    <span>คลื่นทอง-เงิน</span>
+                    <span className="block text-[9px] text-[#888] font-normal">ค่าเริ่มต้น</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFooterGraphicType('wave_mono')}
+                    className={`p-2 rounded-xl text-left border text-xs font-semibold transition-all ${
+                      footerGraphicType === 'wave_mono'
+                        ? 'border-[#8C6D3F] bg-[#FAF6EE] text-[#8C6D3F] shadow-sm ring-1 ring-[#8C6D3F]'
+                        : 'border-[#DDD6C8] bg-white text-[#555] hover:bg-[#FAF8F5]'
+                    }`}
+                  >
+                    <span className="block text-sm mb-0.5">🖤</span>
+                    <span>คลื่นโมโนโครม</span>
+                    <span className="block text-[9px] text-[#888] font-normal">เทา-ดำ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFooterGraphicType('line_gold')}
+                    className={`p-2 rounded-xl text-left border text-xs font-semibold transition-all ${
+                      footerGraphicType === 'line_gold'
+                        ? 'border-[#8C6D3F] bg-[#FAF6EE] text-[#8C6D3F] shadow-sm ring-1 ring-[#8C6D3F]'
+                        : 'border-[#DDD6C8] bg-white text-[#555] hover:bg-[#FAF8F5]'
+                    }`}
+                  >
+                    <span className="block text-sm mb-0.5">✨</span>
+                    <span>เส้นทองมินิมอล</span>
+                    <span className="block text-[9px] text-[#888] font-normal">เรียบหรู</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFooterGraphicType('none')}
+                    className={`p-2 rounded-xl text-left border text-xs font-semibold transition-all ${
+                      footerGraphicType === 'none'
+                        ? 'border-[#8C6D3F] bg-[#FAF6EE] text-[#8C6D3F] shadow-sm ring-1 ring-[#8C6D3F]'
+                        : 'border-[#DDD6C8] bg-white text-[#555] hover:bg-[#FAF8F5]'
+                    }`}
+                  >
+                    <span className="block text-sm mb-0.5">🚫</span>
+                    <span>ไม่มีลวดลาย</span>
+                    <span className="block text-[9px] text-[#888] font-normal">พื้นขาวล้วน</span>
+                  </button>
+                </div>
+
+                {/* Custom Image Upload Option */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-[#4A443A]">
+                      หรือ อัปโหลดภาพ / แบนเนอร์ Footer ของท่านเอง:
+                    </span>
+                    {customFooterImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomFooterImageUrl('');
+                          setFooterGraphicType('wave_gold');
+                        }}
+                        className="text-[10px] text-red-600 hover:underline"
+                      >
+                        ลบภาพ / ใช้ลายมาตรฐาน
+                      </button>
+                    )}
+                  </div>
+
+                  <label className="flex items-center justify-center gap-2 p-3 bg-white border-2 border-dashed border-[#D5CEC0] hover:border-[#8C6D3F] rounded-xl cursor-pointer transition-colors group">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFooterImageUpload}
+                      className="hidden"
+                    />
+                    <Upload className="w-4 h-4 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
+                    <span className="text-xs text-[#5C5548] font-medium">
+                      {customFooterImageUrl
+                        ? 'คลิกเพื่อเปลี่ยนภาพ Footer อื่น (PNG, JPG, SVG)'
+                        : 'คลิกเพื่อเลือกไฟล์ภาพ Footer จากเครื่องคุณ (PNG, JPG, SVG)'}
+                    </span>
+                  </label>
+
+                  {customFooterImageUrl && (
+                    <div className="mt-2 p-2 bg-[#FAF8F5] border border-[#DDD6C8] rounded-xl flex items-center gap-3">
+                      <img
+                        src={customFooterImageUrl}
+                        alt="Custom Footer Preview"
+                        className="h-10 w-auto max-w-[140px] object-contain bg-white border border-[#E0E0E0] rounded p-1"
+                      />
+                      <div className="text-[10px] text-[#666]">
+                        <span className="font-bold text-emerald-700 block">✓ กำลังใช้งานภาพนี้เป็น Footer ท้ายหน้า</span>
+                        <span>ภาพจะแสดงที่แถบล่างสุดของสูจิบัตรทุกหน้า</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="pt-3 border-t border-[#E8E2D6] flex items-center justify-end gap-2.5">
                 <button
                   type="button"
@@ -1101,23 +1237,43 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </div>
               </div>
 
-              {/* Bottom Subtle Ribbon / Wave Graphic matching reference (SVG) */}
-              <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
-                <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id={`webWave1-${art.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#D0D0D0" stopOpacity="0.4" />
-                      <stop offset="100%" stopColor="#B0B0B0" stopOpacity="0.2" />
-                    </linearGradient>
-                    <linearGradient id={`webWave2-${art.id}`} x1="0%" y1="100%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#F5B28B" stopOpacity="0.4" />
-                      <stop offset="100%" stopColor="#EFA478" stopOpacity="0.15" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill={`url(#webWave1-${art.id})`} />
-                  <path d="M-30,120 C90,90 220,20 370,80 C490,140 570,60 630,70 L630,120 Z" fill={`url(#webWave2-${art.id})`} />
-                </svg>
-              </div>
+              {/* Bottom Footer Graphic / Custom Banner */}
+              {footerGraphicType === 'custom_image' && customFooterImageUrl ? (
+                <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 flex items-end justify-center px-4 pb-2">
+                  <img src={customFooterImageUrl} alt="Footer Banner" className="max-h-full max-w-full object-contain" />
+                </div>
+              ) : footerGraphicType === 'wave_mono' ? (
+                <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
+                  <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id={`webWaveMono-${art.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#444444" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="#111111" stopOpacity="0.15" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill={`url(#webWaveMono-${art.id})`} />
+                  </svg>
+                </div>
+              ) : footerGraphicType === 'line_gold' ? (
+                <div className="absolute bottom-10 left-8 right-8 border-b border-[#C5A880]/50 pointer-events-none z-0" />
+              ) : footerGraphicType !== 'none' ? (
+                <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
+                  <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id={`webWave1-${art.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#D0D0D0" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#B0B0B0" stopOpacity="0.2" />
+                      </linearGradient>
+                      <linearGradient id={`webWave2-${art.id}`} x1="0%" y1="100%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#F5B28B" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#EFA478" stopOpacity="0.15" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill={`url(#webWave1-${art.id})`} />
+                    <path d="M-30,120 C90,90 220,20 370,80 C490,140 570,60 630,70 L630,120 Z" fill={`url(#webWave2-${art.id})`} />
+                  </svg>
+                </div>
+              ) : null}
 
               {/* Bottom Footer Row: Pure K Grayscale Tints */}
               <div className="relative z-10 mt-3 pt-2 border-t border-[#E5E5E5] flex items-center justify-between text-[10px] text-[#777777]">

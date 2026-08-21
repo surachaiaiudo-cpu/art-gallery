@@ -421,10 +421,15 @@ export function ExhibitionCatalogPDF({
   plateFooterText,
   peerReviewers,
   standard = 'standard',
-}: ExhibitionCatalogPDFProps) {
+  footerGraphicType = 'wave_gold',
+  customFooterImageUrl,
+}: ExhibitionCatalogPDFProps & {
+  footerGraphicType?: 'wave_gold' | 'wave_mono' | 'line_gold' | 'custom_image' | 'none';
+  customFooterImageUrl?: string;
+}) {
   const isPdfX = standard === 'pdfx';
-  const coverFooter = coverFooterText || getCatalogFooterText(exhibition);
-  const plateFooter = plateFooterText || getCatalogPlateFooterText(exhibition);
+  const coverFooter = cleanThaiText(coverFooterText || getCatalogFooterText(exhibition));
+  const plateFooter = cleanThaiText(plateFooterText || getCatalogPlateFooterText(exhibition));
   const reviewers = peerReviewers || getExhibitionPeerReviewers(exhibition);
   const hasReviewers = reviewers.length > 0;
   const artworks = exhibition.artworks || [];
@@ -463,11 +468,11 @@ export function ExhibitionCatalogPDF({
           {/* Titles */}
           <View style={styles.coverContent}>
             <Text style={styles.catalogBadge}>Official Exhibition Catalog (สูจิบัตร)</Text>
-            <Text style={styles.coverTitle}>{exhibition.title}</Text>
+            <Text style={styles.coverTitle}>{cleanThaiText(exhibition.title)}</Text>
 
             {curator?.name && (
               <Text style={styles.curatorText}>
-                Curated by: <Text style={styles.curatorHighlight}>{curator.name}</Text>
+                Curated by: <Text style={styles.curatorHighlight}>{cleanThaiText(curator.name)}</Text>
               </Text>
             )}
 
@@ -531,17 +536,17 @@ export function ExhibitionCatalogPDF({
                         {reviewer.role || (idx === 0 ? 'ประธานกรรมการ' : 'กรรมการผู้ทรงคุณวุฒิ')}
                       </Text>
                       <Text style={styles.reviewerName}>
-                        {[reviewer.academicTitle, reviewer.name].filter(Boolean).join(' ')}
+                        {cleanThaiText([reviewer.academicTitle, reviewer.name].filter(Boolean).join(' '))}
                       </Text>
                     </View>
                     {reviewer.institution && (
-                      <Text style={styles.reviewerInstitution}>{reviewer.institution}</Text>
+                      <Text style={styles.reviewerInstitution}>{cleanThaiText(reviewer.institution)}</Text>
                     )}
                   </View>
                 </View>
 
                 {reviewer.country && (
-                  <Text style={styles.reviewerCountry}>{reviewer.country}</Text>
+                  <Text style={styles.reviewerCountry}>{cleanThaiText(reviewer.country)}</Text>
                 )}
               </View>
             ))}
@@ -550,9 +555,9 @@ export function ExhibitionCatalogPDF({
             {exhibition.curatorNote && (
               <View style={styles.statementContainer}>
                 <Text style={styles.sectionTitle}>คำนำภัณฑารักษ์ (Curatorial Statement)</Text>
-                <Text style={styles.statementQuote}>"{exhibition.curatorNote}"</Text>
+                <Text style={styles.statementQuote}>"{cleanThaiText(exhibition.curatorNote)}"</Text>
                 {curator?.name && (
-                  <Text style={styles.statementAuthor}>— {curator.name} (Curator)</Text>
+                  <Text style={styles.statementAuthor}>— {cleanThaiText(curator.name)} (Curator)</Text>
                 )}
               </View>
             )}
@@ -579,7 +584,7 @@ export function ExhibitionCatalogPDF({
           artist?.avatarUrl &&
           !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&
           !artist.avatarUrl.includes('unsplash.com/photo-1534528741775');
-        const concept = art.concept?.trim() || art.description?.trim();
+        const concept = cleanThaiText(art.concept?.trim() || art.description?.trim());
 
         return (
           <Page key={art.id} size="A4" style={styles.page}>
@@ -607,15 +612,17 @@ export function ExhibitionCatalogPDF({
 
                 {/* Right Col: Vector Typography Details */}
                 <View style={styles.artworkRightCol}>
-                  <Text style={styles.artistName}>{artist?.name || 'Artist'}</Text>
+                  <Text style={styles.artistName}>{cleanThaiText(artist?.name || 'Artist')}</Text>
                   {artist?.email && <Text style={styles.artistEmail}>{artist.email}</Text>}
-                  <Text style={styles.artistCountry}>{artist?.country || 'International'}</Text>
+                  <Text style={styles.artistCountry}>{cleanThaiText(artist?.country || 'International')}</Text>
 
-                  <Text style={styles.artTitle}>{art.title}</Text>
+                  <Text style={styles.artTitle}>{cleanThaiText(art.title)}</Text>
                   <Text style={styles.artSpecs}>
-                    {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : '']
-                      .filter(Boolean)
-                      .join(' ')}
+                    {cleanThaiText(
+                      [art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : '']
+                        .filter(Boolean)
+                        .join(' ')
+                    )}
                   </Text>
 
                   {concept && (
@@ -630,23 +637,43 @@ export function ExhibitionCatalogPDF({
               </View>
             </View>
 
-            {/* Bottom Wave Vector SVG */}
-            <View style={styles.waveContainer}>
-              <Svg viewBox="0 0 600 120" style={{ width: '100%', height: '100%' }}>
-                <Defs>
-                  <LinearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0%" stopColor="#D0D0D0" stopOpacity={0.35} />
-                    <Stop offset="100%" stopColor="#B0B0B0" stopOpacity={0.15} />
-                  </LinearGradient>
-                  <LinearGradient id="g2" x1="0" y1="1" x2="1" y2="0">
-                    <Stop offset="0%" stopColor="#F5B28B" stopOpacity={0.35} />
-                    <Stop offset="100%" stopColor="#EFA478" stopOpacity={0.1} />
-                  </LinearGradient>
-                </Defs>
-                <Path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill="url(#g1)" />
-                <Path d="M-30,120 C90,90 220,20 370,80 C490,140 570,60 630,70 L630,120 Z" fill="url(#g2)" />
-              </Svg>
-            </View>
+            {/* Bottom Footer Graphic / Custom Banner */}
+            {footerGraphicType === 'custom_image' && customFooterImageUrl ? (
+              <View style={styles.waveContainer}>
+                <PdfImage src={customFooterImageUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </View>
+            ) : footerGraphicType === 'wave_mono' ? (
+              <View style={styles.waveContainer}>
+                <Svg viewBox="0 0 600 120" style={{ width: '100%', height: '100%' }}>
+                  <Defs>
+                    <LinearGradient id="gMono" x1="0" y1="0" x2="1" y2="1">
+                      <Stop offset="0%" stopColor="#444444" stopOpacity={0.25} />
+                      <Stop offset="100%" stopColor="#111111" stopOpacity={0.1} />
+                    </LinearGradient>
+                  </Defs>
+                  <Path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill="url(#gMono)" />
+                </Svg>
+              </View>
+            ) : footerGraphicType === 'line_gold' ? (
+              <View style={{ position: 'absolute', bottom: 35, left: 40, right: 40, borderBottomWidth: 1, borderBottomColor: '#C5A880', opacity: 0.5 }} />
+            ) : footerGraphicType !== 'none' ? (
+              <View style={styles.waveContainer}>
+                <Svg viewBox="0 0 600 120" style={{ width: '100%', height: '100%' }}>
+                  <Defs>
+                    <LinearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                      <Stop offset="0%" stopColor="#D0D0D0" stopOpacity={0.35} />
+                      <Stop offset="100%" stopColor="#B0B0B0" stopOpacity={0.15} />
+                    </LinearGradient>
+                    <LinearGradient id="g2" x1="0" y1="1" x2="1" y2="0">
+                      <Stop offset="0%" stopColor="#F5B28B" stopOpacity={0.35} />
+                      <Stop offset="100%" stopColor="#EFA478" stopOpacity={0.1} />
+                    </LinearGradient>
+                  </Defs>
+                  <Path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill="url(#g1)" />
+                  <Path d="M-30,120 C90,90 220,20 370,80 C490,140 570,60 630,70 L630,120 Z" fill="url(#g2)" />
+                </Svg>
+              </View>
+            ) : null}
 
             {/* Bottom Footer Row */}
             <View style={styles.plateFooterRow}>
