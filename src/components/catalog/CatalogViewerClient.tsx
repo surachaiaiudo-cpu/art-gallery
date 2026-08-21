@@ -336,63 +336,94 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Level 1: Standard Direct Download */}
+            {/* 3 Download & Save Options Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Option 1: Standard Direct Download */}
               <div
                 onClick={() => handleDirectDownloadPDF('standard')}
-                className="p-5 rounded-2xl border-2 border-[#D5CEC0] bg-white hover:border-[#8C6D3F] hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between group space-y-4"
+                className="p-4 sm:p-5 rounded-2xl border-2 border-[#D5CEC0] bg-white hover:border-[#8C6D3F] hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between group space-y-4"
               >
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase bg-neutral-100 text-neutral-800 border border-neutral-200">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-neutral-100 text-neutral-800 border border-neutral-200">
                       แบบที่ 1 : Standard
                     </span>
                     <FileText className="w-5 h-5 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
                   </div>
-                  <h4 className="font-serif text-base font-bold text-[#1A1918]">
+                  <h4 className="font-serif text-sm sm:text-base font-bold text-[#1A1918]">
                     Standard E-Catalog
                   </h4>
-                  <p className="text-xs text-[#6E685C] leading-relaxed">
-                    มาตรฐาน A4 ดิจิทัลทั่วไป ความละเอียดคมชัดสูง เหมาะสำหรับเปิดอ่านบน iPad, แท็บเล็ต, มือถือ และส่งต่อไฟล์ได้อย่างรวดเร็ว
+                  <p className="text-[11px] text-[#6E685C] leading-relaxed">
+                    มาตรฐาน A4 ดิจิทัลทั่วไป ดาวน์โหลดไฟล์ .pdf สำเร็จรูปตรงลงเครื่องทันที เหมาะสำหรับ iPad และมือถือ
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-semibold flex items-center justify-between">
-                  <span>📥 ดาวน์โหลดไฟล์ Standard (.pdf)</span>
+                <div className="pt-2.5 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-semibold flex items-center justify-between">
+                  <span>📥 โหลดไฟล์ Standard (.pdf)</span>
                   <span>→</span>
                 </div>
               </div>
 
-              {/* Level 2: PDF/X Direct Download */}
+              {/* Option 2: PDF/X Direct Download */}
               <div
                 onClick={() => handleDirectDownloadPDF('pdfx')}
-                className="p-5 rounded-2xl border-2 border-[#C5A880] bg-gradient-to-b from-[#FAF6EE] to-white hover:border-[#8C6D3F] hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group space-y-4 ring-2 ring-[#8C6D3F]/20"
+                className="p-4 sm:p-5 rounded-2xl border-2 border-[#C5A880] bg-gradient-to-b from-[#FAF6EE] to-white hover:border-[#8C6D3F] hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group space-y-4"
               >
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase bg-[#1A1918] text-[#E5D2B8]">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-[#1A1918] text-[#E5D2B8]">
                       แบบที่ 2 : PDF/X
                     </span>
                     <ShieldCheck className="w-5 h-5 text-amber-700 group-hover:scale-110 transition-transform" />
                   </div>
-                  <h4 className="font-serif text-base font-bold text-[#1A1918] flex items-center gap-1.5">
+                  <h4 className="font-serif text-sm sm:text-base font-bold text-[#1A1918] flex items-center gap-1">
                     <span>PDF/X (PDF/X-1a)</span>
-                    <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded font-mono font-bold">ISO</span>
+                    <span className="text-[9px] text-amber-700 bg-amber-100 px-1 rounded font-mono font-bold">ISO</span>
                   </h4>
-                  <p className="text-xs text-[#6E685C] leading-relaxed">
-                    มาตรฐานแท่นพิมพ์สากล (ISO 15930-1) ความละเอียดสูงสุด 300+ DPI พร้อม Prepress Metadata และสีดำเพลทเดียว (K-only) สำหรับส่งเข้าโรงพิมพ์
+                  <p className="text-[11px] text-[#6E685C] leading-relaxed">
+                    มาตรฐานแท่นพิมพ์สากล (ISO 15930-1) ความละเอียดสูงสุด 300+ DPI ดาวน์โหลดไฟล์ .pdf ตรงลงเครื่อง
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-amber-900 font-bold flex items-center justify-between">
-                  <span>📥 ดาวน์โหลดไฟล์ PDF/X (.pdf)</span>
+                <div className="pt-2.5 border-t border-[#F0ECE4] text-[11px] text-amber-900 font-bold flex items-center justify-between">
+                  <span>📥 โหลดไฟล์ PDF/X (.pdf)</span>
+                  <span>→</span>
+                </div>
+              </div>
+
+              {/* Option 3: Method 2 - Native Save as PDF (Direct Browser Engine) */}
+              <div
+                onClick={() => {
+                  setIsStandardModalOpen(false);
+                  handleSaveVectorPDF100Percent();
+                }}
+                className="p-4 sm:p-5 rounded-2xl border-2 border-[#8C6D3F] bg-gradient-to-b from-[#FAF6EE] to-white hover:border-[#6B5028] hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group space-y-4 ring-2 ring-[#8C6D3F]/30"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-[#8C6D3F] text-white">
+                      แบบที่ 3 : บันทึกผ่านเบราว์เซอร์
+                    </span>
+                    <Printer className="w-5 h-5 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="font-serif text-sm sm:text-base font-bold text-[#1A1918] flex items-center gap-1">
+                    <span>Native Save as PDF</span>
+                    <span className="text-[9px] text-emerald-700 bg-emerald-100 px-1 rounded font-mono font-bold">100%</span>
+                  </h4>
+                  <p className="text-[11px] text-[#6E685C] leading-relaxed">
+                    เปิดหน้าต่างพิมพ์ของเบราว์เซอร์เพื่อบันทึกเป็น PDF ตรงตามหน้าเว็บ 100% ตัวอักษรเป็น Vector แท้ ไม่แตก
+                  </p>
+                </div>
+
+                <div className="pt-2.5 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-bold flex items-center justify-between">
+                  <span>🖨️ สั่งบันทึกเป็น PDF (Save as PDF)</span>
                   <span>→</span>
                 </div>
               </div>
             </div>
 
             <div className="mt-6 pt-4 border-t border-[#E8E2D6] flex items-center justify-between text-xs text-[#7A7468]">
-              <span>💡 คลิกเพื่อดาวน์โหลดไฟล์ .pdf ลงเครื่องได้โดยตรงทันที ไม่ต้องเปิดหน้าต่างพิมพ์</span>
+              <span>💡 เลือกรูปแบบที่ต้องการเพื่อดาวน์โหลดหรือบันทึกไฟล์ PDF ขนาด A4</span>
               <button
                 onClick={() => setIsStandardModalOpen(false)}
                 className="px-4 py-1.5 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
@@ -454,12 +485,22 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไข Footer</span>
               </button>
 
-              {/* MAIN DOWNLOAD BUTTON: Opens the 2-Level Standard Selection Modal (Standard & PDF/X) */}
+              {/* PRIMARY ACTION BUTTON: 1-Click Native Save as PDF (Method 2) */}
+              <button
+                onClick={handleSaveVectorPDF100Percent}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
+                title="บันทึกผ่านเบราว์เซอร์เป็นไฟล์ Vector PDF ตรงตามหน้าเว็บ 100% (วิธีที่ 2)"
+              >
+                <Printer className="w-4 h-4 text-[#FFFDF9]" />
+                <span>🖨️ บันทึกผ่านเบราว์เซอร์ (Save as PDF)</span>
+              </button>
+
+              {/* MAIN DOWNLOAD BUTTON: Opens the 3-Option Selection Modal */}
               <button
                 onClick={() => setIsStandardModalOpen(true)}
                 disabled={isGeneratingPdf}
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95 disabled:opacity-50"
-                title="เลือกระดับมาตรฐานการดาวน์โหลดสูจิบัตร (แบบที่ 1: Standard หรือ แบบที่ 2: PDF/X)"
+                title="เลือกระดับมาตรฐานการดาวน์โหลดสูจิบัตร (Standard / PDF/X / บันทึกผ่านเบราว์เซอร์)"
               >
                 {downloaded ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
