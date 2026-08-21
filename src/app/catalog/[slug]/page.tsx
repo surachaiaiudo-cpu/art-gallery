@@ -8,8 +8,16 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
-import { DownloadCatalogPDFButton } from '@/components/catalog/DownloadCatalogPDFButton';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
+import dynamicImport from 'next/dynamic';
+
+const DownloadCatalogPDFButton = dynamicImport(
+  () =>
+    import('@/components/catalog/DownloadCatalogPDFButton').then(
+      (mod) => mod.DownloadCatalogPDFButton
+    ),
+  { ssr: false }
+);
 
 export const dynamic = 'force-dynamic';
 

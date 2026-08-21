@@ -2,13 +2,30 @@ import { db, schema } from '@/db';
 import { eq, desc, asc, or } from 'drizzle-orm';
 import { Exhibition, Artwork, User, Inquiry, WallPosition } from '@/types/exhibition';
 
-export async function getExhibitionBySlug(slug: string): Promise<Exhibition | null> {
+export async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition | null> {
   try {
-    const rawExhibitions = await db
+    const slug = decodeURIComponent(rawSlug || '').trim();
+    const cleanSlug = slug.replace(/-+$/, '');
+
+    let rawExhibitions = await db
       .select()
       .from(schema.exhibitions)
-      .where(eq(schema.exhibitions.slug, slug))
+      .where(or(eq(schema.exhibitions.slug, slug), eq(schema.exhibitions.slug, cleanSlug), eq(schema.exhibitions.id, slug)))
       .limit(1);
+
+    if (!rawExhibitions || rawExhibitions.length === 0) {
+      const allExhs = await db.select().from(schema.exhibitions);
+      const found = allExhs.find(
+        (e: any) =>
+          e.slug === slug ||
+          e.slug === cleanSlug ||
+          e.slug.startsWith(cleanSlug) ||
+          cleanSlug.startsWith(e.slug)
+      );
+      if (found) {
+        rawExhibitions = [found];
+      }
+    }
 
     if (rawExhibitions && rawExhibitions.length > 0) {
       const exh = rawExhibitions[0];

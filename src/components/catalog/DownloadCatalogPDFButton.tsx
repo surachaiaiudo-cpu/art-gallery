@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { Exhibition } from '@/types/exhibition';
 import { Download, Printer, Loader2, CheckCircle2 } from 'lucide-react';
-import { ExhibitionCatalogPDF } from './ExhibitionCatalogPDF';
 
 interface DownloadCatalogPDFButtonProps {
   exhibition: Exhibition;
@@ -22,9 +21,15 @@ export function DownloadCatalogPDFButton({
   const handleDownloadPDF = async () => {
     try {
       setLoading(true);
-      // Dynamically import @react-pdf/renderer to keep client bundles lightweight
-      const { pdf } = await import('@react-pdf/renderer');
-      const blob = await pdf(<ExhibitionCatalogPDF exhibition={exhibition} />).toBlob();
+
+      // Lazy import @react-pdf/renderer and template on-demand in browser only
+      const [reactPdf, pdfTemplate] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('./ExhibitionCatalogPDF'),
+      ]);
+
+      const DocumentComponent = pdfTemplate.ExhibitionCatalogPDF;
+      const blob = await reactPdf.pdf(<DocumentComponent exhibition={exhibition} />).toBlob();
 
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -38,8 +43,8 @@ export function DownloadCatalogPDFButton({
       setDownloaded(true);
       setTimeout(() => setDownloaded(false), 4000);
     } catch (err) {
-      console.error('Error generating PDF:', err);
-      // Fallback: trigger print dialog for A4 PDF export
+      console.error('Error generating PDF client-side:', err);
+      // Seamless browser print fallback
       window.print();
     } finally {
       setLoading(false);
