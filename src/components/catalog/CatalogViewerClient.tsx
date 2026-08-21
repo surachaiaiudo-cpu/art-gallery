@@ -9,15 +9,11 @@ import { Footer } from '@/components/layout/Footer';
 import {
   ArrowLeft,
   BookOpen,
-  Download,
   Printer,
   CheckCircle2,
   Edit3,
   X,
   Save,
-  Loader2,
-  FileText,
-  ShieldCheck,
   GraduationCap,
   Award,
   Plus,
@@ -31,15 +27,8 @@ interface CatalogViewerClientProps {
   exhibition: Exhibition;
 }
 
-export type PDFExportProfile = 'standard' | 'pdfx1a';
-
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const searchParams = useSearchParams();
-  const [downloaded, setDownloaded] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [pdfStandardType, setPdfStandardType] = useState<PDFExportProfile>('standard');
-  const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0 });
-  const [isExportOptionsOpen, setIsExportOptionsOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeerReviewModalOpen, setIsPeerReviewModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -57,129 +46,18 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const curator = exhibition.curator;
   const hasReviewers = peerReviewersList.length > 0;
 
-  // Direct High-Resolution Full Page A4 PDF File Generator supporting Standard and PDF/X-1a:2001
-  const handleExportPDF = async (profile: PDFExportProfile = 'standard') => {
-    try {
-      setIsGeneratingPdf(true);
-      setPdfStandardType(profile);
-      setDownloaded(false);
-      setIsExportOptionsOpen(false);
-
-      // Wait for all web fonts to load completely to prevent glyph overlap / text squishing
-      if (typeof document !== 'undefined' && document.fonts) {
-        await document.fonts.ready;
-      }
-
-      // Dynamically import client-side PDF tools
-      const { jsPDF } = await import('jspdf');
-      const html2canvas = (await import('html2canvas')).default;
-
-      const pageElements = document.querySelectorAll<HTMLElement>('.catalog-a4-page');
-      if (!pageElements || pageElements.length === 0) {
-        alert('ไม่พบหน้าสูจิบัตรสำหรับดาวน์โหลด');
-        setIsGeneratingPdf(false);
-        return;
-      }
-
-      const total = pageElements.length;
-      setPdfProgress({ current: 0, total });
-
-      const isPdfX = profile === 'pdfx1a';
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: !isPdfX,
-      });
-
-      // Set ISO Standards & Prepress Document Properties
-      pdf.setProperties({
-        title: `${exhibition.title} - Official Exhibition Catalog`,
-        subject: isPdfX
-          ? 'PDF/X-1a:2001 ISO 15930-1 Prepress Commercial Print-Ready Catalog'
-          : 'Standard Digital Exhibition Catalog',
-        author: curator?.name || 'ARTVARA Curatorial Team',
-        keywords: isPdfX
-          ? 'PDF/X-1a:2001, Prepress, ISO 15930-1, Commercial Print, ARTVARA, Catalog'
-          : 'ARTVARA, Catalog, Digital E-Book',
-        creator: 'ARTVARA High-Fidelity Catalog System (ISO 15930-1 Prepress Engine)',
-      });
-
-      // High resolution scale
-      const scaleFactor = isPdfX ? 3.0 : 2.0;
-      const jpegQuality = isPdfX ? 0.98 : 0.92;
-
-      for (let i = 0; i < total; i++) {
-        setPdfProgress({ current: i + 1, total });
-        const el = pageElements[i];
-
-        const canvas = await html2canvas(el, {
-          scale: scaleFactor,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-          windowWidth: 1200,
-          onclone: (clonedDoc) => {
-            const clonedPages = clonedDoc.querySelectorAll<HTMLElement>('.catalog-a4-page');
-            clonedPages.forEach((p) => {
-              p.style.boxShadow = 'none';
-            });
-
-            const textEls = clonedDoc.querySelectorAll<HTMLElement>(
-              'h1, h2, h3, h4, h5, p, span, div'
-            );
-            textEls.forEach((t) => {
-              t.style.letterSpacing = 'normal';
-              t.style.wordSpacing = 'normal';
-              t.style.transform = 'none';
-              t.style.overflow = 'visible';
-              (t.style as any).webkitLineClamp = 'unset';
-              (t.style as any).lineClamp = 'unset';
-            });
-          },
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
-
-        if (i > 0) {
-          pdf.addPage('a4', 'portrait');
-        }
-
-        // Exactly full A4: 210mm x 297mm
-        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-      }
-
-      const cleanSlug = exhibition.slug || 'exhibition';
-      const fileName = isPdfX
-        ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
-        : `${cleanSlug}-catalog-standard.pdf`;
-
-      pdf.save(fileName);
-
-      setDownloaded(true);
-      setTimeout(() => setDownloaded(false), 5000);
-    } catch (err) {
-      console.error('Error generating PDF:', err);
-      window.print();
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
-
-  // Browser print fallback
-  const handlePrintPDF = () => {
+  // Always invoke 100% True Vector Print Engine
+  const handlePrintVectorPDF = () => {
     window.print();
   };
 
-  // Auto-trigger if navigated with ?export=standard or ?export=pdfx1a
+  // Auto-trigger print if navigated with ?export parameter
   useEffect(() => {
     const exportParam = searchParams.get('export');
-    if (exportParam === 'pdfx1a' || exportParam === 'standard') {
+    if (exportParam) {
       const timer = setTimeout(() => {
-        handleExportPDF(exportParam as PDFExportProfile);
-      }, 700);
+        window.print();
+      }, 600);
       return () => clearTimeout(timer);
     }
   }, [searchParams]);
@@ -275,7 +153,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F4F0] text-[#1E1D1B]">
-      {/* 100% WYSIWYG A4 Print Stylesheet (Exact 210mm x 297mm, 15mm Inner Margins, No Scaling/Cutoff) */}
+      {/* 100% True Vector A4 Print Engine Stylesheet (Exact 210mm x 297mm, 15mm Inner Margins, Pure Vector Fonts) */}
       <style jsx global>{`
         @media print {
           @page {
@@ -332,160 +210,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         }
       `}</style>
 
-      {/* Generating PDF Progress Toast Overlay */}
-      {isGeneratingPdf && (
-        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl p-8 max-w-md w-full text-center space-y-4">
-            <div className="relative w-16 h-16 mx-auto flex items-center justify-center bg-[#8C6D3F]/15 rounded-full text-[#8C6D3F]">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-mono font-bold tracking-widest px-2.5 py-0.5 rounded-full bg-[#1A1918] text-[#E5D2B8] inline-block mb-1">
-                {pdfStandardType === 'pdfx1a' ? 'มาตรฐาน PDF/X-1a:2001 (ISO 15930-1)' : 'มาตรฐาน Standard E-Catalog'}
-              </span>
-              <h3 className="font-serif text-lg font-bold text-[#1A1918] mt-1">
-                {pdfStandardType === 'pdfx1a'
-                  ? 'กำลังสร้างไฟล์ PDF สำหรับแท่นพิมพ์ (Prepress 300+ DPI)...'
-                  : 'กำลังสร้างไฟล์ PDF ขนาด A4 เต็มหน้า...'}
-              </h3>
-              <p className="text-xs text-[#6E685C] mt-1">
-                กำลังเรนเดอร์หน้า {pdfProgress.current} จาก {pdfProgress.total} หน้า
-              </p>
-            </div>
-            <div className="w-full bg-[#EAE4D8] h-2.5 rounded-full overflow-hidden">
-              <div
-                className="bg-[#8C6D3F] h-full transition-all duration-300"
-                style={{
-                  width: `${pdfProgress.total > 0 ? (pdfProgress.current / pdfProgress.total) * 100 : 10}%`,
-                }}
-              />
-            </div>
-            <p className="text-[11px] text-[#8C8477]">
-              ไฟล์ PDF จะดาวน์โหลดลงเครื่องของคุณโดยอัตโนมัติทันที
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* PDF Export Standards Selection Modal (Vector PDF, PDF/X-1a, Standard) */}
-      {isExportOptionsOpen && (
-        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-2xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B]">
-            <button
-              onClick={() => setIsExportOptionsOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="border-b border-[#E3DED4] pb-4 mb-6">
-              <span className="text-[10px] uppercase tracking-widest text-[#8C6D3F] font-bold block mb-1">
-                Print & Vector Standards
-              </span>
-              <h3 className="font-serif text-xl font-bold text-[#1A1918]">
-                เลือกระดับมาตรฐานการพิมพ์ / บันทึก PDF
-              </h3>
-              <p className="text-xs text-[#7A7468] mt-0.5">
-                เลือกรูปแบบไฟล์ตามจุดประสงค์การใช้งาน (งานพิมพ์ Vector แท้ หรือ ไฟล์ดาวน์โหลดสำเร็จรูป)
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-              {/* Option 1: True Vector PDF (Native Browser Engine) */}
-              <div
-                onClick={() => {
-                  setIsExportOptionsOpen(false);
-                  setTimeout(() => window.print(), 200);
-                }}
-                className="p-4 rounded-2xl border-2 border-[#8C6D3F] bg-gradient-to-b from-[#FFFDF9] to-[#FAF6EE] hover:border-[#1A1918] hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group space-y-3 ring-2 ring-[#8C6D3F]/25"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded-md text-[9px] font-bold font-mono uppercase bg-[#1A1918] text-[#E5D2B8]">
-                      🌟 แนะนำสูงสุด
-                    </span>
-                    <Printer className="w-4 h-4 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
-                  </div>
-                  <h4 className="font-serif text-sm font-bold text-[#1A1918]">
-                    1. Vector PDF (แท่นพิมพ์)
-                  </h4>
-                  <p className="text-[11px] text-[#554F43] leading-relaxed">
-                    ตัวอักษรและเส้นกราฟิกเป็น <strong>Vector แท้ 100%</strong> (Select & Copy ได้) คมชัดระดับสูงสุด ไม่แตกแม้ซูม 10,000% เหมาะสำหรับโรงพิมพ์และตัดเพลท
-                  </p>
-                </div>
-
-                <div className="pt-2.5 border-t border-[#E8DFC8] text-[11px] text-[#8C6D3F] font-bold flex items-center justify-between">
-                  <span>🖨️ บันทึกเป็น Vector PDF</span>
-                  <span>→</span>
-                </div>
-              </div>
-
-              {/* Option 2: PDF/X-1a:2001 Prepress Direct Download */}
-              <div
-                onClick={() => handleExportPDF('pdfx1a')}
-                className="p-4 rounded-2xl border-2 border-[#D5CEC0] bg-white hover:border-[#8C6D3F] hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between group space-y-3"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded-md text-[9px] font-bold font-mono uppercase bg-amber-100 text-amber-900 border border-amber-200">
-                      2. PDF/X-1a
-                    </span>
-                    <ShieldCheck className="w-4 h-4 text-amber-700 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <h4 className="font-serif text-sm font-bold text-[#1A1918]">
-                    PDF/X-1a:2001
-                  </h4>
-                  <p className="text-[11px] text-[#6E685C] leading-relaxed">
-                    ดาวน์โหลดไฟล์ PDF โดยตรงลงเครื่อง ความละเอียดสูง 300+ DPI พร้อมแท็ก Prepress Metadata ตามมาตรฐาน ISO 15930-1
-                  </p>
-                </div>
-
-                <div className="pt-2.5 border-t border-[#F0ECE4] text-[11px] text-amber-800 font-bold flex items-center justify-between">
-                  <span>📥 ดาวน์โหลด PDF/X</span>
-                  <span>→</span>
-                </div>
-              </div>
-
-              {/* Option 3: Standard E-Catalog */}
-              <div
-                onClick={() => handleExportPDF('standard')}
-                className="p-4 rounded-2xl border-2 border-[#D5CEC0] bg-white hover:border-[#8C6D3F] hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between group space-y-3"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded-md text-[9px] font-bold font-mono uppercase bg-neutral-100 text-neutral-800 border border-neutral-200">
-                      3. Standard
-                    </span>
-                    <FileText className="w-4 h-4 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
-                  </div>
-                  <h4 className="font-serif text-sm font-bold text-[#1A1918]">
-                    Standard E-Catalog
-                  </h4>
-                  <p className="text-[11px] text-[#6E685C] leading-relaxed">
-                    ไฟล์ PDF ขนาดพอเหมาะสำหรับเปิดอ่านบนหน้าจอมือถือ, iPad, และส่งต่อทาง Line หรือ Email ได้รวดเร็ว
-                  </p>
-                </div>
-
-                <div className="pt-2.5 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-semibold flex items-center justify-between">
-                  <span>🚀 ดาวน์โหลด Standard</span>
-                  <span>→</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-[#E8E2D6] flex items-center justify-between text-xs text-[#7A7468]">
-              <span>💡 สำหรับงานส่งพิมพ์ที่ต้องการตัวหนังสือเป็น Vector แท้ แนะนำเลือกข้อ 1 (Vector PDF)</span>
-              <button
-                onClick={() => setIsExportOptionsOpen(false)}
-                className="px-4 py-1.5 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
-              >
-                ปิดหน้าต่าง
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Navigation Toolbar (Hidden in Print) */}
       <div className="no-print">
         <Navbar exhibition={exhibition} />
@@ -510,16 +234,16 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               <span className="text-[#C4BDB0]">•</span>
               <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold flex items-center gap-1">
                 <BookOpen className="w-3.5 h-3.5" />
-                สูจิบัตร A4 เต็มหน้า (Vector & ISO PDF)
+                สูจิบัตร A4 เต็มหน้า (Vector PDF)
               </span>
             </div>
 
             {/* Action Buttons Toolbar */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
               {/* Direct Peer Reviewers Editor Button */}
               <button
                 onClick={() => setIsPeerReviewModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-bold tracking-wider shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-bold tracking-wider shadow-sm transition-all active:scale-95"
                 title="จัดการรายชื่อคณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Peer Reviewers)"
               >
                 <GraduationCap className="w-3.5 h-3.5 text-[#8C6D3F]" />
@@ -529,44 +253,21 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               {/* Edit Footer Text Button */}
               <button
                 onClick={() => setIsEditModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-semibold tracking-wider shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-semibold tracking-wider shadow-sm transition-all active:scale-95"
                 title="แก้ไขข้อความ Footer ท้ายหน้าสูจิบัตร"
               >
                 <Edit3 className="w-3.5 h-3.5 text-[#8C6D3F]" />
                 <span>แก้ไข Footer</span>
               </button>
 
-              {/* PRIMARY BUTTON: Save as True Vector PDF */}
+              {/* Unified 100% Vector PDF Export Button */}
               <button
-                onClick={handlePrintPDF}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#8C6D3F] hover:bg-[#725730] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
-                title="บันทึกเป็นไฟล์ Vector PDF คมชัด 100% ตัวอักษรและเส้นกราฟิกเป็น Vector แท้ สำหรับส่งโรงพิมพ์"
+                onClick={handlePrintVectorPDF}
+                className="flex items-center gap-2 px-5 py-2 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
+                title="บันทึกเป็นไฟล์ PDF ขนาด A4 โดยตัวอักษรและเส้นกราฟิกเป็น Vector แท้ 100% คมชัดไม่แตก"
               >
-                <Printer className="w-4 h-4 text-[#FFFDF9]" />
-                <span>🖨️ บันทึกเป็น Vector PDF (คมชัด 100%)</span>
-              </button>
-
-              {/* Download PDF Selector Button */}
-              <button
-                onClick={() => setIsExportOptionsOpen(true)}
-                disabled={isGeneratingPdf}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#1F1D1A] hover:bg-[#38342E] text-white rounded-full text-xs font-semibold uppercase tracking-wider shadow-md transition-all active:scale-95 disabled:opacity-50"
-                title="เปิดหน้าต่างตัวเลือกดาวน์โหลด PDF"
-              >
-                {downloaded ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                ) : isGeneratingPdf ? (
-                  <Loader2 className="w-4 h-4 text-[#C5A880] animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 text-[#C5A880]" />
-                )}
-                <span>
-                  {downloaded
-                    ? 'ดาวน์โหลดสำเร็จ!'
-                    : isGeneratingPdf
-                    ? `กำลังสร้าง PDF (${pdfProgress.current}/${pdfProgress.total})...`
-                    : 'ตัวเลือกดาวน์โหลด PDF'}
-                </span>
+                <Printer className="w-4 h-4 text-[#C5A880]" />
+                <span>บันทึกสูจิบัตร PDF (Vector แท้)</span>
               </button>
             </div>
           </div>
@@ -891,7 +592,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         </div>
       )}
 
-      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4 - Pure K-Plate Text & Tints) */}
+      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4 - Pure Vector Text & K-Plate Monochromes) */}
       <main className="w-full max-w-[210mm] mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16">
         {/* Cover Page (A4, 210mm x 297mm, 15mm Padding, Pure K Black/Gray) */}
         <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
@@ -1076,7 +777,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                   />
                 </div>
 
-                {/* 2. Details Section (Starts at 8 inches from top of page - Pure K Black/Gray text with safe spacing) */}
+                {/* 2. Details Section (Starts at 8 inches from top of page - Pure K Black/Gray Vector Text) */}
                 <div className="relative z-10 flex flex-row items-start gap-5 pt-1">
                   {/* Left Column: Flag Image ON TOP, Artist Photo DIRECTLY BELOW */}
                   <div className="shrink-0 w-20 flex flex-col items-start">
@@ -1107,7 +808,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                     )}
                   </div>
 
-                  {/* Right Column: Artist Info & Artwork Specs & Concept (Pure K-Plate Black/Grayscale with explicit line-height) */}
+                  {/* Right Column: Artist Info & Artwork Specs & Concept (Pure K-Plate Black/Grayscale Vector Text) */}
                   <div className="flex-1 text-[#222222] min-w-0 space-y-2">
                     {/* Artist Block */}
                     <div className="space-y-0.5">
@@ -1145,7 +846,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </div>
               </div>
 
-              {/* Bottom Subtle Ribbon / Wave Graphic matching reference */}
+              {/* Bottom Subtle Ribbon / Wave Graphic matching reference (Pure Vector SVG) */}
               <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
                 <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
                   <defs>
