@@ -9,6 +9,7 @@ import { Footer } from '@/components/layout/Footer';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { DownloadCatalogPDFButton } from '@/components/catalog/DownloadCatalogPDFButton';
+import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 
 export const dynamic = 'force-dynamic';
 
@@ -165,22 +166,23 @@ export default async function CatalogViewerPage({
                 </div>
 
                 {/* 2. Details Section (Starts at 8 inches from top of page) */}
-                <div className="flex flex-col sm:flex-row items-start gap-5 pt-1">
-                  {/* Left Column: Flag ON TOP, Artist Photo BELOW */}
+                <div className="relative z-10 flex flex-col sm:flex-row items-start gap-6 pt-1">
+                  {/* Left Column: Flag Image ON TOP, Artist Photo DIRECTLY BELOW */}
                   <div className="shrink-0 w-24 sm:w-28 flex flex-col items-start">
-                    {/* Flag Row - Above Photo */}
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <span className="text-lg">{artist?.flagEmoji || '🎨'}</span>
-                      <span className="text-[11px] uppercase font-bold tracking-wider text-[#4A453C]">
-                        {artist?.country || 'International'}
-                      </span>
+                    {/* Flag Badge Image - Above Photo */}
+                    <div className="relative w-10 h-6 rounded-[3px] overflow-hidden border border-[#DDD6C8] shadow-sm mb-2.5 bg-neutral-100">
+                      <img
+                        src={getFlagImageUrl(artist?.country)}
+                        alt={artist?.country || 'Flag'}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
 
                     {/* Artist Photo / Avatar (Below Flag) */}
                     {artist?.avatarUrl &&
                     !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&
                     !artist.avatarUrl.includes('unsplash.com/photo-1534528741775') ? (
-                      <div className="relative w-20 h-24 sm:w-24 sm:h-28 bg-[#2B2824] rounded-sm overflow-hidden shadow">
+                      <div className="relative w-20 h-24 sm:w-24 sm:h-28 bg-[#2B2824] rounded-lg overflow-hidden shadow">
                         <Image
                           src={artist.avatarUrl}
                           alt={artist?.name || 'Artist'}
@@ -189,29 +191,30 @@ export default async function CatalogViewerPage({
                         />
                       </div>
                     ) : (
-                      <div className="w-20 h-24 sm:w-24 sm:h-28 bg-[#FAF8F5] border border-[#DDD6C8] rounded-sm flex items-center justify-center font-serif text-2xl font-bold text-[#8C6D3F] shadow-sm">
+                      <div className="w-20 h-24 sm:w-24 sm:h-28 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg flex items-center justify-center font-serif text-2xl font-bold text-[#8C6D3F] shadow-sm">
                         {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
                       </div>
                     )}
                   </div>
 
                   {/* Right Column: Artist Info & Artwork Specs & Concept */}
-                  <div className="flex-1 space-y-1.5 text-xs text-[#3D3A34]">
+                  <div className="flex-1 space-y-2 text-xs text-[#3D3A34]">
                     <div>
-                      <h3 className="font-sans text-sm font-bold text-[#1A1918]">
+                      <h3 className="font-sans text-sm font-bold text-[#1A1918] leading-tight">
                         {artist?.name || 'Artist'}
                       </h3>
                       {artist?.email && (
-                        <p className="text-[#7A7468] text-[11px] font-mono">{artist.email}</p>
+                        <p className="text-[#7A7468] text-[11px] font-mono leading-tight">{artist.email}</p>
                       )}
+                      <p className="text-[#7A7468] text-[11px] leading-tight">{artist?.country || 'International'}</p>
                     </div>
 
                     <div className="pt-1">
-                      <h4 className="font-sans text-sm font-bold text-[#1A1918]">
+                      <h4 className="font-sans text-sm font-bold text-[#1A1918] leading-tight">
                         {art.title}
                       </h4>
-                      <p className="text-[#5E584D] text-[11px]">
-                        {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' • ')}
+                      <p className="text-[#5E584D] text-[11px] leading-tight">
+                        {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
                       </p>
                     </div>
 
@@ -225,8 +228,26 @@ export default async function CatalogViewerPage({
                 </div>
               </div>
 
-              {/* Bottom Footer Row: Plate number & Page count */}
-              <div className="mt-6 pt-3 border-t border-[#F0ECE4] flex items-center justify-between text-[10px] text-[#A69F92]">
+              {/* Bottom Subtle Ribbon / Wave Graphic matching reference */}
+              <div className="absolute bottom-0 left-0 right-0 h-28 pointer-events-none overflow-hidden z-0 opacity-40">
+                <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id={`webWave1-${art.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#DDD5C7" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#C5A880" stopOpacity="0.2" />
+                    </linearGradient>
+                    <linearGradient id={`webWave2-${art.id}`} x1="0%" y1="100%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#F5B28B" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#EFA478" stopOpacity="0.15" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill={`url(#webWave1-${art.id})`} />
+                  <path d="M-30,120 C90,90 220,20 370,80 C490,140 570,60 630,70 L630,120 Z" fill={`url(#webWave2-${art.id})`} />
+                </svg>
+              </div>
+
+              {/* Bottom Footer Row */}
+              <div className="relative z-10 mt-6 pt-3 border-t border-[#F0ECE4] flex items-center justify-between text-[10px] text-[#A69F92]">
                 <span>ARTVARA Catalog • Plate #{idx + 1} {art.price ? `• ${formatPrice(art.price)}` : ''}</span>
                 <span className="font-mono">{pageNum}</span>
               </div>

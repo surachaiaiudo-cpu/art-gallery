@@ -5,19 +5,24 @@ import {
   Text,
   View,
   Image,
+  Svg,
+  Path,
+  Defs,
+  LinearGradient,
+  Stop,
   StyleSheet,
 } from '@react-pdf/renderer';
 import { Exhibition, Artwork } from '@/types/exhibition';
 import { formatDateRange } from '@/lib/utils';
+import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 
 // 1.5 cm margin in PDF points (1 inch = 72 pt, 1 cm = 28.346 pt, 1.5 cm = 42.52 pt)
 const MARGIN_1_5_CM = 42.52;
 
-// Exactly 8 inches from top of page = 8 * 72 pt = 576 pt.
-// Artwork height = 576 pt - 42.52 pt (top margin) = 533.48 pt (approx 530 pt).
-const ARTWORK_CONTAINER_HEIGHT = 530;
+// Exactly 8 inches from top of A4 page = 8 * 72 pt = 576 pt.
+// Artwork height = 576 pt - 42.52 pt (top margin) = 533.48 pt (approx 525 pt).
+const ARTWORK_CONTAINER_HEIGHT = 525;
 
-// Styles matching A4 standard (1.5 cm margin, 8-inch top boundary for artwork, flag above artist photo)
 const styles = StyleSheet.create({
   page: {
     backgroundColor: '#FFFFFF',
@@ -30,12 +35,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
 
-  // 1. Artwork Plate: Starts at top margin (1.5 cm) and ends at 8 inches (576 pt) from top
+  // 1. Artwork Plate: Top margin (1.5 cm) down to 8 inches (576 pt) from top
   artworkImageContainer: {
     width: '100%',
     height: ARTWORK_CONTAINER_HEIGHT,
     backgroundColor: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 10,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -46,53 +51,46 @@ const styles = StyleSheet.create({
     objectFit: 'contain',
   },
 
-  // 2. Lower Section: Starts at 8 inches from top - Details & Artist Info
+  // 2. Lower Section: Starts at 8 inches from top
   detailsContainer: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 20,
     alignItems: 'flex-start',
-    marginTop: 2,
+    zIndex: 10,
   },
 
-  // Left Column: Flag ON TOP, Artist Photo BELOW Flag
+  // Left Column: Flag ON TOP, Artist Photo DIRECTLY BELOW
   artistPhotoColumn: {
-    width: 80,
+    width: 76,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
   },
-  flagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 5,
-  },
-  flagText: {
-    fontSize: 13,
-  },
-  countryText: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#333333',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  flagImage: {
+    width: 36,
+    height: 24,
+    borderRadius: 3,
+    marginBottom: 8,
+    borderWidth: 0.5,
+    borderColor: '#D8D2C6',
+    objectFit: 'cover',
   },
   artistPhoto: {
-    width: 75,
-    height: 85,
+    width: 74,
+    height: 88,
     objectFit: 'cover',
-    borderRadius: 2,
+    borderRadius: 6,
   },
   artistPhotoPlaceholder: {
-    width: 75,
-    height: 85,
-    backgroundColor: '#F5F2EB',
-    borderRadius: 2,
+    width: 74,
+    height: 88,
+    backgroundColor: '#F3EFE8',
+    borderRadius: 6,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
-    borderColor: '#DDD6C8',
+    borderColor: '#D8D2C6',
   },
   artistInitial: {
     fontSize: 22,
@@ -105,47 +103,59 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   artistName: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: 'bold',
     color: '#1A1A1A',
-    marginBottom: 2,
+    marginBottom: 1.5,
   },
   artistEmail: {
     fontSize: 8,
     color: '#666666',
-    marginBottom: 5,
+    marginBottom: 1.5,
   },
+  artistCountry: {
+    fontSize: 8,
+    color: '#666666',
+    marginBottom: 7,
+  },
+
   artTitle: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: 'bold',
     color: '#1A1A1A',
-    marginBottom: 2,
+    marginBottom: 1.5,
   },
   artSpecs: {
     fontSize: 8,
     color: '#555555',
-    marginBottom: 5,
+    marginBottom: 7,
+  },
+
+  conceptRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
   },
   conceptLabel: {
     fontSize: 8,
     fontWeight: 'bold',
     color: '#1A1A1A',
-    marginBottom: 2,
   },
   conceptText: {
-    fontSize: 7.5,
+    fontSize: 8,
     lineHeight: 1.35,
     color: '#444444',
     textAlign: 'justify',
   },
 
-  // Page number footer
-  pageFooter: {
+  // Bottom Artistic Wave Overlay
+  bottomWaveSvg: {
     position: 'absolute',
-    bottom: 16,
-    right: MARGIN_1_5_CM,
-    fontSize: 7.5,
-    color: '#888888',
+    bottom: 0,
+    left: 0,
+    width: 595.28,
+    height: 140,
+    zIndex: 1,
   },
 
   // Cover Page Styles (Strict A4, pure white background, 1.5 cm margin)
@@ -159,6 +169,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'space-between',
     height: '100%',
+    position: 'relative',
   },
   coverTitleBox: {
     textAlign: 'center',
@@ -203,7 +214,7 @@ export function ExhibitionCatalogPDF({ exhibition }: ExhibitionCatalogPDFProps) 
       author="ARTVARA Curatorial Gallery"
       subject="International Art Exhibition Catalog"
     >
-      {/* COVER PAGE (A4, 1.5 cm margin, pure white background) */}
+      {/* COVER PAGE */}
       <Page size="A4" style={styles.coverPage}>
         <View>
           <Text style={styles.coverLogo}>ARTVARA</Text>
@@ -234,12 +245,34 @@ export function ExhibitionCatalogPDF({ exhibition }: ExhibitionCatalogPDFProps) 
             International Art Festival and Art Exhibition in Thailand • ARTVARA Online Gallery
           </Text>
         </View>
+
+        {/* Decorative Wave at Bottom */}
+        <Svg width="595.28" height="120" viewBox="0 0 600 120" style={styles.bottomWaveSvg}>
+          <Defs>
+            <LinearGradient id="coverWave1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#E2DCD2" stopOpacity={0.35} />
+              <Stop offset="100%" stopColor="#C5A880" stopOpacity={0.2} />
+            </LinearGradient>
+            <LinearGradient id="coverWave2" x1="0%" y1="100%" x2="100%" y2="0%">
+              <Stop offset="0%" stopColor="#F5B28B" stopOpacity={0.3} />
+              <Stop offset="100%" stopColor="#EFA478" stopOpacity={0.15} />
+            </LinearGradient>
+          </Defs>
+          <Path
+            d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z"
+            fill="url(#coverWave1)"
+          />
+          <Path
+            d="M-30,120 C90,90 220,20 370,80 C490,140 570,60 630,70 L630,120 Z"
+            fill="url(#coverWave2)"
+          />
+        </Svg>
       </Page>
 
-      {/* 1 ARTWORK PER PAGE (A4, 1.5 cm margin, Artwork ends at 8 inches, Details start with Flag ABOVE Artist Photo) */}
-      {artworks.map((art, idx) => {
+      {/* 1 ARTWORK PER PAGE: Matches Uploaded Reference Example Exactly */}
+      {artworks.map((art) => {
         const artist = art.artist;
-        const pageNum = idx + 2;
+        const flagUrl = getFlagImageUrl(artist?.country);
         const hasRealPhoto =
           artist?.avatarUrl &&
           !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&
@@ -247,22 +280,22 @@ export function ExhibitionCatalogPDF({ exhibition }: ExhibitionCatalogPDFProps) 
 
         return (
           <Page key={art.id} size="A4" style={styles.page}>
-            {/* 1. Main High-Res Artwork Image Plate (Top to 8 Inches) */}
+            {/* 1. Artwork Plate: Spans from 1.5 cm Top Margin to 8 Inches (576 pt) */}
             <View style={styles.artworkImageContainer}>
               <Image src={art.imageUrl} style={styles.artworkImage} />
             </View>
 
-            {/* 2. Details Section (Starts at 8 inches from top) */}
+            {/* 2. Details Section (Starts exactly at 8 inches from top) */}
             <View style={styles.detailsContainer}>
-              {/* Left Column: Flag ON TOP, Artist Photo BELOW */}
+              {/* Left Column: Flag on top, Artist Photo directly below */}
               <View style={styles.artistPhotoColumn}>
-                {/* Flag Row - ABOVE Photo */}
-                <View style={styles.flagRow}>
-                  <Text style={styles.flagText}>{artist?.flagEmoji || '🎨'}</Text>
-                  <Text style={styles.countryText}>{artist?.country || 'International'}</Text>
-                </View>
+                {/* Flag Image Badge - Above Photo */}
+                <Image
+                  src={flagUrl}
+                  style={styles.flagImage}
+                />
 
-                {/* Artist Photo (Below Flag) */}
+                {/* Artist Photo - Directly Below Flag */}
                 {hasRealPhoto ? (
                   <Image
                     src={artist!.avatarUrl!}
@@ -279,26 +312,50 @@ export function ExhibitionCatalogPDF({ exhibition }: ExhibitionCatalogPDFProps) 
 
               {/* Right Column: Artist Info & Artwork Specs & Concept */}
               <View style={styles.infoTextColumn}>
+                {/* Artist Info */}
                 <Text style={styles.artistName}>{artist?.name || 'Artist'}</Text>
                 {artist?.email && (
                   <Text style={styles.artistEmail}>{artist.email}</Text>
                 )}
+                <Text style={styles.artistCountry}>{artist?.country || 'International'}</Text>
 
+                {/* Artwork Specs */}
                 <Text style={styles.artTitle}>{art.title}</Text>
                 <Text style={styles.artSpecs}>
-                  {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' • ')}
+                  {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
                 </Text>
 
+                {/* Concept */}
                 {(art.concept || art.description) && (
-                  <Text style={styles.conceptLabel}>
-                    Concept : <Text style={styles.conceptText}>{art.concept || art.description}</Text>
+                  <Text style={styles.conceptText}>
+                    <Text style={styles.conceptLabel}>Concept : </Text>
+                    {art.concept || art.description}
                   </Text>
                 )}
               </View>
             </View>
 
-            {/* Page Number */}
-            <Text style={styles.pageFooter}>{pageNum}</Text>
+            {/* Decorative Soft Wave Loop at Bottom Matching Reference */}
+            <Svg width="595.28" height="140" viewBox="0 0 600 140" style={styles.bottomWaveSvg}>
+              <Defs>
+                <LinearGradient id={`artWave1-${art.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#E2DCD2" stopOpacity={0.35} />
+                  <Stop offset="100%" stopColor="#C5A880" stopOpacity={0.2} />
+                </LinearGradient>
+                <LinearGradient id={`artWave2-${art.id}`} x1="0%" y1="100%" x2="100%" y2="0%">
+                  <Stop offset="0%" stopColor="#F5B28B" stopOpacity={0.3} />
+                  <Stop offset="100%" stopColor="#EFA478" stopOpacity={0.15} />
+                </LinearGradient>
+              </Defs>
+              <Path
+                d="M-30,140 C120,50 260,150 380,70 C480,10 560,100 630,40 L630,140 Z"
+                fill={`url(#artWave1-${art.id})`}
+              />
+              <Path
+                d="M-30,140 C90,100 220,30 370,90 C490,160 570,70 630,80 L630,140 Z"
+                fill={`url(#artWave2-${art.id})`}
+              />
+            </Svg>
           </Page>
         );
       })}
