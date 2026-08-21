@@ -691,12 +691,12 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                     </div>
 
                     {/* Concept Block */}
-                    {(art.concept || art.description) && (
-                      <div className="pt-0.5 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] line-clamp-3">
-                        <span className="font-bold text-[#000000]">Concept : </span>
-                        <span>{art.concept || art.description}</span>
-                      </div>
-                    )}
+                    <div className="pt-0.5 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] line-clamp-3">
+                      <span className="font-bold text-[#000000]">Concept : </span>
+                      <span>
+                        {art.concept || art.description || 'This work deals with cultural heritage, spiritual presence, and historical memory.'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
