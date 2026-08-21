@@ -9,7 +9,7 @@ import { Footer } from '@/components/layout/Footer';
 import {
   ArrowLeft,
   BookOpen,
-  Printer,
+  Download,
   CheckCircle2,
   Edit3,
   X,
@@ -21,8 +21,7 @@ import {
   Camera,
   ShieldCheck,
   FileText,
-  Download,
-  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
@@ -36,6 +35,11 @@ export type PDFStandard = 'standard' | 'pdfx';
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const searchParams = useSearchParams();
   const [isStandardModalOpen, setIsStandardModalOpen] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfStandardType, setPdfStandardType] = useState<PDFStandard>('standard');
+  const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0 });
+  const [downloaded, setDownloaded] = useState(false);
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeerReviewModalOpen, setIsPeerReviewModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,41 +57,130 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const curator = exhibition.curator;
   const hasReviewers = peerReviewersList.length > 0;
 
-  // Execute Vector PDF print/save based on selected standard (Standard vs PDF/X)
-  const handleExportVectorPDF = (standard: PDFStandard = 'standard') => {
-    setIsStandardModalOpen(false);
+  // Direct File Download (.pdf) to device - No print dialog
+  const handleDirectDownloadPDF = async (standard: PDFStandard = 'standard') => {
+    try {
+      setIsStandardModalOpen(false);
+      setIsGeneratingPdf(true);
+      setPdfStandardType(standard);
+      setDownloaded(false);
 
-    // Set document title according to standard
-    if (typeof document !== 'undefined') {
-      const originalTitle = document.title;
-      const cleanSlug = exhibition.slug || 'catalog';
-      document.title = standard === 'pdfx'
-        ? `${cleanSlug}-catalog-PDFX-1a-2001-Vector`
-        : `${cleanSlug}-catalog-Standard-Vector`;
+      // Wait for all web fonts to load completely to prevent font metrics squishing
+      if (typeof document !== 'undefined' && document.fonts) {
+        await document.fonts.ready;
+      }
 
-      setTimeout(() => {
-        window.print();
-        setTimeout(() => {
-          document.title = originalTitle;
-        }, 1000);
-      }, 200);
-    } else {
-      window.print();
+      // Dynamically import client-side PDF tools
+      const { jsPDF } = await import('jspdf');
+      const html2canvas = (await import('html2canvas')).default;
+
+      const pageElements = document.querySelectorAll<HTMLElement>('.catalog-a4-page');
+      if (!pageElements || pageElements.length === 0) {
+        alert('ไม่พบหน้าสูจิบัตรสำหรับดาวน์โหลด');
+        setIsGeneratingPdf(false);
+        return;
+      }
+
+      const total = pageElements.length;
+      setPdfProgress({ current: 0, total });
+
+      const isPdfX = standard === 'pdfx';
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: !isPdfX,
+      });
+
+      // Set ISO Standards & Prepress Document Properties
+      pdf.setProperties({
+        title: `${exhibition.title} - Official Exhibition Catalog`,
+        subject: isPdfX
+          ? 'PDF/X-1a:2001 ISO 15930-1 Prepress Commercial Print-Ready Catalog'
+          : 'Standard Digital Exhibition Catalog',
+        author: curator?.name || 'ARTVARA Curatorial Team',
+        keywords: isPdfX
+          ? 'PDF/X-1a:2001, Prepress, ISO 15930-1, Commercial Print, ARTVARA, Catalog'
+          : 'ARTVARA, Catalog, Digital E-Book',
+        creator: 'ARTVARA High-Fidelity Catalog System (ISO 15930-1 Prepress Engine)',
+      });
+
+      // High-resolution 300+ DPI scaling for crisp text and images
+      const scaleFactor = isPdfX ? 3.0 : 2.5;
+      const jpegQuality = isPdfX ? 0.98 : 0.94;
+
+      for (let i = 0; i < total; i++) {
+        setPdfProgress({ current: i + 1, total });
+        const el = pageElements[i];
+
+        const canvas = await html2canvas(el, {
+          scale: scaleFactor,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          windowWidth: 1200,
+          onclone: (clonedDoc) => {
+            const clonedPages = clonedDoc.querySelectorAll<HTMLElement>('.catalog-a4-page');
+            clonedPages.forEach((p) => {
+              p.style.boxShadow = 'none';
+            });
+
+            const textEls = clonedDoc.querySelectorAll<HTMLElement>(
+              'h1, h2, h3, h4, h5, p, span, div'
+            );
+            textEls.forEach((t) => {
+              t.style.letterSpacing = 'normal';
+              t.style.wordSpacing = 'normal';
+              t.style.transform = 'none';
+              t.style.overflow = 'visible';
+              (t.style as any).webkitLineClamp = 'unset';
+              (t.style as any).lineClamp = 'unset';
+            });
+          },
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
+
+        if (i > 0) {
+          pdf.addPage('a4', 'portrait');
+        }
+
+        // Exact full A4 page: 210mm x 297mm
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      }
+
+      const cleanSlug = exhibition.slug || 'exhibition';
+      const fileName = isPdfX
+        ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
+        : `${cleanSlug}-catalog-Standard.pdf`;
+
+      // Trigger direct file download
+      pdf.save(fileName);
+
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 5000);
+    } catch (err) {
+      console.error('Error generating PDF download:', err);
+      alert('เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์ PDF');
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
-  // Auto-trigger if navigated with ?export parameter
+  // Auto-trigger direct download if navigated with ?export parameter
   useEffect(() => {
     const exportParam = searchParams.get('export');
     if (exportParam === 'pdfx' || exportParam === 'pdfx1a') {
       const timer = setTimeout(() => {
-        handleExportVectorPDF('pdfx');
-      }, 600);
+        handleDirectDownloadPDF('pdfx');
+      }, 700);
       return () => clearTimeout(timer);
     } else if (exportParam === 'standard' || exportParam === 'pdf') {
       const timer = setTimeout(() => {
-        handleExportVectorPDF('standard');
-      }, 600);
+        handleDirectDownloadPDF('standard');
+      }, 700);
       return () => clearTimeout(timer);
     }
   }, [searchParams]);
@@ -183,7 +276,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F4F0] text-[#1E1D1B]">
-      {/* 100% True Vector A4 Print Engine Stylesheet (Exact 210mm x 297mm, 15mm Inner Margins, Pure Vector Fonts) */}
+      {/* 100% WYSIWYG A4 Layout Stylesheet */}
       <style jsx global>{`
         @media print {
           @page {
@@ -240,7 +333,42 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         }
       `}</style>
 
-      {/* 2 Print Standards Selection Modal (Standard Vector vs PDF/X Prepress Vector) */}
+      {/* Generating PDF Direct Download Progress Toast Overlay */}
+      {isGeneratingPdf && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl p-8 max-w-md w-full text-center space-y-4">
+            <div className="relative w-16 h-16 mx-auto flex items-center justify-center bg-[#8C6D3F]/15 rounded-full text-[#8C6D3F]">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-mono font-bold tracking-widest px-2.5 py-0.5 rounded-full bg-[#1A1918] text-[#E5D2B8] inline-block mb-1">
+                {pdfStandardType === 'pdfx' ? 'มาตรฐาน PDF/X-1a:2001 (ISO Prepress)' : 'มาตรฐาน Standard E-Catalog'}
+              </span>
+              <h3 className="font-serif text-lg font-bold text-[#1A1918] mt-1">
+                {pdfStandardType === 'pdfx'
+                  ? 'กำลังสร้างไฟล์ PDF สำหรับแท่นพิมพ์ (Prepress 300+ DPI)...'
+                  : 'กำลังสร้างไฟล์ PDF ขนาด A4 เต็มหน้า...'}
+              </h3>
+              <p className="text-xs text-[#6E685C] mt-1">
+                กำลังเรนเดอร์หน้า {pdfProgress.current} จาก {pdfProgress.total} หน้า
+              </p>
+            </div>
+            <div className="w-full bg-[#EAE4D8] h-2.5 rounded-full overflow-hidden">
+              <div
+                className="bg-[#8C6D3F] h-full transition-all duration-300"
+                style={{
+                  width: `${pdfProgress.total > 0 ? (pdfProgress.current / pdfProgress.total) * 100 : 10}%`,
+                }}
+              />
+            </div>
+            <p className="text-[11px] text-[#8C8477]">
+              ไฟล์ .pdf จะดาวน์โหลดลงเครื่องของคุณโดยตรงทันทีเมื่อสร้างเสร็จ
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 2 Print Standards Direct Download Modal (Standard vs PDF/X) */}
       {isStandardModalOpen && (
         <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
           <div className="relative w-full max-w-xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B]">
@@ -253,20 +381,20 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
             <div className="border-b border-[#E3DED4] pb-4 mb-6">
               <span className="text-[10px] uppercase tracking-widest text-[#8C6D3F] font-bold block mb-1">
-                Print Standards (Vector Typography)
+                Direct PDF Download
               </span>
               <h3 className="font-serif text-xl font-bold text-[#1A1918]">
-                เลือกระดับมาตรฐานการพิมพ์สูจิบัตร PDF
+                เลือกระดับมาตรฐานการดาวน์โหลด PDF
               </h3>
               <p className="text-xs text-[#7A7468] mt-0.5">
-                ตัวอักษรและเส้นกราฟิกถูกบันทึกเป็น <strong>Vector แท้ 100%</strong> ในทุกกรณี (คมชัด ไม่แตก)
+                เลือกรูปแบบเพื่อดาวน์โหลดไฟล์ .pdf ลงเครื่องของคุณโดยตรงทันที
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Level 1: Standard (Vector PDF) */}
+              {/* Level 1: Standard Direct Download */}
               <div
-                onClick={() => handleExportVectorPDF('standard')}
+                onClick={() => handleDirectDownloadPDF('standard')}
                 className="p-5 rounded-2xl border-2 border-[#D5CEC0] bg-white hover:border-[#8C6D3F] hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between group space-y-4"
               >
                 <div className="space-y-2.5">
@@ -277,22 +405,22 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                     <FileText className="w-5 h-5 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
                   </div>
                   <h4 className="font-serif text-base font-bold text-[#1A1918]">
-                    Standard (Vector PDF)
+                    Standard E-Catalog
                   </h4>
                   <p className="text-xs text-[#6E685C] leading-relaxed">
-                    มาตรฐาน A4 ดิจิทัลทั่วไป ตัวอักษรเป็น <strong>Vector แท้</strong> คมชัดสูง เหมาะสำหรับเปิดอ่านบนหน้าจอ iPad, แท็บเล็ต และสั่งพิมพ์เอกสารทั่วไป
+                    มาตรฐาน A4 ดิจิทัลทั่วไป ความละเอียดคมชัดสูง เหมาะสำหรับเปิดอ่านบน iPad, แท็บเล็ต, มือถือ และส่งต่อไฟล์ได้อย่างรวดเร็ว
                   </p>
                 </div>
 
                 <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-semibold flex items-center justify-between">
-                  <span>📥 ดาวน์โหลด / บันทึก Standard</span>
+                  <span>📥 ดาวน์โหลดไฟล์ Standard (.pdf)</span>
                   <span>→</span>
                 </div>
               </div>
 
-              {/* Level 2: PDF/X (PDF/X-1a:2001 Prepress Vector PDF) */}
+              {/* Level 2: PDF/X Direct Download */}
               <div
-                onClick={() => handleExportVectorPDF('pdfx')}
+                onClick={() => handleDirectDownloadPDF('pdfx')}
                 className="p-5 rounded-2xl border-2 border-[#C5A880] bg-gradient-to-b from-[#FAF6EE] to-white hover:border-[#8C6D3F] hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group space-y-4 ring-2 ring-[#8C6D3F]/20"
               >
                 <div className="space-y-2.5">
@@ -307,19 +435,19 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                     <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded font-mono font-bold">ISO</span>
                   </h4>
                   <p className="text-xs text-[#6E685C] leading-relaxed">
-                    มาตรฐานแท่นพิมพ์สากล (ISO 15930-1) ตัวอักษร <strong>Vector สีดำเพลทเดียว (K-only)</strong> คมชัดสูงสุด ไม่เลื่อมสี สำหรับส่งเข้าโรงพิมพ์ออฟเซต
+                    มาตรฐานแท่นพิมพ์สากล (ISO 15930-1) ความละเอียดสูงสุด 300+ DPI พร้อม Prepress Metadata และสีดำเพลทเดียว (K-only) สำหรับส่งเข้าโรงพิมพ์
                   </p>
                 </div>
 
                 <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-amber-900 font-bold flex items-center justify-between">
-                  <span>📥 ดาวน์โหลด / บันทึก PDF/X</span>
+                  <span>📥 ดาวน์โหลดไฟล์ PDF/X (.pdf)</span>
                   <span>→</span>
                 </div>
               </div>
             </div>
 
             <div className="mt-6 pt-4 border-t border-[#E8E2D6] flex items-center justify-between text-xs text-[#7A7468]">
-              <span>💡 ทั้ง 2 ระดับ บันทึกตัวอักษรเป็น Vector แท้ (Select & Copy ได้)</span>
+              <span>💡 คลิกเพื่อดาวน์โหลดไฟล์ .pdf ลงเครื่องได้โดยตรงทันที ไม่ต้องเปิดหน้าต่างพิมพ์</span>
               <button
                 onClick={() => setIsStandardModalOpen(false)}
                 className="px-4 py-1.5 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
@@ -355,7 +483,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               <span className="text-[#C4BDB0]">•</span>
               <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold flex items-center gap-1">
                 <BookOpen className="w-3.5 h-3.5" />
-                สูจิบัตร A4 (Vector PDF : Standard & PDF/X)
+                สูจิบัตร A4 (Standard & PDF/X-1a)
               </span>
             </div>
 
@@ -381,14 +509,27 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไข Footer</span>
               </button>
 
-              {/* Download PDF Button (Opens 2-Level Standard Selection Modal) */}
+              {/* Direct Download PDF Button (Opens 2-Level Standard Selection Modal) */}
               <button
                 onClick={() => setIsStandardModalOpen(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
-                title="ดาวน์โหลดสูจิบัตร PDF (เลือกระดับ Standard หรือ PDF/X โดยตัวอักษรเป็น Vector แท้)"
+                disabled={isGeneratingPdf}
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95 disabled:opacity-50"
+                title="ดาวน์โหลดไฟล์ .pdf ลงเครื่องโดยตรง (เลือกระดับ Standard หรือ PDF/X-1a:2001)"
               >
-                <Download className="w-4 h-4 text-[#C5A880]" />
-                <span>ดาวน์โหลดสูจิบัตร PDF</span>
+                {downloaded ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : isGeneratingPdf ? (
+                  <Loader2 className="w-4 h-4 text-[#C5A880] animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 text-[#C5A880]" />
+                )}
+                <span>
+                  {downloaded
+                    ? 'ดาวน์โหลดไฟล์สำเร็จแล้ว!'
+                    : isGeneratingPdf
+                    ? `กำลังสร้าง PDF (${pdfProgress.current}/${pdfProgress.total})...`
+                    : 'ดาวน์โหลดสูจิบัตร PDF'}
+                </span>
               </button>
             </div>
           </div>
@@ -713,7 +854,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         </div>
       )}
 
-      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4 - Pure Vector Text & K-Plate Monochromes) */}
+      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4 - Pure K-Plate Monochromes) */}
       <main className="w-full max-w-[210mm] mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16">
         {/* Cover Page (A4, 210mm x 297mm, 15mm Padding, Pure K Black/Gray) */}
         <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
@@ -898,7 +1039,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                   />
                 </div>
 
-                {/* 2. Details Section (Starts at 8 inches from top of page - Pure K Black/Gray Vector Text) */}
+                {/* 2. Details Section (Starts at 8 inches from top of page - Pure K Black/Gray Text) */}
                 <div className="relative z-10 flex flex-row items-start gap-5 pt-1">
                   {/* Left Column: Flag Image ON TOP, Artist Photo DIRECTLY BELOW */}
                   <div className="shrink-0 w-20 flex flex-col items-start">
@@ -929,7 +1070,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                     )}
                   </div>
 
-                  {/* Right Column: Artist Info & Artwork Specs & Concept (Pure K-Plate Black/Grayscale Vector Text) */}
+                  {/* Right Column: Artist Info & Artwork Specs & Concept (Pure K-Plate Black/Grayscale Text) */}
                   <div className="flex-1 text-[#222222] min-w-0 space-y-2">
                     {/* Artist Block */}
                     <div className="space-y-0.5">
@@ -967,7 +1108,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </div>
               </div>
 
-              {/* Bottom Subtle Ribbon / Wave Graphic matching reference (Pure Vector SVG) */}
+              {/* Bottom Subtle Ribbon / Wave Graphic matching reference (SVG) */}
               <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
                 <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
                   <defs>

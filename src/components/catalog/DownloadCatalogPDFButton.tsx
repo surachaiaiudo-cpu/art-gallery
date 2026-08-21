@@ -22,9 +22,9 @@ export function DownloadCatalogPDFButton({
   const handleNavigateToCatalog = () => {
     const targetPath = `/catalog/${exhibition.slug}`;
     if (pathname === targetPath) {
-      window.print();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      router.push(`${targetPath}?export=pdf`);
+      router.push(`${targetPath}`);
     }
   };
 
@@ -33,10 +33,10 @@ export function DownloadCatalogPDFButton({
       <button
         onClick={handleNavigateToCatalog}
         className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase bg-[#F2EFE9] hover:bg-[#E5DFD3] text-[#2C2925] border border-[#D0CABE] transition-all shadow-sm active:scale-95 ${className}`}
-        title="สูจิบัตร A4 (Vector PDF)"
+        title="ดาวน์โหลดสูจิบัตร A4 (Standard / PDF/X-1a:2001)"
       >
-        <Printer className="w-3.5 h-3.5 text-[#8C6D3F]" />
-        <span className="hidden xs:inline">สูจิบัตร PDF (Vector)</span>
+        <Download className="w-3.5 h-3.5 text-[#8C6D3F]" />
+        <span className="hidden xs:inline">ดาวน์โหลดสูจิบัตร PDF</span>
         <span className="xs:hidden">PDF</span>
       </button>
     );
@@ -47,10 +47,10 @@ export function DownloadCatalogPDFButton({
       <button
         onClick={handleNavigateToCatalog}
         className={`flex items-center gap-2 px-5 py-2.5 bg-[#1F1D1A] hover:bg-[#38342E] text-white rounded-full text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-95 ${className}`}
-        title="ดาวน์โหลด / บันทึกสูจิบัตรขนาด A4 เต็มหน้า (Vector PDF)"
+        title="ดาวน์โหลดสูจิบัตรขนาด A4 เต็มหน้า (Standard / PDF/X-1a:2001)"
       >
-        <Printer className="w-4 h-4 text-[#C5A880]" />
-        <span>บันทึกสูจิบัตร PDF (Vector คมชัด 100%)</span>
+        <Download className="w-4 h-4 text-[#C5A880]" />
+        <span>ดาวน์โหลดสูจิบัตร PDF (Standard / PDF/X)</span>
       </button>
     </div>
   );
