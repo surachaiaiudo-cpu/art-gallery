@@ -6,7 +6,19 @@ import { useSearchParams } from 'next/navigation';
 import { Exhibition, getCatalogFooterText, getCatalogPlateFooterText } from '@/types/exhibition';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import { ArrowLeft, BookOpen, Download, Printer, CheckCircle2, Edit3, X, Save, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  Download,
+  Printer,
+  CheckCircle2,
+  Edit3,
+  X,
+  Save,
+  Sparkles,
+  Loader2,
+  FileText,
+} from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 
@@ -17,6 +29,8 @@ interface CatalogViewerClientProps {
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const searchParams = useSearchParams();
   const [downloaded, setDownloaded] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0 });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -27,18 +41,81 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const artworks = exhibition.artworks || [];
   const curator = exhibition.curator;
 
-  // Trigger print dialog
-  const handlePrintPDF = () => {
-    setDownloaded(true);
-    window.print();
-    setTimeout(() => setDownloaded(false), 4000);
+  // Direct High-Resolution Full Page A4 PDF File Generator & Downloader
+  const handleDirectDownloadPDF = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      setDownloaded(false);
+
+      // Dynamically import client-side PDF generation tools
+      const { jsPDF } = await import('jspdf');
+      const html2canvas = (await import('html2canvas')).default;
+
+      const pageElements = document.querySelectorAll<HTMLElement>('.catalog-a4-page');
+      if (!pageElements || pageElements.length === 0) {
+        alert('ไม่พบหน้าสูจิบัตรสำหรับดาวน์โหลด');
+        setIsGeneratingPdf(false);
+        return;
+      }
+
+      const total = pageElements.length;
+      setPdfProgress({ current: 0, total });
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      for (let i = 0; i < total; i++) {
+        setPdfProgress({ current: i + 1, total });
+        const el = pageElements[i];
+
+        const canvas = await html2canvas(el, {
+          scale: 2, // High resolution (300 DPI equivalent)
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          windowWidth: 1200,
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+        if (i > 0) {
+          pdf.addPage('a4', 'portrait');
+        }
+
+        // Exactly full A4: 210mm x 297mm
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      }
+
+      const cleanSlug = exhibition.slug || 'exhibition';
+      const fileName = `${cleanSlug}-catalog-a4.pdf`;
+      pdf.save(fileName);
+
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 5000);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      // Fallback to browser print if canvas fails
+      window.print();
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
-  // Auto-print if navigated with ?autoPrint=true
+  // Trigger browser print dialog
+  const handlePrintPDF = () => {
+    window.print();
+  };
+
+  // Auto-download if navigated with ?autoPrint=true
   useEffect(() => {
     if (searchParams.get('autoPrint') === 'true') {
       const timer = setTimeout(() => {
-        handlePrintPDF();
+        handleDirectDownloadPDF();
       }, 700);
       return () => clearTimeout(timer);
     }
@@ -134,6 +211,36 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         }
       `}</style>
 
+      {/* Generating PDF Progress Toast Overlay */}
+      {isGeneratingPdf && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center space-y-4">
+            <div className="relative w-14 h-14 mx-auto flex items-center justify-center bg-[#8C6D3F]/15 rounded-full text-[#8C6D3F]">
+              <Loader2 className="w-7 h-7 animate-spin" />
+            </div>
+            <div>
+              <h3 className="font-serif text-lg font-bold text-[#1A1918]">
+                กำลังสร้างไฟล์ PDF เต็มหน้า A4...
+              </h3>
+              <p className="text-xs text-[#6E685C] mt-1">
+                กำลังเรนเดอร์หน้า {pdfProgress.current} จาก {pdfProgress.total} (High Resolution 300 DPI)
+              </p>
+            </div>
+            <div className="w-full bg-[#EAE4D8] h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-[#8C6D3F] h-full transition-all duration-300"
+                style={{
+                  width: `${pdfProgress.total > 0 ? (pdfProgress.current / pdfProgress.total) * 100 : 10}%`,
+                }}
+              />
+            </div>
+            <p className="text-[11px] text-[#8C8477]">
+              ไฟล์ PDF จะดาวน์โหลดลงเครื่องของคุณโดยอัตโนมัติทันที
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Toolbar (Hidden in Print) */}
       <div className="no-print">
         <Navbar exhibition={exhibition} />
@@ -158,7 +265,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               <span className="text-[#C4BDB0]">•</span>
               <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold flex items-center gap-1">
                 <BookOpen className="w-3.5 h-3.5" />
-                สูจิบัตรพิมพ์ A4 เต็มหน้า (WYSIWYG 1.5 cm)
+                สูจิบัตร A4 เต็มหน้า (WYSIWYG 1.5 cm)
               </span>
             </div>
 
@@ -174,29 +281,37 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไขข้อความ Footer</span>
               </button>
 
-              {/* Print & Download Full Page PDF Buttons */}
+              {/* Direct Download Full Page PDF Button */}
               <button
-                onClick={handlePrintPDF}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#1F1D1A] hover:bg-[#38342E] text-white rounded-full text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-95"
-                title="พิมพ์ หรือ บันทึกเป็นไฟล์ PDF ขนาด A4 เต็มหน้า (WYSIWYG 1.5 cm Margin, ขาวสะอาด ไม่ย่อตัด)"
+                onClick={handleDirectDownloadPDF}
+                disabled={isGeneratingPdf}
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#1F1D1A] hover:bg-[#38342E] text-white rounded-full text-xs font-semibold uppercase tracking-wider shadow-lg transition-all active:scale-95 disabled:opacity-50"
+                title="ดาวน์โหลดไฟล์ .PDF ขนาด A4 เต็มหน้าโดยตรง (WYSIWYG 1.5 cm Margin, ขาวสะอาด ไม่ย่อตัด)"
               >
                 {downloaded ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : isGeneratingPdf ? (
+                  <Loader2 className="w-4 h-4 text-[#C5A880] animate-spin" />
                 ) : (
                   <Download className="w-4 h-4 text-[#C5A880]" />
                 )}
                 <span>
-                  {downloaded ? 'กำลังเปิดหน้าต่างพิมพ์ PDF...' : 'Download Official PDF (A4 เต็มหน้า)'}
+                  {downloaded
+                    ? 'ดาวน์โหลดไฟล์สำเร็จแล้ว!'
+                    : isGeneratingPdf
+                    ? `กำลังสร้าง PDF (${pdfProgress.current}/${pdfProgress.total})...`
+                    : 'ดาวน์โหลดไฟล์ PDF (A4 เต็มหน้า)'}
                 </span>
               </button>
 
+              {/* Browser Print Button */}
               <button
                 onClick={handlePrintPDF}
                 className="hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-[#FAF8F5] text-[#4A453C] border border-[#D5CEC0] rounded-full text-xs font-semibold tracking-wider shadow-sm transition-all active:scale-95"
-                title="พิมพ์ A4 เต็มหน้า ผ่านเบราว์เซอร์"
+                title="พิมพ์ A4 ผ่านเบราว์เซอร์"
               >
                 <Printer className="w-4 h-4 text-[#8C6D3F]" />
-                <span>พิมพ์ A4 เต็มหน้า</span>
+                <span>พิมพ์ A4</span>
               </button>
             </div>
           </div>
@@ -314,6 +429,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <img
                   src={exhibition.bannerUrl}
                   alt={exhibition.title}
+                  crossOrigin="anonymous"
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
@@ -365,6 +481,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                   <img
                     src={art.imageUrl}
                     alt={art.title}
+                    crossOrigin="anonymous"
                     className="max-h-full max-w-full object-contain"
                   />
                 </div>
@@ -378,6 +495,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                       <img
                         src={getFlagImageUrl(artist?.country)}
                         alt={artist?.country || 'Flag'}
+                        crossOrigin="anonymous"
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -388,6 +506,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                         <img
                           src={artist!.avatarUrl!}
                           alt={artist?.name || 'Artist'}
+                          crossOrigin="anonymous"
                           className="w-full h-full object-cover"
                         />
                       </div>
