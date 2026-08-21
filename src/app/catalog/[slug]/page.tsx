@@ -154,8 +154,8 @@ export default async function CatalogViewerPage({
               className="catalog-a4-page relative bg-white border border-[#D5CEC0] shadow-xl p-6 sm:p-[15mm] rounded-sm max-w-[210mm] min-h-[297mm] mx-auto flex flex-col justify-between"
             >
               <div>
-                {/* Main Large Artwork Image (Positioned directly at the top) */}
-                <div className="relative w-full aspect-[4/3] max-h-[500px] bg-white overflow-hidden mb-4 flex items-center justify-center">
+                {/* 1. Main Large Artwork Image (Positioned from top to 8-inch boundary) */}
+                <div className="relative w-full h-[185mm] max-h-[188mm] bg-white overflow-hidden mb-4 flex items-center justify-center">
                   <Image
                     src={art.imageUrl}
                     alt={art.title}
@@ -164,31 +164,38 @@ export default async function CatalogViewerPage({
                   />
                 </div>
 
-                {/* Country Flag / Nationality Row */}
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-xl">{artist?.flagEmoji || '🎨'}</span>
-                  <span className="text-xs uppercase font-bold tracking-wider text-[#4A453C]">
-                    {artist?.country || 'International'}
-                  </span>
-                </div>
-
-                {/* Bottom Section: Artist Photo on Left, Specs & Concept on Right */}
+                {/* 2. Details Section (Starts at 8 inches from top of page) */}
                 <div className="flex flex-col sm:flex-row items-start gap-5 pt-1">
-                  {/* Artist Photo / Avatar (Only if real photo, no mockup) */}
-                  {artist?.avatarUrl &&
-                  !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&
-                  !artist.avatarUrl.includes('unsplash.com/photo-1534528741775') && (
-                    <div className="relative w-20 h-24 sm:w-24 sm:h-28 bg-[#2B2824] rounded-sm overflow-hidden shrink-0 shadow">
-                      <Image
-                        src={artist.avatarUrl}
-                        alt={artist?.name || 'Artist'}
-                        fill
-                        className="object-cover"
-                      />
+                  {/* Left Column: Flag ON TOP, Artist Photo BELOW */}
+                  <div className="shrink-0 w-24 sm:w-28 flex flex-col items-start">
+                    {/* Flag Row - Above Photo */}
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="text-lg">{artist?.flagEmoji || '🎨'}</span>
+                      <span className="text-[11px] uppercase font-bold tracking-wider text-[#4A453C]">
+                        {artist?.country || 'International'}
+                      </span>
                     </div>
-                  )}
 
-                  {/* Details Column */}
+                    {/* Artist Photo / Avatar (Below Flag) */}
+                    {artist?.avatarUrl &&
+                    !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&
+                    !artist.avatarUrl.includes('unsplash.com/photo-1534528741775') ? (
+                      <div className="relative w-20 h-24 sm:w-24 sm:h-28 bg-[#2B2824] rounded-sm overflow-hidden shadow">
+                        <Image
+                          src={artist.avatarUrl}
+                          alt={artist?.name || 'Artist'}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-24 sm:w-24 sm:h-28 bg-[#FAF8F5] border border-[#DDD6C8] rounded-sm flex items-center justify-center font-serif text-2xl font-bold text-[#8C6D3F] shadow-sm">
+                        {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Artist Info & Artwork Specs & Concept */}
                   <div className="flex-1 space-y-1.5 text-xs text-[#3D3A34]">
                     <div>
                       <h3 className="font-sans text-sm font-bold text-[#1A1918]">

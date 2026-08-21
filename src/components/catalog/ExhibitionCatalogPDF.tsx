@@ -13,7 +13,11 @@ import { formatDateRange } from '@/lib/utils';
 // 1.5 cm margin in PDF points (1 inch = 72 pt, 1 cm = 28.346 pt, 1.5 cm = 42.52 pt)
 const MARGIN_1_5_CM = 42.52;
 
-// Styles matching A4 standard (1.5 cm margin, pure white background, artwork image at the top)
+// Exactly 8 inches from top of page = 8 * 72 pt = 576 pt.
+// Artwork height = 576 pt - 42.52 pt (top margin) = 533.48 pt (approx 530 pt).
+const ARTWORK_CONTAINER_HEIGHT = 530;
+
+// Styles matching A4 standard (1.5 cm margin, 8-inch top boundary for artwork, flag above artist photo)
 const styles = StyleSheet.create({
   page: {
     backgroundColor: '#FFFFFF',
@@ -26,12 +30,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
 
-  // Main Artwork Container - Positioned directly at the top with no extra gap
+  // 1. Artwork Plate: Starts at top margin (1.5 cm) and ends at 8 inches (576 pt) from top
   artworkImageContainer: {
     width: '100%',
-    height: 480,
+    height: ARTWORK_CONTAINER_HEIGHT,
     backgroundColor: '#FFFFFF',
-    marginBottom: 12,
+    marginBottom: 8,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -42,36 +46,61 @@ const styles = StyleSheet.create({
     objectFit: 'contain',
   },
 
-  // Country Flag & Origin Row
-  flagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  flagText: {
-    fontSize: 14,
-  },
-  countryText: {
-    fontSize: 8.5,
-    fontWeight: 'bold',
-    color: '#333333',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-
-  // Lower Section: Artist Photo + Info
-  bottomInfoRow: {
+  // 2. Lower Section: Starts at 8 inches from top - Details & Artist Info
+  detailsContainer: {
     flexDirection: 'row',
     gap: 16,
     alignItems: 'flex-start',
+    marginTop: 2,
+  },
+
+  // Left Column: Flag ON TOP, Artist Photo BELOW Flag
+  artistPhotoColumn: {
+    width: 80,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  flagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 5,
+  },
+  flagText: {
+    fontSize: 13,
+  },
+  countryText: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#333333',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   artistPhoto: {
     width: 75,
-    height: 90,
+    height: 85,
     objectFit: 'cover',
     borderRadius: 2,
   },
+  artistPhotoPlaceholder: {
+    width: 75,
+    height: 85,
+    backgroundColor: '#F5F2EB',
+    borderRadius: 2,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: '#DDD6C8',
+  },
+  artistInitial: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#8C6D3F',
+  },
+
+  // Right Column: Details of Artwork & Artist
   infoTextColumn: {
     flex: 1,
   },
@@ -84,7 +113,7 @@ const styles = StyleSheet.create({
   artistEmail: {
     fontSize: 8,
     color: '#666666',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   artTitle: {
     fontSize: 10.5,
@@ -95,7 +124,7 @@ const styles = StyleSheet.create({
   artSpecs: {
     fontSize: 8,
     color: '#555555',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   conceptLabel: {
     fontSize: 8,
@@ -113,7 +142,7 @@ const styles = StyleSheet.create({
   // Page number footer
   pageFooter: {
     position: 'absolute',
-    bottom: 18,
+    bottom: 16,
     right: MARGIN_1_5_CM,
     fontSize: 7.5,
     color: '#888888',
@@ -207,37 +236,48 @@ export function ExhibitionCatalogPDF({ exhibition }: ExhibitionCatalogPDFProps) 
         </View>
       </Page>
 
-      {/* 1 ARTWORK PER PAGE (A4, 1.5 cm margin, pure white background, image at top) */}
+      {/* 1 ARTWORK PER PAGE (A4, 1.5 cm margin, Artwork ends at 8 inches, Details start with Flag ABOVE Artist Photo) */}
       {artworks.map((art, idx) => {
         const artist = art.artist;
         const pageNum = idx + 2;
+        const hasRealPhoto =
+          artist?.avatarUrl &&
+          !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&
+          !artist.avatarUrl.includes('unsplash.com/photo-1534528741775');
 
         return (
           <Page key={art.id} size="A4" style={styles.page}>
-            {/* Main High-Res Artwork Image Plate (At the top) */}
+            {/* 1. Main High-Res Artwork Image Plate (Top to 8 Inches) */}
             <View style={styles.artworkImageContainer}>
               <Image src={art.imageUrl} style={styles.artworkImage} />
             </View>
 
-            {/* Country Flag & Origin */}
-            <View style={styles.flagRow}>
-              <Text style={styles.flagText}>{artist?.flagEmoji || '🎨'}</Text>
-              <Text style={styles.countryText}>{artist?.country || 'International'}</Text>
-            </View>
+            {/* 2. Details Section (Starts at 8 inches from top) */}
+            <View style={styles.detailsContainer}>
+              {/* Left Column: Flag ON TOP, Artist Photo BELOW */}
+              <View style={styles.artistPhotoColumn}>
+                {/* Flag Row - ABOVE Photo */}
+                <View style={styles.flagRow}>
+                  <Text style={styles.flagText}>{artist?.flagEmoji || '🎨'}</Text>
+                  <Text style={styles.countryText}>{artist?.country || 'International'}</Text>
+                </View>
 
-            {/* Bottom Row: Artist Photo on Left, Details on Right */}
-            <View style={styles.bottomInfoRow}>
-              {/* Artist Portrait Photo (Only if real photo uploaded, no mockup) */}
-              {artist?.avatarUrl &&
-                !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&
-                !artist.avatarUrl.includes('unsplash.com/photo-1534528741775') && (
+                {/* Artist Photo (Below Flag) */}
+                {hasRealPhoto ? (
                   <Image
-                    src={artist.avatarUrl}
+                    src={artist!.avatarUrl!}
                     style={styles.artistPhoto}
                   />
+                ) : (
+                  <View style={styles.artistPhotoPlaceholder}>
+                    <Text style={styles.artistInitial}>
+                      {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
+                    </Text>
+                  </View>
                 )}
+              </View>
 
-              {/* Artist Info & Artwork Specs & Concept */}
+              {/* Right Column: Artist Info & Artwork Specs & Concept */}
               <View style={styles.infoTextColumn}>
                 <Text style={styles.artistName}>{artist?.name || 'Artist'}</Text>
                 {artist?.email && (
