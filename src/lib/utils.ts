@@ -76,3 +76,30 @@ export function parseArtworkDimensions(dimStr?: string | null): { widthMeters: n
 
   return { widthMeters: 1.8, heightMeters: 1.2 };
 }
+
+/**
+ * Sanitizes email strings by removing invisible unicode, zero-width characters, quotes, and whitespace.
+ * Prevents HTML5 form validation errors like "A part followed by '@' should not contain the symbol ''".
+ */
+export function cleanEmail(email: string): string {
+  if (!email) return '';
+  return email
+    .replace(/[\u200B-\u200D\uFEFF\u00A0\u2060\u180E]/g, '') // remove zero-width & non-breaking spaces
+    .replace(/["'“”‘’`´]/g, '') // remove quotes
+    .replace(/\s+/g, '') // remove internal and external whitespace
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Sanitizes names and text by removing control characters, zero-width spaces, and extra whitespace.
+ */
+export function cleanText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[\u200B-\u200D\uFEFF\u00A0\u2060\u180E]/g, '')
+    .replace(/^["'“”‘’`´]|["'“”‘’`´]$/g, '') // strip surrounding quotes
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+

@@ -2,6 +2,7 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
+import { cleanEmail, cleanText } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,20 +28,20 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < artists.length; i++) {
       const item: ArtistImportRow = artists[i];
-      if (!item.name || !item.email) {
+      const cleanName = cleanText(item.name || '');
+      const cleanE = cleanEmail(item.email || '');
+      const cleanCountry = cleanText(item.country || 'Thailand');
+
+      if (!cleanName || !cleanE) {
         skipped.push(item.name || `Row #${i + 1}`);
         continue;
       }
-
-      const cleanName = item.name.trim();
-      const cleanEmail = item.email.trim().toLowerCase();
-      const cleanCountry = (item.country || 'Thailand').trim();
 
       // Check if user with this email already exists
       const existing = await db
         .select()
         .from(schema.users)
-        .where(eq(schema.users.email, cleanEmail))
+        .where(eq(schema.users.email, cleanE))
         .limit(1);
 
       if (existing.length > 0) {
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
             country: cleanCountry,
             role: 'artist',
           })
-          .where(eq(schema.users.email, cleanEmail));
+          .where(eq(schema.users.email, cleanE));
         inserted.push(cleanName);
         continue;
       }
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
       await db.insert(schema.users).values({
         id: newId,
         name: cleanName,
-        email: cleanEmail,
+        email: cleanE,
         role: 'artist',
         country: cleanCountry,
         flagEmoji: flag,

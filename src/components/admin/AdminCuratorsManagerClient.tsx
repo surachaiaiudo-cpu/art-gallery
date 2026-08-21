@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
+import { cleanEmail, cleanText } from '@/lib/utils';
 
 interface CuratorWithStats extends User {
   exhibitionCount: number;
@@ -101,20 +102,24 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
         name = parts[0];
       }
 
-      if (name || country || email) {
+      const sName = cleanText(name);
+      const sCountry = cleanText(country);
+      const sEmail = cleanEmail(email);
+
+      if (sName || sCountry || sEmail) {
         setFormData((prev) => ({
           ...prev,
-          name: name || prev.name,
-          country: country || prev.country,
-          email: email || prev.email,
+          name: sName || prev.name,
+          country: sCountry || prev.country,
+          email: sEmail || prev.email,
         }));
         setSmartDetected(true);
         setTimeout(() => setSmartDetected(false), 4000);
         showNotification(
           'success',
           lang === 'th'
-            ? `⚡ ตรวจพบข้อมูลอัตโนมัติ: ${name} (${country}) [${email}]`
-            : `⚡ Auto-detected: ${name} (${country}) [${email}]`
+            ? `⚡ ตรวจพบข้อมูลอัตโนมัติ: ${sName || name} (${sCountry || country}) [${sEmail || email}]`
+            : `⚡ Auto-detected: ${sName || name} (${sCountry || country}) [${sEmail || email}]`
         );
         return true;
       }
@@ -135,11 +140,9 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
 
   const handleNamePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const pasted = e.clipboardData.getData('text');
-    if (pasted && (pasted.includes('\t') || pasted.includes('@') || pasted.includes('|') || pasted.includes(','))) {
-      const success = applyParsedCuratorData(pasted);
-      if (success) {
-        e.preventDefault();
-      }
+    if (pasted && (pasted.includes('\t') || pasted.includes('|') || pasted.includes(','))) {
+      e.preventDefault();
+      applyParsedCuratorData(pasted);
     }
   };
 
@@ -216,17 +219,31 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim()) {
-      showNotification('error', lang === 'th' ? 'กรุณากรอกชื่อและอีเมลภัณฑารักษ์' : 'Name and Email are required');
+
+    const cleanE = cleanEmail(formData.email);
+    const cleanN = cleanText(formData.name);
+
+    if (!cleanN) {
+      showNotification('error', lang === 'th' ? 'กรุณากรอกชื่อภัณฑารักษ์' : 'Curator name is required');
+      return;
+    }
+
+    if (!cleanE || !cleanE.includes('@') || !cleanE.includes('.')) {
+      showNotification(
+        'error',
+        lang === 'th'
+          ? 'กรุณากรอกอีเมลติดต่อที่ถูกต้อง (เช่น curator@artvara.gallery)'
+          : 'Please enter a valid email address'
+      );
       return;
     }
 
     setLoading(true);
     try {
       const payload = {
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        country: formData.country.trim(),
+        name: cleanN,
+        email: cleanE,
+        country: cleanText(formData.country) || 'Thailand',
         flagEmoji: formData.flagEmoji,
         avatarUrl: formData.avatarUrl.trim(),
         bio: formData.bio.trim(),
@@ -581,7 +598,7 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-4 text-xs">
+            <form noValidate onSubmit={handleSave} className="space-y-4 text-xs">
               {/* Smart Paste Excel/Text Bar */}
               <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#DCD6C8] shadow-sm">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -623,7 +640,7 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, name: cleanText(e.target.value) })}
                     onPaste={handleNamePaste}
                     placeholder="e.g. Dr. Apinan Poshyananda"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#DDD6C8] focus:border-[#C5A880] focus:outline-none bg-[#FAF8F5]"
@@ -657,10 +674,21 @@ export function AdminCuratorsManagerClient({ initialCurators }: AdminCuratorsMan
                 <div className="relative">
                   <Mail className="w-4 h-4 text-[#8C6D3F] absolute left-3.5 top-3" />
                   <input
-                    type="email"
+                    type="text"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     required
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, email: cleanEmail(e.target.value) })}
+                    onPaste={(e) => {
+                      const paste = e.clipboardData.getData('text');
+                      if (paste && !paste.includes('\t') && !paste.includes('\n')) {
+                        e.preventDefault();
+                        setFormData((prev) => ({ ...prev, email: cleanEmail(paste) }));
+                      }
+                    }}
                     placeholder="e.g. curator@artvara.gallery"
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[#DDD6C8] focus:border-[#C5A880] focus:outline-none bg-[#FAF8F5] font-mono text-xs"
                   />

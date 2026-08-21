@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
+import { cleanEmail, cleanText } from '@/lib/utils';
 
 interface ArtistWithStats extends User {
   artworkCount: number;
@@ -130,12 +131,15 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
         if (name.toLowerCase() === 'xxx' || email.toLowerCase() === 'xxx') continue;
 
         if (name && email) {
-          const cleanEmail = email.toLowerCase();
-          if (!seenEmails.has(cleanEmail)) {
-            seenEmails.add(cleanEmail);
+          const sanitizedEmail = cleanEmail(email);
+          const sanitizedName = cleanText(name);
+          const sanitizedCountry = cleanText(country);
+
+          if (sanitizedEmail && !seenEmails.has(sanitizedEmail)) {
+            seenEmails.add(sanitizedEmail);
 
             let flag = '🌐';
-            const cLower = (country || '').toLowerCase();
+            const cLower = sanitizedCountry.toLowerCase();
             if (cLower.includes('thai')) flag = '🇹🇭';
             else if (cLower.includes('japan')) flag = '🇯🇵';
             else if (cLower.includes('ital')) flag = '🇮🇹';
@@ -153,9 +157,9 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
             else if (cLower.includes('us') || cLower.includes('america')) flag = '🇺🇸';
 
             results.push({
-              name,
-              country: country || 'International',
-              email: cleanEmail,
+              name: sanitizedName,
+              country: sanitizedCountry || 'International',
+              email: sanitizedEmail,
               flagEmoji: flag,
             });
           }
@@ -251,12 +255,16 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
         name = parts[0];
       }
 
-      if (name || country || email) {
+      const sName = cleanText(name);
+      const sCountry = cleanText(country);
+      const sEmail = cleanEmail(email);
+
+      if (sName || sCountry || sEmail) {
         setFormData((prev) => ({
           ...prev,
-          name: name || prev.name,
-          country: country || prev.country,
-          email: email || prev.email,
+          name: sName || prev.name,
+          country: sCountry || prev.country,
+          email: sEmail || prev.email,
         }));
         setSmartDetected(true);
         setTimeout(() => setSmartDetected(false), 4000);
@@ -347,12 +355,31 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const cleanE = cleanEmail(formData.email);
+    const cleanN = cleanText(formData.name);
+
+    if (!cleanN) {
+      showNotification('error', lang === 'th' ? 'กรุณากรอกชื่อ-นามสกุลศิลปิน' : 'Artist name is required');
+      return;
+    }
+
+    if (!cleanE || !cleanE.includes('@') || !cleanE.includes('.')) {
+      showNotification(
+        'error',
+        lang === 'th'
+          ? 'กรุณากรอกอีเมลติดต่อที่ถูกต้อง (เช่น name@example.com)'
+          : 'Please enter a valid email address (e.g. name@example.com)'
+      );
+      return;
+    }
+
     setLoading(true);
 
     const payload = {
-      name: formData.name,
-      email: formData.email,
-      country: formData.country,
+      name: cleanN,
+      email: cleanE,
+      country: cleanText(formData.country) || 'Thailand',
       flagEmoji: formData.flagEmoji,
       avatarUrl: formData.avatarUrl,
       bio: formData.bio,
@@ -842,7 +869,7 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
               </h2>
             </div>
 
-            <form onSubmit={handleSubmitForm} className="space-y-4">
+            <form noValidate onSubmit={handleSubmitForm} className="space-y-4">
               {/* Smart Paste Excel/Text Bar */}
               <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#DCD6C8] shadow-sm">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -883,7 +910,7 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, name: cleanText(e.target.value) })}
                     onPaste={handleNamePaste}
                     placeholder={lang === 'th' ? 'เช่น สมชาย ใจเย็น' : 'e.g. Somchai Jaiyen'}
                     className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-sm font-serif font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
@@ -895,12 +922,23 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                     {lang === 'th' ? 'อีเมลติดต่อ' : 'Email'} <span className="text-rose-600">*</span>
                   </label>
                   <input
-                    type="email"
+                    type="text"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     required
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, email: cleanEmail(e.target.value) })}
+                    onPaste={(e) => {
+                      const paste = e.clipboardData.getData('text');
+                      if (paste && !paste.includes('\t') && !paste.includes('\n')) {
+                        e.preventDefault();
+                        setFormData((prev) => ({ ...prev, email: cleanEmail(paste) }));
+                      }
+                    }}
                     placeholder="artist@artvara.gallery"
-                    className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-mono text-[#1A1918] focus:outline-none"
+                    className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-mono text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
                   />
                 </div>
               </div>
