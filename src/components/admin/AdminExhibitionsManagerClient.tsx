@@ -28,6 +28,9 @@ import {
   GraduationCap,
   Award,
   ShieldCheck,
+  Camera,
+  UploadCloud,
+  Loader2,
 } from 'lucide-react';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
 
@@ -738,60 +741,121 @@ export function AdminExhibitionsManagerClient({
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <div>
-                            <label className="block text-[10px] font-semibold text-[#5A554A] mb-0.5">
-                              {lang === 'th' ? 'คำนำหน้า / ตำแหน่งวิชาการ' : 'Title (Prof. / Dr.)'}
+                        <div className="flex flex-col sm:flex-row items-start gap-3.5">
+                          {/* Avatar Upload / Preview */}
+                          <div className="shrink-0 flex flex-col items-center">
+                            <label className="block text-[10px] font-semibold text-[#5A554A] mb-1">
+                              {lang === 'th' ? 'รูปถ่าย' : 'Photo'}
                             </label>
-                            <input
-                              type="text"
-                              value={reviewer.academicTitle || ''}
-                              onChange={(e) => handleUpdateReviewer(idx, 'academicTitle', e.target.value)}
-                              placeholder="เช่น ศ.เกียรติคุณ / รศ.ดร. / ผศ."
-                              className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs text-[#1A1918] focus:outline-none"
-                            />
+                            {reviewer.avatarUrl ? (
+                              <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#D5CEC0] shadow-sm group/photo bg-[#1A1918]">
+                                <img
+                                  src={reviewer.avatarUrl}
+                                  alt={reviewer.name || 'Reviewer'}
+                                  className="w-full h-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateReviewer(idx, 'avatarUrl', '')}
+                                  className="absolute inset-0 bg-black/70 text-white flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition-opacity text-[10px] font-bold"
+                                  title="ลบรูปภาพ"
+                                >
+                                  ลบรูป
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="w-16 h-16 rounded-xl border-2 border-dashed border-[#D5CEC0] hover:border-[#8C6D3F] bg-[#FAF8F5] hover:bg-[#FAF6EE] flex flex-col items-center justify-center cursor-pointer transition-all text-[#8C8477] hover:text-[#8C6D3F] shadow-xs">
+                                <Camera className="w-5 h-5" />
+                                <span className="text-[9px] mt-0.5 font-semibold">อัปโหลด</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                      const file = e.target.files[0];
+                                      const fd = new FormData();
+                                      fd.append('file', file);
+                                      fd.append('folder', '/artvara-reviewers');
+                                      fd.append('fileName', reviewer.name || `reviewer-${idx}`);
+                                      try {
+                                        const res = await fetch('/api/admin/upload', {
+                                          method: 'POST',
+                                          body: fd,
+                                        });
+                                        const data = await res.json();
+                                        if (data.url) {
+                                          handleUpdateReviewer(idx, 'avatarUrl', data.url);
+                                        }
+                                      } catch (err) {
+                                        console.error(err);
+                                        alert('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ');
+                                      }
+                                    }
+                                  }}
+                                />
+                              </label>
+                            )}
                           </div>
 
-                          <div className="sm:col-span-2">
-                            <label className="block text-[10px] font-semibold text-[#5A554A] mb-0.5">
-                              {lang === 'th' ? 'ชื่อ - นามสกุล' : 'Full Name'} <span className="text-rose-600">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={reviewer.name}
-                              onChange={(e) => handleUpdateReviewer(idx, 'name', e.target.value)}
-                              placeholder="เช่น ปรีชา เถาทอง หรือ Prof. John Doe"
-                              className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs font-semibold text-[#1A1918] focus:outline-none"
-                            />
-                          </div>
-                        </div>
+                          {/* Reviewer Details */}
+                          <div className="flex-1 w-full space-y-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <div>
+                                <label className="block text-[10px] font-semibold text-[#5A554A] mb-0.5">
+                                  {lang === 'th' ? 'คำนำหน้า / ตำแหน่งวิชาการ' : 'Title (Prof. / Dr.)'}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={reviewer.academicTitle || ''}
+                                  onChange={(e) => handleUpdateReviewer(idx, 'academicTitle', e.target.value)}
+                                  placeholder="เช่น ศ.เกียรติคุณ / รศ.ดร. / ผศ."
+                                  className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs text-[#1A1918] focus:outline-none"
+                                />
+                              </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-[10px] font-semibold text-[#5A554A] mb-0.5">
-                              {lang === 'th' ? 'สังกัด / สถาบัน / มหาวิทยาลัย' : 'Institution / University'}
-                            </label>
-                            <input
-                              type="text"
-                              value={reviewer.institution || ''}
-                              onChange={(e) => handleUpdateReviewer(idx, 'institution', e.target.value)}
-                              placeholder="เช่น มหาวิทยาลัยศิลปากร / Poh-Chang"
-                              className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs text-[#1A1918] focus:outline-none"
-                            />
-                          </div>
+                              <div className="sm:col-span-2">
+                                <label className="block text-[10px] font-semibold text-[#5A554A] mb-0.5">
+                                  {lang === 'th' ? 'ชื่อ - นามสกุล' : 'Full Name'} <span className="text-rose-600">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={reviewer.name}
+                                  onChange={(e) => handleUpdateReviewer(idx, 'name', e.target.value)}
+                                  placeholder="เช่น ปรีชา เถาทอง หรือ Prof. John Doe"
+                                  className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs font-semibold text-[#1A1918] focus:outline-none"
+                                />
+                              </div>
+                            </div>
 
-                          <div>
-                            <label className="block text-[10px] font-semibold text-[#5A554A] mb-0.5">
-                              {lang === 'th' ? 'บทบาท / ตำแหน่งในคณะกรรมการ' : 'Role in Committee'}
-                            </label>
-                            <input
-                              type="text"
-                              value={reviewer.role || ''}
-                              onChange={(e) => handleUpdateReviewer(idx, 'role', e.target.value)}
-                              placeholder="เช่น ประธานกรรมการผู้ทรงคุณวุฒิ"
-                              className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs text-[#1A1918] focus:outline-none"
-                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[10px] font-semibold text-[#5A554A] mb-0.5">
+                                  {lang === 'th' ? 'สังกัด / สถาบัน / มหาวิทยาลัย' : 'Institution / University'}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={reviewer.institution || ''}
+                                  onChange={(e) => handleUpdateReviewer(idx, 'institution', e.target.value)}
+                                  placeholder="เช่น มหาวิทยาลัยศิลปากร / Poh-Chang"
+                                  className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs text-[#1A1918] focus:outline-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-semibold text-[#5A554A] mb-0.5">
+                                  {lang === 'th' ? 'บทบาท / ตำแหน่งในคณะกรรมการ' : 'Role in Committee'}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={reviewer.role || ''}
+                                  onChange={(e) => handleUpdateReviewer(idx, 'role', e.target.value)}
+                                  placeholder="เช่น ประธานกรรมการผู้ทรงคุณวุฒิ"
+                                  className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs text-[#1A1918] focus:outline-none"
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>

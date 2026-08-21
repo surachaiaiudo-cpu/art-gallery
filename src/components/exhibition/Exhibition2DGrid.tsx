@@ -143,23 +143,41 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
               {peerReviewers.map((reviewer, idx) => (
                 <div
                   key={idx}
-                  className="p-3.5 rounded-xl bg-white border border-[#EAE4D8] hover:border-[#8C6D3F] transition-all shadow-xs space-y-1.5 flex flex-col justify-between"
+                  className="p-4 rounded-2xl bg-white border border-[#EAE4D8] hover:border-[#8C6D3F] transition-all shadow-xs space-y-2.5 flex flex-col justify-between"
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
                       <span className="text-[9px] font-bold uppercase tracking-wider text-[#8C6D3F] bg-[#FAF6EE] px-2 py-0.5 rounded">
                         {reviewer.role || (idx === 0 ? 'ประธานกรรมการ' : 'กรรมการผู้ทรงคุณวุฒิ')}
                       </span>
                       {reviewer.country && <CountryFlag country={reviewer.country} size="xs" />}
                     </div>
 
-                    <h4 className="font-serif text-xs font-bold text-[#1A1918] leading-snug">
-                      {[reviewer.academicTitle, reviewer.name].filter(Boolean).join(' ')}
-                    </h4>
+                    <div className="flex items-center gap-3">
+                      {reviewer.avatarUrl ? (
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden border border-[#D5CEC0] shrink-0 shadow-sm bg-[#1A1918]">
+                          <img
+                            src={reviewer.avatarUrl}
+                            alt={reviewer.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-[#FAF6EE] border border-[#E5D7BF] flex items-center justify-center font-serif text-sm font-bold text-[#8C6D3F] shrink-0">
+                          {reviewer.name?.trim().charAt(0).toUpperCase() || 'R'}
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+                        <h4 className="font-serif text-xs font-bold text-[#1A1918] leading-snug">
+                          {[reviewer.academicTitle, reviewer.name].filter(Boolean).join(' ')}
+                        </h4>
+                      </div>
+                    </div>
                   </div>
 
                   {reviewer.institution && (
-                    <p className="text-[10px] text-[#6E685C] leading-tight pt-1 border-t border-[#F4F0E8]">
+                    <p className="text-[10px] text-[#6E685C] leading-tight pt-1.5 border-t border-[#F4F0E8]">
                       {reviewer.institution}
                     </p>
                   )}
