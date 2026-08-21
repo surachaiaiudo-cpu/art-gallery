@@ -13,14 +13,14 @@ export async function getExhibitionBySlug(slug: string): Promise<Exhibition | nu
     if (rawExhibitions && rawExhibitions.length > 0) {
       const exh = rawExhibitions[0];
 
-      // Fetch curator
+      // Fetch curator (1 query)
       const curator = await db
         .select()
         .from(schema.users)
         .where(eq(schema.users.role, 'curator'))
         .limit(1);
 
-      // Fetch artworks associated with this exhibition
+      // Fetch artworks associated with this exhibition (1 query)
       const rawLinks = await db
         .select({
           link: schema.exhibitionArtworks,
@@ -91,6 +91,7 @@ export async function getExhibitionById(id: string): Promise<Exhibition | null> 
   return null;
 }
 
+// BATCH-OPTIMIZED: Fetch all exhibitions with all artworks and artists in only 3 DB queries
 export async function getAllExhibitions(): Promise<Exhibition[]> {
   try {
     const list = await db
@@ -98,23 +99,75 @@ export async function getAllExhibitions(): Promise<Exhibition[]> {
       .from(schema.exhibitions)
       .orderBy(desc(schema.exhibitions.createdAt));
 
-    if (list && list.length > 0) {
-      const result: Exhibition[] = [];
-      for (const exh of list) {
-        const exhFull = await getExhibitionBySlug(exh.slug);
-        if (exhFull) {
-          result.push(exhFull);
-        } else {
-          result.push(exh as Exhibition);
+    if (!list || list.length === 0) return [];
+
+    // Query 2: All curators
+    const curators = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.role, 'curator'))
+      .limit(1);
+    const mainCurator = curators[0] ? (curators[0] as User) : null;
+
+    // Query 3: All exhibition artwork links with joined artwork and artist
+    const allLinks = await db
+      .select({
+        link: schema.exhibitionArtworks,
+        art: schema.artworks,
+        artist: schema.users,
+      })
+      .from(schema.exhibitionArtworks)
+      .innerJoin(schema.artworks, eq(schema.exhibitionArtworks.artworkId, schema.artworks.id))
+      .leftJoin(schema.users, eq(schema.artworks.artistId, schema.users.id))
+      .orderBy(asc(schema.exhibitionArtworks.displayOrder));
+
+    // Group artworks by exhibitionId in memory
+    const exhibitionArtworksMap = new Map<string, Artwork[]>();
+    for (const item of allLinks) {
+      const exhId = item.link.exhibitionId;
+      if (!exhibitionArtworksMap.has(exhId)) {
+        exhibitionArtworksMap.set(exhId, []);
+      }
+
+      let wallPos: WallPosition | null = null;
+      if (item.link.wallPosition) {
+        try {
+          wallPos = JSON.parse(item.link.wallPosition);
+        } catch {
+          wallPos = null;
         }
       }
-      return result;
+
+      exhibitionArtworksMap.get(exhId)!.push({
+        ...item.art,
+        displayOrder: item.link.displayOrder ?? 0,
+        wallPosition: wallPos,
+        artist: item.artist ? (item.artist as User) : null,
+      });
     }
+
+    const result: Exhibition[] = list.map((exh: any) => {
+      const artworks = exhibitionArtworksMap.get(exh.id) || [];
+      const artistMap = new Map<string, User>();
+      for (const art of artworks) {
+        if (art.artist) {
+          artistMap.set(art.artist.id, art.artist);
+        }
+      }
+
+      return {
+        ...exh,
+        artworks,
+        curator: mainCurator,
+        artists: Array.from(artistMap.values()),
+      };
+    });
+
+    return result;
   } catch (error) {
     console.error('Error fetching exhibitions from DB:', error);
+    return [];
   }
-
-  return [];
 }
 
 export async function getAllArtworks(): Promise<Artwork[]> {
@@ -176,39 +229,41 @@ export async function getArtistProfile(artistId: string) {
         .where(eq(schema.artworks.artistId, artistId))
         .orderBy(desc(schema.artworks.createdAt));
 
-      const artworksWithExhibitions = [];
+      // Fetch all exhibition links in 1 batch query
+      const allLinks = await db
+        .select({
+          link: schema.exhibitionArtworks,
+          exhibition: schema.exhibitions,
+        })
+        .from(schema.exhibitionArtworks)
+        .innerJoin(schema.exhibitions, eq(schema.exhibitionArtworks.exhibitionId, schema.exhibitions.id));
+
+      const linksByArtworkId = new Map<string, any[]>();
       const exhibitionMap = new Map<string, any>();
 
-      for (const art of rawArtworks) {
-        const links = await db
-          .select({
-            link: schema.exhibitionArtworks,
-            exhibition: schema.exhibitions,
-          })
-          .from(schema.exhibitionArtworks)
-          .innerJoin(schema.exhibitions, eq(schema.exhibitionArtworks.exhibitionId, schema.exhibitions.id))
-          .where(eq(schema.exhibitionArtworks.artworkId, art.id));
-
-        const exhibitions = links.map((l: any) => {
-          const exhInfo = {
-            id: l.exhibition.id,
-            title: l.exhibition.title,
-            slug: l.exhibition.slug,
-            status: l.exhibition.status,
-            startDate: l.exhibition.startDate,
-            endDate: l.exhibition.endDate,
-            bannerUrl: l.exhibition.bannerUrl,
-          };
-          exhibitionMap.set(l.exhibition.id, exhInfo);
-          return exhInfo;
-        });
-
-        artworksWithExhibitions.push({
-          ...art,
-          artist,
-          exhibitions,
-        });
+      for (const l of allLinks) {
+        const artId = l.link.artworkId;
+        if (!linksByArtworkId.has(artId)) {
+          linksByArtworkId.set(artId, []);
+        }
+        const exhInfo = {
+          id: l.exhibition.id,
+          title: l.exhibition.title,
+          slug: l.exhibition.slug,
+          status: l.exhibition.status,
+          startDate: l.exhibition.startDate,
+          endDate: l.exhibition.endDate,
+          bannerUrl: l.exhibition.bannerUrl,
+        };
+        linksByArtworkId.get(artId)!.push(exhInfo);
+        exhibitionMap.set(l.exhibition.id, exhInfo);
       }
+
+      const artworksWithExhibitions = rawArtworks.map((art: any) => ({
+        ...art,
+        artist,
+        exhibitions: linksByArtworkId.get(art.id) || [],
+      }));
 
       return {
         artist,
@@ -223,30 +278,81 @@ export async function getArtistProfile(artistId: string) {
   return null;
 }
 
+// BATCH-OPTIMIZED: Fetch all artists with stats in only 3 DB queries total (prevents Worker resource limit 1102)
 export async function getAllArtistsWithStats() {
   try {
+    // 1. Fetch all artists
     const artists = await getAllArtists();
-    const result = [];
+    if (!artists || artists.length === 0) return [];
 
-    for (const artist of artists) {
-      const profile = await getArtistProfile(artist.id);
-      if (profile) {
-        result.push({
-          ...artist,
-          artworkCount: profile.artworks.length,
-          exhibitionCount: profile.participatingExhibitions.length,
-          exhibitions: profile.participatingExhibitions,
-          previewArtworks: profile.artworks.slice(0, 3),
-        });
+    // 2. Fetch all artworks
+    const allArtworks = await db
+      .select()
+      .from(schema.artworks)
+      .orderBy(desc(schema.artworks.createdAt));
+
+    // 3. Fetch all exhibition links with exhibition info
+    const allLinks = await db
+      .select({
+        artworkId: schema.exhibitionArtworks.artworkId,
+        exhibition: schema.exhibitions,
+      })
+      .from(schema.exhibitionArtworks)
+      .innerJoin(schema.exhibitions, eq(schema.exhibitionArtworks.exhibitionId, schema.exhibitions.id));
+
+    // Index exhibitions by artworkId
+    const exhibitionsByArtworkId = new Map<string, any[]>();
+    for (const l of allLinks) {
+      if (!exhibitionsByArtworkId.has(l.artworkId)) {
+        exhibitionsByArtworkId.set(l.artworkId, []);
       }
+      exhibitionsByArtworkId.get(l.artworkId)!.push(l.exhibition);
     }
 
-    if (result.length > 0) return result;
+    // Index artworks by artistId
+    const artworksByArtistId = new Map<string, any[]>();
+    for (const art of allArtworks) {
+      if (!artworksByArtistId.has(art.artistId)) {
+        artworksByArtistId.set(art.artistId, []);
+      }
+      const exhibitions = exhibitionsByArtworkId.get(art.id) || [];
+      artworksByArtistId.get(art.artistId)!.push({
+        ...art,
+        exhibitions,
+      });
+    }
+
+    const result = artists.map((artist) => {
+      const artworks = artworksByArtistId.get(artist.id) || [];
+      const participatingExhibitionsMap = new Map<string, any>();
+      for (const art of artworks) {
+        for (const exh of art.exhibitions || []) {
+          participatingExhibitionsMap.set(exh.id, {
+            id: exh.id,
+            title: exh.title,
+            slug: exh.slug,
+            status: exh.status,
+            bannerUrl: exh.bannerUrl,
+          });
+        }
+      }
+
+      const participatingExhibitions = Array.from(participatingExhibitionsMap.values());
+
+      return {
+        ...artist,
+        artworkCount: artworks.length,
+        exhibitionCount: participatingExhibitions.length,
+        exhibitions: participatingExhibitions,
+        previewArtworks: artworks.slice(0, 3),
+      };
+    });
+
+    return result;
   } catch (error) {
     console.error('Error fetching artists with stats from DB:', error);
+    return [];
   }
-
-  return [];
 }
 
 export async function getAllCurators(): Promise<User[]> {
@@ -265,36 +371,34 @@ export async function getAllCurators(): Promise<User[]> {
   return [];
 }
 
+// BATCH-OPTIMIZED: Fetch all curators with stats in only 2 DB queries
 export async function getAllCuratorsWithStats() {
   try {
     const curators = await getAllCurators();
-    const result = [];
+    if (!curators || curators.length === 0) return [];
 
-    for (const curator of curators) {
-      const exhList = await db
-        .select()
-        .from(schema.exhibitions)
-        .orderBy(desc(schema.exhibitions.createdAt));
+    const exhList = await db
+      .select()
+      .from(schema.exhibitions)
+      .orderBy(desc(schema.exhibitions.createdAt));
 
-      result.push({
-        ...curator,
-        exhibitionCount: exhList.length,
-        curatedExhibitions: exhList.map((e: any) => ({
-          id: e.id,
-          title: e.title,
-          slug: e.slug,
-          status: e.status,
-          bannerUrl: e.bannerUrl,
-        })),
-      });
-    }
+    const result = curators.map((curator) => ({
+      ...curator,
+      exhibitionCount: exhList.length,
+      curatedExhibitions: exhList.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        slug: e.slug,
+        status: e.status,
+        bannerUrl: e.bannerUrl,
+      })),
+    }));
 
-    if (result.length > 0) return result;
+    return result;
   } catch (error) {
     console.error('Error fetching curators with stats from DB:', error);
+    return [];
   }
-
-  return [];
 }
 
 export async function getAllInquiries(): Promise<Inquiry[]> {
