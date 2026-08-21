@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Exhibition, getCatalogFooterText, getCatalogPlateFooterText } from '@/types/exhibition';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -14,6 +15,7 @@ interface CatalogViewerClientProps {
 }
 
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
+  const searchParams = useSearchParams();
   const [downloaded, setDownloaded] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -25,11 +27,22 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const artworks = exhibition.artworks || [];
   const curator = exhibition.curator;
 
+  // Trigger print dialog
   const handlePrintPDF = () => {
     setDownloaded(true);
     window.print();
     setTimeout(() => setDownloaded(false), 4000);
   };
+
+  // Auto-print if navigated with ?autoPrint=true
+  useEffect(() => {
+    if (searchParams.get('autoPrint') === 'true') {
+      const timer = setTimeout(() => {
+        handlePrintPDF();
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   const handleSaveFooterText = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,37 +77,59 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F4F0] text-[#1E1D1B]">
-      {/* Strict A4 Print Stylesheet */}
+      {/* 100% WYSIWYG A4 Print Stylesheet (Exact 210mm x 297mm, 15mm Inner Margins, No Scaling/Cutoff) */}
       <style jsx global>{`
         @media print {
           @page {
-            size: A4 portrait;
-            margin: 15mm;
+            size: 210mm 297mm;
+            margin: 0mm !important;
+          }
+          *, *::before, *::after {
+            box-sizing: border-box !important;
           }
           html, body {
+            width: 210mm !important;
+            min-width: 210mm !important;
+            max-width: 210mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
             background-color: #ffffff !important;
             color: #000000 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            margin: 0 !important;
-            padding: 0 !important;
           }
-          .no-print, header, footer {
+          .no-print, header, footer, nav {
             display: none !important;
           }
-          .catalog-a4-page {
-            page-break-after: always !important;
-            break-after: page !important;
-            width: 100% !important;
-            min-height: 267mm !important;
-            max-height: 267mm !important;
+          main {
             margin: 0 !important;
             padding: 0 !important;
+            max-width: 210mm !important;
+            width: 210mm !important;
+            background: #ffffff !important;
+          }
+          .catalog-a4-page {
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
+            max-height: 297mm !important;
+            margin: 0 !important;
+            padding: 15mm !important;
+            box-sizing: border-box !important;
+            page-break-before: auto !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
             border: none !important;
             box-shadow: none !important;
             background-color: #ffffff !important;
             position: relative !important;
             overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
           }
         }
       `}</style>
@@ -123,7 +158,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               <span className="text-[#C4BDB0]">•</span>
               <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold flex items-center gap-1">
                 <BookOpen className="w-3.5 h-3.5" />
-                สูจิบัตรพิมพ์ A4 (Margins 1.5 cm)
+                สูจิบัตรพิมพ์ A4 เต็มหน้า (WYSIWYG 1.5 cm)
               </span>
             </div>
 
@@ -139,11 +174,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไขข้อความ Footer</span>
               </button>
 
-              {/* Print & Download Buttons */}
+              {/* Print & Download Full Page PDF Buttons */}
               <button
                 onClick={handlePrintPDF}
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#1F1D1A] hover:bg-[#38342E] text-white rounded-full text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-95"
-                title="พิมพ์ หรือ บันทึกเป็นไฟล์ PDF ขนาด A4 มาตรฐาน (1.5 cm Margin, ขาวสะอาด)"
+                title="พิมพ์ หรือ บันทึกเป็นไฟล์ PDF ขนาด A4 เต็มหน้า (WYSIWYG 1.5 cm Margin, ขาวสะอาด ไม่ย่อตัด)"
               >
                 {downloaded ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -151,17 +186,17 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                   <Download className="w-4 h-4 text-[#C5A880]" />
                 )}
                 <span>
-                  {downloaded ? 'กำลังเปิดหน้าต่างพิมพ์ PDF...' : 'Download Official PDF (A4 Print-Ready)'}
+                  {downloaded ? 'กำลังเปิดหน้าต่างพิมพ์ PDF...' : 'Download Official PDF (A4 เต็มหน้า)'}
                 </span>
               </button>
 
               <button
                 onClick={handlePrintPDF}
                 className="hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-[#FAF8F5] text-[#4A453C] border border-[#D5CEC0] rounded-full text-xs font-semibold tracking-wider shadow-sm transition-all active:scale-95"
-                title="พิมพ์ / บันทึกเป็น PDF ผ่านเบราว์เซอร์"
+                title="พิมพ์ A4 เต็มหน้า ผ่านเบราว์เซอร์"
               >
                 <Printer className="w-4 h-4 text-[#8C6D3F]" />
-                <span>พิมพ์ A4</span>
+                <span>พิมพ์ A4 เต็มหน้า</span>
               </button>
             </div>
           </div>
@@ -188,7 +223,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                   แก้ไขข้อความ Footer ของสูจิบัตร
                 </h3>
                 <p className="text-[11px] text-[#7A7468]">
-                  ปรับแต่งข้อความท้ายหน้าปก และข้อความกำกับเพลทผลงานแต่ละหน้า
+                  ปรับแต่งข้อความท้ายหน้าปก และข้อความท้ายหน้ารูปผลงานแต่ละหน้า
                 </p>
               </div>
             </div>
@@ -260,12 +295,12 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         </div>
       )}
 
-      {/* Main A4 Visual Catalog Viewer */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-16">
-        {/* Cover Page */}
-        <section className="catalog-a4-page relative bg-white border border-[#D5CEC0] shadow-xl overflow-hidden p-6 sm:p-[15mm] text-center max-w-[210mm] mx-auto rounded-sm min-h-[297mm] flex flex-col justify-between">
+      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4) */}
+      <main className="w-full max-w-[210mm] mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16">
+        {/* Cover Page (A4, 210mm x 297mm, 15mm Padding) */}
+        <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#D5CEC0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
           <div>
-            <div className="border-b border-[#E8E2D6] pb-4 mb-6">
+            <div className="border-b border-[#E8E2D6] pb-3 mb-5">
               <span className="font-serif text-3xl font-bold tracking-[0.2em] text-[#1A1918] block">
                 ARTVARA
               </span>
@@ -275,7 +310,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             </div>
 
             {exhibition.bannerUrl && (
-              <div className="relative w-full h-[140mm] max-w-[180mm] mx-auto overflow-hidden mb-6 flex items-center justify-center">
+              <div className="relative w-full h-[140mm] max-w-[180mm] mx-auto overflow-hidden mb-5 flex items-center justify-center">
                 <img
                   src={exhibition.bannerUrl}
                   alt={exhibition.title}
@@ -284,33 +319,33 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </div>
             )}
 
-            <div className="space-y-2 max-w-[160mm] mx-auto">
+            <div className="space-y-2 max-w-[170mm] mx-auto">
               <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8C6D3F] block">
                 Official Exhibition Catalog (สูจิบัตร)
               </span>
-              <h1 className="font-serif text-2xl sm:text-4xl font-bold text-[#1A1918]">
+              <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#1A1918] leading-snug">
                 {exhibition.title}
               </h1>
               {curator?.name && (
-                <p className="text-sm text-[#615B50] font-medium pt-2">
+                <p className="text-xs text-[#615B50] font-medium pt-1">
                   Curated by: <span className="font-semibold text-[#1A1918]">{curator.name}</span>
                 </p>
               )}
-              <p className="text-xs text-[#8A8376]">
+              <p className="text-[11px] text-[#8A8376]">
                 {formatDateRange(exhibition.startDate, exhibition.endDate)}
               </p>
             </div>
           </div>
 
           {/* Dynamic Cover Footer Text */}
-          <div className="pt-6 border-t border-[#E8E2D6] text-center">
+          <div className="pt-4 border-t border-[#E8E2D6] text-center">
             <p className="text-[10px] text-[#8A8376] uppercase tracking-widest leading-relaxed">
               {coverFooter}
             </p>
           </div>
         </section>
 
-        {/* 1 Artwork Plate Per Page (A4, 1.5 cm Margin, 8 Inches Boundary, Flag Above Photo) */}
+        {/* 1 Artwork Plate Per Page (A4, 210mm x 297mm, 15mm Margins, 8 Inches Boundary, Flag Above Photo) */}
         {artworks.map((art, idx) => {
           const artist = art.artist;
           const pageNum = idx + 2;
@@ -322,11 +357,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           return (
             <section
               key={art.id}
-              className="catalog-a4-page relative bg-white border border-[#D5CEC0] shadow-xl p-6 sm:p-[15mm] rounded-sm max-w-[210mm] min-h-[297mm] mx-auto flex flex-col justify-between"
+              className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#D5CEC0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border"
             >
               <div>
-                {/* 1. Main Large Artwork Image (Positioned from top to 8-inch boundary) */}
-                <div className="relative w-full h-[185mm] max-h-[188mm] bg-white overflow-hidden mb-4 flex items-center justify-center">
+                {/* 1. Main Large Artwork Image (Positioned from top to 8-inch boundary, exactly 175mm tall) */}
+                <div className="relative w-full h-[175mm] max-h-[175mm] bg-white overflow-hidden mb-3 flex items-center justify-center">
                   <img
                     src={art.imageUrl}
                     alt={art.title}
@@ -335,11 +370,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </div>
 
                 {/* 2. Details Section (Starts at 8 inches from top of page) */}
-                <div className="relative z-10 flex flex-col sm:flex-row items-start gap-6 pt-1">
+                <div className="relative z-10 flex flex-row items-start gap-5 pt-0.5">
                   {/* Left Column: Flag Image ON TOP, Artist Photo DIRECTLY BELOW */}
-                  <div className="shrink-0 w-24 sm:w-28 flex flex-col items-start">
+                  <div className="shrink-0 w-20 flex flex-col items-start">
                     {/* Flag Badge Image - Above Photo */}
-                    <div className="relative w-10 h-6 rounded-[3px] overflow-hidden border border-[#DDD6C8] shadow-sm mb-2.5 bg-neutral-100">
+                    <div className="relative w-9 h-5 rounded-[2px] overflow-hidden border border-[#DDD6C8] shadow-sm mb-2 bg-neutral-100">
                       <img
                         src={getFlagImageUrl(artist?.country)}
                         alt={artist?.country || 'Flag'}
@@ -349,7 +384,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
                     {/* Artist Photo / Avatar (Below Flag) */}
                     {hasRealPhoto ? (
-                      <div className="relative w-20 h-24 sm:w-24 sm:h-28 bg-[#2B2824] rounded-lg overflow-hidden shadow">
+                      <div className="relative w-20 h-24 bg-[#2B2824] rounded-lg overflow-hidden shadow">
                         <img
                           src={artist!.avatarUrl!}
                           alt={artist?.name || 'Artist'}
@@ -357,35 +392,35 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                         />
                       </div>
                     ) : (
-                      <div className="w-20 h-24 sm:w-24 sm:h-28 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg flex items-center justify-center font-serif text-2xl font-bold text-[#8C6D3F] shadow-sm">
+                      <div className="w-20 h-24 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg flex items-center justify-center font-serif text-2xl font-bold text-[#8C6D3F] shadow-sm">
                         {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
                       </div>
                     )}
                   </div>
 
                   {/* Right Column: Artist Info & Artwork Specs & Concept */}
-                  <div className="flex-1 space-y-2 text-xs text-[#3D3A34]">
+                  <div className="flex-1 space-y-1 text-xs text-[#3D3A34] min-w-0">
                     <div>
-                      <h3 className="font-sans text-sm font-bold text-[#1A1918] leading-tight">
+                      <h3 className="font-sans text-sm font-bold text-[#1A1918] leading-tight truncate">
                         {artist?.name || 'Artist'}
                       </h3>
                       {artist?.email && (
-                        <p className="text-[#7A7468] text-[11px] font-mono leading-tight">{artist.email}</p>
+                        <p className="text-[#7A7468] text-[10px] font-mono leading-tight">{artist.email}</p>
                       )}
-                      <p className="text-[#7A7468] text-[11px] leading-tight">{artist?.country || 'International'}</p>
+                      <p className="text-[#7A7468] text-[10px] leading-tight">{artist?.country || 'International'}</p>
                     </div>
 
-                    <div className="pt-1">
-                      <h4 className="font-sans text-sm font-bold text-[#1A1918] leading-tight">
+                    <div className="pt-0.5">
+                      <h4 className="font-sans text-xs sm:text-sm font-bold text-[#1A1918] leading-tight truncate">
                         {art.title}
                       </h4>
-                      <p className="text-[#5E584D] text-[11px] leading-tight">
+                      <p className="text-[#5E584D] text-[10px] leading-tight">
                         {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
                       </p>
                     </div>
 
                     {(art.concept || art.description) && (
-                      <div className="pt-1 text-xs leading-relaxed text-[#423E37]">
+                      <div className="pt-0.5 text-[10px] sm:text-[11px] leading-relaxed text-[#423E37] line-clamp-3">
                         <span className="font-bold text-[#1A1918]">Concept : </span>
                         <span>{art.concept || art.description}</span>
                       </div>
@@ -395,7 +430,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </div>
 
               {/* Bottom Subtle Ribbon / Wave Graphic matching reference */}
-              <div className="absolute bottom-0 left-0 right-0 h-28 pointer-events-none overflow-hidden z-0 opacity-40">
+              <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
                 <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id={`webWave1-${art.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -412,8 +447,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </svg>
               </div>
 
-              {/* Bottom Footer Row: Optional Custom Footer & Page Number */}
-              <div className="relative z-10 mt-6 pt-3 border-t border-[#F0ECE4] flex items-center justify-between text-[10px] text-[#A69F92]">
+              {/* Bottom Footer Row: Custom Plate Footer & Page Number */}
+              <div className="relative z-10 mt-3 pt-2 border-t border-[#F0ECE4] flex items-center justify-between text-[10px] text-[#A69F92]">
                 <span>
                   {plateFooter ? plateFooter : ''}
                   {art.price ? (plateFooter ? ` • ${formatPrice(art.price)}` : formatPrice(art.price)) : ''}
