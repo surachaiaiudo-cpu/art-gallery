@@ -454,37 +454,14 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>แก้ไข Footer</span>
               </button>
 
-              {/* PRIMARY ACTION BUTTON: 100% WYSIWYG True Vector PDF */}
+              {/* MAIN DOWNLOAD BUTTON: Directly executes 100% WYSIWYG True Vector PDF Export */}
               <button
                 onClick={handleSaveVectorPDF100Percent}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-lg transition-all active:scale-95"
-                title="บันทึกเป็นไฟล์ Vector PDF ให้เหมือนที่แสดงบนหน้าเว็บแบบ 100% (ฟอนต์ Vector แท้ ไม่แตก)"
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
+                title="ดาวน์โหลด / บันทึกสูจิบัตร PDF (ตรงตามหน้าเว็บ 100% ฟอนต์ Vector แท้ คมกริบ ไม่แตก)"
               >
-                <Printer className="w-4 h-4 text-[#FFFDF9]" />
-                <span>🖨️ บันทึก Vector PDF (ตรงตามเว็บ 100%)</span>
-              </button>
-
-              {/* Direct Download PDF Button (Opens 2-Level Standard Selection Modal) */}
-              <button
-                onClick={() => setIsStandardModalOpen(true)}
-                disabled={isGeneratingPdf}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-semibold uppercase tracking-wider shadow-md transition-all active:scale-95 disabled:opacity-50"
-                title="ดาวน์โหลดไฟล์ .pdf ลงเครื่องโดยตรง (เลือกระดับ Standard หรือ PDF/X-1a:2001)"
-              >
-                {downloaded ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                ) : isGeneratingPdf ? (
-                  <Loader2 className="w-4 h-4 text-[#C5A880] animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 text-[#C5A880]" />
-                )}
-                <span>
-                  {downloaded
-                    ? 'ดาวน์โหลดไฟล์สำเร็จแล้ว!'
-                    : isGeneratingPdf
-                    ? `กำลังสร้าง PDF (${pdfProgress.current}/${pdfProgress.total})...`
-                    : 'ดาวน์โหลดไฟล์ PDF'}
-                </span>
+                <Download className="w-4 h-4 text-[#C5A880]" />
+                <span>ดาวน์โหลดสูจิบัตร PDF</span>
               </button>
             </div>
           </div>

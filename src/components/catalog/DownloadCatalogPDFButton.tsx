@@ -21,8 +21,18 @@ export function DownloadCatalogPDFButton({
 
   const handleNavigateToCatalog = () => {
     const targetPath = `/catalog/${exhibition.slug}`;
-    if (pathname === targetPath) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (pathname === targetPath || pathname?.startsWith('/catalog/')) {
+      if (typeof document !== 'undefined') {
+        const originalTitle = document.title;
+        const cleanSlug = exhibition.slug || 'catalog';
+        document.title = `${cleanSlug}-Official-A4-Vector-Catalog`;
+        window.print();
+        setTimeout(() => {
+          document.title = originalTitle;
+        }, 1500);
+      } else {
+        window.print();
+      }
     } else {
       router.push(`${targetPath}`);
     }
