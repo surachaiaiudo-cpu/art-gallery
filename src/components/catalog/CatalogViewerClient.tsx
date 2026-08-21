@@ -72,31 +72,10 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
         : `${cleanSlug}-catalog-Standard.pdf`;
 
-      const downloadEndpoint = `/api/exhibitions/${encodeURIComponent(cleanSlug)}/catalog/pdf?standard=${standard}`;
-      try {
-        const response = await fetch(downloadEndpoint);
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-
-          setDownloaded(true);
-          setTimeout(() => setDownloaded(false), 5000);
-          return;
-        }
-      } catch (serverErr) {
-        console.warn('Server PDF endpoint unavailable, falling back to client vector renderer:', serverErr);
-      }
-
-      // Robust Client-Side Vector PDF fallback
+      // Generate 100% Genuine Vector PDF with Embedded Sukhumvit & Maitree Fonts
       const { pdf } = await import('@react-pdf/renderer');
       const { ExhibitionCatalogPDF } = await import('@/components/catalog/ExhibitionCatalogPDF');
+
       const blob = await pdf(
         <ExhibitionCatalogPDF
           exhibition={exhibition}
