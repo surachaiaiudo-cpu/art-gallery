@@ -285,7 +285,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </div>
 
                 <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-semibold flex items-center justify-between">
-                  <span>🖨️ บันทึกแบบ Standard</span>
+                  <span>📥 ดาวน์โหลด / บันทึก Standard</span>
                   <span>→</span>
                 </div>
               </div>
@@ -312,7 +312,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </div>
 
                 <div className="pt-3 border-t border-[#F0ECE4] text-[11px] text-amber-900 font-bold flex items-center justify-between">
-                  <span>🖨️ บันทึกเกรดโรงพิมพ์ (PDF/X)</span>
+                  <span>📥 ดาวน์โหลด / บันทึก PDF/X</span>
                   <span>→</span>
                 </div>
               </div>
@@ -364,7 +364,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               {/* Direct Peer Reviewers Editor Button */}
               <button
                 onClick={() => setIsPeerReviewModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-bold tracking-wider shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-bold tracking-wider shadow-sm transition-all active:scale-95"
                 title="จัดการรายชื่อคณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Peer Reviewers)"
               >
                 <GraduationCap className="w-3.5 h-3.5 text-[#8C6D3F]" />
@@ -374,21 +374,21 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               {/* Edit Footer Text Button */}
               <button
                 onClick={() => setIsEditModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-semibold tracking-wider shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-[#FAF8F5] text-[#5C5548] hover:text-[#1A1918] border border-[#D5CEC0] rounded-full text-xs font-semibold tracking-wider shadow-sm transition-all active:scale-95"
                 title="แก้ไขข้อความ Footer ท้ายหน้าสูจิบัตร"
               >
                 <Edit3 className="w-3.5 h-3.5 text-[#8C6D3F]" />
                 <span>แก้ไข Footer</span>
               </button>
 
-              {/* Standard vs PDF/X Vector Selection Trigger */}
+              {/* Download PDF Button (Opens 2-Level Standard Selection Modal) */}
               <button
                 onClick={() => setIsStandardModalOpen(true)}
-                className="flex items-center gap-2 px-5 py-2 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
-                title="เลือกระดับมาตรฐานการพิมพ์ PDF (แบบที่ 1 Standard หรือ แบบที่ 2 PDF/X โดยส่งออกฟอนต์เป็น Vector ในทุกกรณี)"
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95"
+                title="ดาวน์โหลดสูจิบัตร PDF (เลือกระดับ Standard หรือ PDF/X โดยตัวอักษรเป็น Vector แท้)"
               >
-                <Printer className="w-4 h-4 text-[#C5A880]" />
-                <span>บันทึกสูจิบัตร PDF (Standard / PDF/X)</span>
+                <Download className="w-4 h-4 text-[#C5A880]" />
+                <span>ดาวน์โหลดสูจิบัตร PDF</span>
               </button>
             </div>
           </div>
