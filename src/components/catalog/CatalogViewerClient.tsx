@@ -73,13 +73,40 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         : `${cleanSlug}-catalog-Standard.pdf`;
 
       const downloadEndpoint = `/api/exhibitions/${encodeURIComponent(cleanSlug)}/catalog/pdf?standard=${standard}`;
-      const response = await fetch(downloadEndpoint);
+      try {
+        const response = await fetch(downloadEndpoint);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
 
-      if (!response.ok) {
-        throw new Error('Server PDF Generation failed');
+          setDownloaded(true);
+          setTimeout(() => setDownloaded(false), 5000);
+          return;
+        }
+      } catch (serverErr) {
+        console.warn('Server PDF endpoint unavailable, falling back to client vector renderer:', serverErr);
       }
 
-      const blob = await response.blob();
+      // Robust Client-Side Vector PDF fallback
+      const { pdf } = await import('@react-pdf/renderer');
+      const { ExhibitionCatalogPDF } = await import('@/components/catalog/ExhibitionCatalogPDF');
+      const blob = await pdf(
+        <ExhibitionCatalogPDF
+          exhibition={exhibition}
+          coverFooterText={coverFooter}
+          plateFooterText={plateFooter}
+          peerReviewers={peerReviewersList}
+          standard={standard}
+        />
+      ).toBlob();
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -92,8 +119,9 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       setDownloaded(true);
       setTimeout(() => setDownloaded(false), 5000);
     } catch (err) {
-      console.error('Error generating Vector PDF download, redirecting:', err);
-      window.location.href = `/api/exhibitions/${encodeURIComponent(exhibition.slug || '')}/catalog/pdf?standard=${standard}`;
+      console.error('Error generating Vector PDF download:', err);
+      // If direct download fails completely, invoke Method 2 (Save as PDF)
+      handleSaveVectorPDF100Percent();
     } finally {
       setIsGeneratingPdf(false);
     }
