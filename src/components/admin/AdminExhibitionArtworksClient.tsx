@@ -28,6 +28,14 @@ import {
   Search,
   Check,
   Wand2,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  ArrowUpDown,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  Save,
+  Info,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
@@ -65,6 +73,21 @@ export function AdminExhibitionArtworksClient({
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Artwork display order state
+  const [artworksList, setArtworksList] = useState<Artwork[]>(initialExhibition.artworks || []);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Sync artworksList when exhibition changes
+  useEffect(() => {
+    if (exhibition.artworks) {
+      setArtworksList(exhibition.artworks);
+      setHasChanges(false);
+    }
+  }, [exhibition]);
+
   // Batch Import States
   const [rawPastedText, setRawPastedText] = useState('');
   const [smartPasteInput, setSmartPasteInput] = useState('');
@@ -83,6 +106,143 @@ export function AdminExhibitionArtworksClient({
       })
       .catch(console.error);
   }, []);
+
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback(null), 3500);
+  };
+
+  // Reorder items by moving an item from oldIndex to newIndex
+  const moveItem = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= artworksList.length) return;
+
+    const updated = [...artworksList];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+
+    const resequenced = updated.map((item, idx) => ({
+      ...item,
+      displayOrder: idx + 1,
+    }));
+
+    setArtworksList(resequenced);
+    setHasChanges(true);
+  };
+
+  // Handle direct numeric input change
+  const handleOrderInputChange = (artId: string, newOrderVal: number) => {
+    if (isNaN(newOrderVal) || newOrderVal < 1) return;
+    const targetOrder = Math.min(newOrderVal, artworksList.length);
+    const currentIndex = artworksList.findIndex((a) => a.id === artId);
+    if (currentIndex === -1) return;
+
+    moveItem(currentIndex, targetOrder - 1);
+  };
+
+  // Move 1 step up
+  const handleMoveUp = (index: number) => {
+    if (index > 0) moveItem(index, index - 1);
+  };
+
+  // Move 1 step down
+  const handleMoveDown = (index: number) => {
+    if (index < artworksList.length - 1) moveItem(index, index + 1);
+  };
+
+  // Jump to Top
+  const handleJumpToTop = (index: number) => {
+    if (index > 0) moveItem(index, 0);
+  };
+
+  // Jump to Bottom
+  const handleJumpToBottom = (index: number) => {
+    if (index < artworksList.length - 1) moveItem(index, artworksList.length - 1);
+  };
+
+  // Drag & Drop handlers
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDrop = (index: number) => {
+    if (draggedIndex !== null && draggedIndex !== index) {
+      moveItem(draggedIndex, index);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  // Auto-Sort Presets
+  const handleAutoSort = (sortType: 'title' | 'artist' | 'country' | 'year' | 'reverse') => {
+    const updated = [...artworksList];
+
+    if (sortType === 'title') {
+      updated.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'th'));
+    } else if (sortType === 'artist') {
+      updated.sort((a, b) => (a.artist?.name || '').localeCompare(b.artist?.name || '', 'th'));
+    } else if (sortType === 'country') {
+      updated.sort((a, b) => (a.artist?.country || '').localeCompare(b.artist?.country || '', 'th'));
+    } else if (sortType === 'year') {
+      updated.sort((a, b) => (b.yearCreated || 0) - (a.yearCreated || 0));
+    } else if (sortType === 'reverse') {
+      updated.reverse();
+    }
+
+    const resequenced = updated.map((item, idx) => ({
+      ...item,
+      displayOrder: idx + 1,
+    }));
+
+    setArtworksList(resequenced);
+    setHasChanges(true);
+    showNotification(
+      'success',
+      lang === 'th' ? 'จัดเรียงลำดับใหม่เรียบร้อยแล้ว (อย่าลืมกดบันทึก)' : 'Order re-sorted (Remember to save)'
+    );
+  };
+
+  // Save new display order to database
+  const handleSaveOrder = async () => {
+    try {
+      setIsSavingOrder(true);
+      const orderedArtworkIds = artworksList.map((a) => a.id);
+      const res = await fetch('/api/admin/artworks/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exhibitionId: exhibition.id,
+          orderedArtworkIds,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to save order');
+
+      setHasChanges(false);
+      showNotification(
+        'success',
+        lang === 'th'
+          ? `บันทึกลำดับผลงานในนิทรรศการ ${artworksList.length} ชิ้น เรียบร้อยแล้ว`
+          : `Saved exhibition display order for ${artworksList.length} artworks!`
+      );
+    } catch (err: any) {
+      console.error('Error saving order:', err);
+      showNotification('error', err.message || 'Error saving display order');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
 
   // Handle single-row Smart Paste and Auto-Detection
   const handleSmartPaste = (text: string) => {
@@ -119,11 +279,6 @@ export function AdminExhibitionArtworksClient({
     description: '',
     imageUrl: '',
   });
-
-  const showNotification = (type: 'success' | 'error', message: string) => {
-    setFeedback({ type, message });
-    setTimeout(() => setFeedback(null), 3500);
-  };
 
   const refreshExhibition = async () => {
     try {
@@ -360,7 +515,7 @@ export function AdminExhibitionArtworksClient({
     }
   };
 
-  const currentArtworks = exhibition.artworks || [];
+  const currentArtworks = artworksList;
   const currentArtIds = new Set(currentArtworks.map((a) => a.id));
   const availableLibrary = libraryArtworks.filter((a) => !currentArtIds.has(a.id));
 
@@ -377,7 +532,7 @@ export function AdminExhibitionArtworksClient({
   });
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 select-none">
+    <div className="max-w-6xl mx-auto space-y-6 select-none">
       {/* Top Header Navigation */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#DCD5C8] pb-6">
         <div>
@@ -399,6 +554,39 @@ export function AdminExhibitionArtworksClient({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Save Display Order Button */}
+          {hasChanges && (
+            <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-full animate-pulse flex items-center gap-1 border border-amber-300">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{lang === 'th' ? 'มีลำดับเปลี่ยนแปลง' : 'Unsaved Order'}</span>
+            </span>
+          )}
+
+          <button
+            onClick={handleSaveOrder}
+            disabled={isSavingOrder || !hasChanges}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-95 ${
+              hasChanges
+                ? 'bg-[#1A1918] hover:bg-[#33302C] text-white ring-2 ring-[#8C6D3F]'
+                : 'bg-neutral-200 text-neutral-400 cursor-not-allowed opacity-60'
+            }`}
+          >
+            {isSavingOrder ? (
+              <span className="animate-spin">⏳</span>
+            ) : (
+              <Save className="w-4 h-4 text-[#C5A880]" />
+            )}
+            <span>
+              {isSavingOrder
+                ? lang === 'th'
+                  ? 'กำลังบันทึก...'
+                  : 'Saving Order...'
+                : lang === 'th'
+                ? 'บันทึกลำดับการแสดงผล'
+                : 'Save Display Order'}
+            </span>
+          </button>
+
           {/* Batch Excel Import Button */}
           <button
             onClick={() => setIsBatchImportModalOpen(true)}
@@ -406,7 +594,7 @@ export function AdminExhibitionArtworksClient({
             title="Import multiple artworks directly from Excel"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
-            <span>{lang === 'th' ? 'นำเข้าจาก Excel / CSV' : 'Excel Import'}</span>
+            <span>{lang === 'th' ? 'นำเข้าจาก Excel' : 'Excel Import'}</span>
           </button>
 
           <Link
@@ -439,82 +627,178 @@ export function AdminExhibitionArtworksClient({
         </div>
       )}
 
-      {/* Toolbar: Search + View Mode Switcher */}
-      <div className="bg-white p-4 rounded-2xl border border-[#E0D9CD] shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        {/* Search Input */}
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-[#8C6D3F] absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={lang === 'th' ? 'ค้นหาชื่อผลงาน, ศิลปิน, สัญชาติ, เทคนิค...' : 'Search artwork title, artist, medium...'}
-            className="w-full pl-10 pr-4 py-2.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-xl text-xs text-[#1A1918] placeholder-[#A0988A] focus:outline-none focus:border-[#C5A880]"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-2.5 text-xs text-neutral-400 hover:text-neutral-700"
-            >
-              ✕
-            </button>
-          )}
-        </div>
+      {/* Toolbar: Search + Auto-Sort + View Mode Switcher */}
+      <div className="bg-[#FAF8F5] border border-[#E0D9CD] p-4 rounded-2xl shadow-sm space-y-3.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-[#8C6D3F] absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={lang === 'th' ? 'ค้นหาชื่อผลงาน, ศิลปิน, สัญชาติ, เทคนิค...' : 'Search artwork title, artist, medium...'}
+              className="w-full pl-10 pr-8 py-2 bg-white border border-[#DDD6C8] rounded-xl text-xs text-[#1A1918] placeholder-[#A0988A] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F] shadow-sm"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-2.5 text-xs text-neutral-400 hover:text-neutral-700"
+              >
+                ✕
+              </button>
+            )}
+          </div>
 
-        {/* View Mode Toggle Buttons */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-[#7A7468] font-medium hidden sm:inline">
-            {lang === 'th' ? `ผลงาน ${filteredCurrentArtworks.length} ชิ้น` : `${filteredCurrentArtworks.length} Artworks`}
-          </span>
+          {/* View Mode Toggle Buttons */}
+          <div className="flex items-center gap-3 justify-between sm:justify-end">
+            <span className="text-xs text-[#7A7468] font-medium hidden sm:inline">
+              {lang === 'th' ? `ผลงาน ${filteredCurrentArtworks.length} ชิ้น` : `${filteredCurrentArtworks.length} Artworks`}
+            </span>
 
-          <div className="flex items-center bg-[#ECE6DC] p-1 rounded-xl border border-[#DDD6C8] text-xs font-semibold">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-[#1A1918] text-white shadow'
-                  : 'text-[#6E685C] hover:text-[#1A1918]'
-              }`}
-              title="Grid Cards View"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'การ์ด' : 'Cards'}</span>
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                viewMode === 'table'
-                  ? 'bg-[#1A1918] text-white shadow'
-                  : 'text-[#6E685C] hover:text-[#1A1918]'
-              }`}
-              title="Table View"
-            >
-              <TableIcon className="w-3.5 h-3.5" />
-              <span>{lang === 'th' ? 'ตาราง' : 'Table'}</span>
-            </button>
+            <div className="flex items-center bg-[#ECE6DC] p-1 rounded-xl border border-[#DDD6C8] text-xs font-semibold">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                  viewMode === 'grid'
+                    ? 'bg-[#1A1918] text-white shadow'
+                    : 'text-[#6E685C] hover:text-[#1A1918]'
+                }`}
+                title="Grid Cards View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'การ์ด' : 'Cards'}</span>
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                  viewMode === 'table'
+                    ? 'bg-[#1A1918] text-white shadow'
+                    : 'text-[#6E685C] hover:text-[#1A1918]'
+                }`}
+                title="Table View"
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'ตาราง' : 'Table'}</span>
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Quick Auto-Sort Presets */}
+        <div className="pt-2.5 border-t border-[#E8E2D6] flex items-center gap-2 flex-wrap text-xs">
+          <span className="text-[11px] font-bold text-[#7A7468] mr-1 flex items-center gap-1">
+            <ArrowUpDown className="w-3 h-3 text-[#8C6D3F]" />
+            <span>{lang === 'th' ? 'จัดเรียงอัตโนมัติ:' : 'Auto-Sort:'}</span>
+          </span>
+
+          <button
+            onClick={() => handleAutoSort('title')}
+            className="px-2.5 py-1 bg-white hover:bg-[#F2ECE0] text-[#4A453C] border border-[#D5CEC0] rounded-lg text-[11px] font-medium transition-colors shadow-sm"
+            title="เรียงตามชื่อผลงาน (A-Z / ก-ฮ)"
+          >
+            🔤 {lang === 'th' ? 'ชื่อผลงาน A-Z' : 'Title A-Z'}
+          </button>
+
+          <button
+            onClick={() => handleAutoSort('artist')}
+            className="px-2.5 py-1 bg-white hover:bg-[#F2ECE0] text-[#4A453C] border border-[#D5CEC0] rounded-lg text-[11px] font-medium transition-colors shadow-sm"
+            title="เรียงตามชื่อศิลปิน (A-Z / ก-ฮ)"
+          >
+            👤 {lang === 'th' ? 'ชื่อศิลปิน A-Z' : 'Artist A-Z'}
+          </button>
+
+          <button
+            onClick={() => handleAutoSort('country')}
+            className="px-2.5 py-1 bg-white hover:bg-[#F2ECE0] text-[#4A453C] border border-[#D5CEC0] rounded-lg text-[11px] font-medium transition-colors shadow-sm"
+            title="เรียงตามประเทศศิลปิน"
+          >
+            🌐 {lang === 'th' ? 'เรียงตามประเทศ' : 'Country'}
+          </button>
+
+          <button
+            onClick={() => handleAutoSort('year')}
+            className="px-2.5 py-1 bg-white hover:bg-[#F2ECE0] text-[#4A453C] border border-[#D5CEC0] rounded-lg text-[11px] font-medium transition-colors shadow-sm"
+            title="เรียงตามปีที่สร้าง (ใหม่สุดก่อน)"
+          >
+            📅 {lang === 'th' ? 'ปีที่สร้าง (ใหม่สุด)' : 'Year (Newest)'}
+          </button>
+
+          <button
+            onClick={() => handleAutoSort('reverse')}
+            className="px-2.5 py-1 bg-white hover:bg-[#F2ECE0] text-[#4A453C] border border-[#D5CEC0] rounded-lg text-[11px] font-medium transition-colors shadow-sm"
+            title="สลับลำดับย้อนกลับ"
+          >
+            🔄 {lang === 'th' ? 'สลับย้อนกลับ' : 'Reverse'}
+          </button>
+        </div>
+      </div>
+
+      {/* Instruction Tip */}
+      <div className="flex items-center gap-2 p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-900 shadow-sm">
+        <Info className="w-4 h-4 text-amber-700 shrink-0" />
+        <span>
+          {lang === 'th'
+            ? '💡 คำแนะนำ: คุณสามารถคลิกพิมพ์เลขลำดับ [ 1, 2, 3... ] หรือคลิกค้างที่ไอคอน ⠿ เพื่อลากวางสลับตำแหน่งผลงานในนิทรรศการนี้ได้ทันที'
+            : '💡 Tip: You can type a new number into the sequence box or drag & drop rows using ⠿ handle.'}
+        </span>
       </div>
 
       {/* MODE 1: GRID CARDS VIEW */}
       {viewMode === 'grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCurrentArtworks.map((art, idx) => {
-            const dims = parseArtworkDimensions(art.dimensions);
+            const isDragged = draggedIndex === idx;
+            const isDragOver = dragOverIndex === idx;
 
             return (
               <div
                 key={art.id}
-                className="bg-white rounded-2xl border border-[#DDD6C8] shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between"
+                draggable={true}
+                onDragStart={() => handleDragStart(idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDrop={() => handleDrop(idx)}
+                onDragEnd={handleDragEnd}
+                className={`bg-white rounded-2xl border shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between select-none ${
+                  isDragged
+                    ? 'opacity-40 border-dashed border-[#8C6D3F] bg-[#FAF4EB]'
+                    : isDragOver
+                    ? 'border-2 border-[#8C6D3F] ring-4 ring-[#8C6D3F]/20'
+                    : 'border-[#DDD6C8]'
+                }`}
               >
                 <div>
-                    {/* Artwork Thumbnail */}
+                  {/* Artwork Thumbnail with Sequence Reorder Controls */}
                   <div className="relative aspect-[4/3] bg-[#FAF8F5] overflow-hidden">
-                    <Image src={art.imageUrl} alt={art.title} fill className="object-cover" />
-                    <span className="absolute top-3 left-3 px-2.5 py-1 bg-black/80 text-[#C5A880] text-[10px] font-bold font-mono rounded">
-                      #{idx + 1}
-                    </span>
-                    <span className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/80 text-white text-[10px] font-mono rounded">
+                    <img src={art.imageUrl} alt={art.title} className="w-full h-full object-cover" />
+
+                    {/* Top Overlay: Sequence Number Input + Drag Grip Handle */}
+                    <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-auto">
+                      <div className="flex items-center gap-1 bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg border border-white/20 shadow">
+                        <span className="text-[10px] text-[#C5A880] font-bold">#</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={artworksList.length}
+                          value={art.displayOrder || idx + 1}
+                          onChange={(e) =>
+                            handleOrderInputChange(art.id, parseInt(e.target.value, 10))
+                          }
+                          className="w-10 h-6 text-center font-mono text-xs font-bold text-white bg-white/20 rounded border border-white/30 focus:outline-none focus:ring-1 focus:ring-[#C5A880]"
+                          title="พิมพ์เพื่อเปลี่ยนลำดับทันที"
+                        />
+                      </div>
+
+                      {/* Grip Drag Handle */}
+                      <div
+                        className="p-1.5 bg-black/80 backdrop-blur-md rounded-lg border border-white/20 text-white hover:text-[#C5A880] cursor-grab active:cursor-grabbing shadow"
+                        title="คลิกค้างเพื่อลากวางสลับตำแหน่ง"
+                      >
+                        <GripVertical className="w-4 h-4" />
+                      </div>
+                    </div>
+
+                    <span className="absolute bottom-2.5 right-2.5 px-2.5 py-1 bg-black/80 text-white text-[10px] font-mono rounded shadow border border-white/10">
                       {formatDimensionsInCm(art.dimensions, lang)}
                     </span>
                   </div>
@@ -547,23 +831,45 @@ export function AdminExhibitionArtworksClient({
                   </div>
                 </div>
 
-                {/* Actions */}
+                {/* Actions & Up/Down Buttons */}
                 <div className="p-5 pt-0 border-t border-[#F0ECE4] flex items-center justify-between pt-3">
-                  <button
-                    onClick={() => handleOpenEdit(art)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#1A1918] border border-[#D5CEC0] rounded-lg text-xs font-semibold transition-all"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-[#8C6D3F]" />
-                    <span>{lang === 'th' ? 'แก้ไขรายละเอียด' : 'Edit Info'}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleOpenEdit(art)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#1A1918] border border-[#D5CEC0] rounded-lg text-xs font-semibold transition-all"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                      <span>{lang === 'th' ? 'แก้ไข' : 'Edit'}</span>
+                    </button>
 
-                  <button
-                    onClick={() => handleRemoveArtwork(art.id, art.title)}
-                    className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
-                    title="Remove from Exhibition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <button
+                      onClick={() => handleRemoveArtwork(art.id, art.title)}
+                      className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Remove from Exhibition"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Move Up / Down Buttons */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleMoveUp(idx)}
+                      disabled={idx === 0}
+                      className="p-1 rounded bg-[#FAF8F5] text-[#7A7468] hover:text-[#1A1918] border border-[#DDD6C8] disabled:opacity-30 transition-colors"
+                      title="เลื่อนขึ้น 1 ลำดับ"
+                    >
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleMoveDown(idx)}
+                      disabled={idx === artworksList.length - 1}
+                      className="p-1 rounded bg-[#FAF8F5] text-[#7A7468] hover:text-[#1A1918] border border-[#DDD6C8] disabled:opacity-30 transition-colors"
+                      title="เลื่อนลง 1 ลำดับ"
+                    >
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -583,41 +889,72 @@ export function AdminExhibitionArtworksClient({
       {/* MODE 2: TABLE VIEW (ตารางจัดการผลงานในนิทรรศการ) */}
       {viewMode === 'table' && (
         <div className="bg-white rounded-2xl border border-[#E0D9CD] shadow-sm overflow-hidden animate-fade-in">
-          <div className="overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#1A1918] text-[#E5D2B8] text-xs font-bold uppercase tracking-wider border-b border-[#33302C]">
-                  <th className="py-4 px-3 w-10 text-center">#</th>
+                  <th className="py-4 px-3 w-24 text-center">{lang === 'th' ? 'ลำดับ' : 'Order #'}</th>
+                  <th className="py-4 px-2 w-8 text-center"></th>
                   <th className="py-4 px-4">{lang === 'th' ? 'ผลงานศิลปะ' : 'Artwork'}</th>
                   <th className="py-4 px-4">{lang === 'th' ? 'ศิลปินผู้สร้างสรรค์' : 'Artist'}</th>
                   <th className="py-4 px-3 text-center w-16">{lang === 'th' ? 'สัญชาติ' : 'Country'}</th>
                   <th className="py-4 px-4">{lang === 'th' ? 'เทคนิค / วัสดุ' : 'Medium'}</th>
-                  <th className="py-4 px-4">{lang === 'th' ? 'ขนาดผลงาน (เซ็นติเมตร)' : 'Dimensions (cm)'}</th>
+                  <th className="py-4 px-4">{lang === 'th' ? 'ขนาดผลงาน' : 'Dimensions'}</th>
                   <th className="py-4 px-3 text-center">{lang === 'th' ? 'ปี' : 'Year'}</th>
                   <th className="py-4 px-4 text-right">{lang === 'th' ? 'การจัดการ' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0ECE4] text-xs text-[#2C2925]">
                 {filteredCurrentArtworks.map((art, idx) => {
+                  const isDragged = draggedIndex === idx;
+                  const isDragOver = dragOverIndex === idx;
+
                   return (
                     <tr
                       key={art.id}
-                      className="hover:bg-[#FAF8F5] transition-colors group"
+                      draggable={true}
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDrop={() => handleDrop(idx)}
+                      onDragEnd={handleDragEnd}
+                      className={`transition-colors group select-none ${
+                        isDragged
+                          ? 'opacity-40 bg-[#FAF4EB]'
+                          : isDragOver
+                          ? 'bg-[#EAE2D2] border-t-2 border-b-2 border-[#8C6D3F]'
+                          : 'hover:bg-[#FAF8F5]'
+                      }`}
                     >
-                      {/* # Index */}
-                      <td className="py-4 px-3 text-center font-mono text-[#8C8477] font-semibold">
-                        #{idx + 1}
+                      {/* # Numeric Order Input */}
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="number"
+                          min={1}
+                          max={artworksList.length}
+                          value={art.displayOrder ?? idx + 1}
+                          onChange={(e) =>
+                            handleOrderInputChange(art.id, parseInt(e.target.value, 10))
+                          }
+                          className="w-14 h-8 px-1.5 text-center font-mono text-xs font-bold text-[#1A1918] bg-white border-2 border-[#D5CEC0] rounded-lg shadow-inner focus:outline-none focus:ring-2 focus:ring-[#8C6D3F] focus:border-[#8C6D3F]"
+                          title="พิมพ์เพื่อเปลี่ยนลำดับทันที"
+                        />
+                      </td>
+
+                      {/* Drag Grip Handle */}
+                      <td className="py-3.5 px-2 text-center cursor-grab active:cursor-grabbing text-[#A8A295] group-hover:text-[#8C6D3F] transition-colors">
+                        <div className="p-1 rounded hover:bg-[#EAE5DC] inline-block" title="คลิกค้างเพื่อลากวาง">
+                          <GripVertical className="w-4 h-4" />
+                        </div>
                       </td>
 
                       {/* Thumbnail & Title */}
-                      <td className="py-4 px-4">
+                      <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-[#D5CEC0] bg-[#FAF8F5] shadow-sm shrink-0">
-                            <Image
+                            <img
                               src={art.imageUrl}
                               alt={art.title}
-                              fill
-                              className="object-cover"
+                              className="w-full h-full object-cover"
                             />
                           </div>
                           <div>
@@ -634,12 +971,12 @@ export function AdminExhibitionArtworksClient({
                       </td>
 
                       {/* Artist Name */}
-                      <td className="py-4 px-4 font-semibold text-[#1A1918]">
+                      <td className="py-3.5 px-4 font-semibold text-[#1A1918]">
                         {art.artist?.name || 'Unknown Artist'}
                       </td>
 
                       {/* Country Flag Bubble */}
-                      <td className="py-4 px-3 text-center">
+                      <td className="py-3.5 px-3 text-center">
                         <div
                           className="inline-flex w-7 h-7 rounded-full overflow-hidden border border-[#C5A880] shadow-sm items-center justify-center bg-white"
                           title={art.artist?.country || 'Country'}
@@ -649,33 +986,75 @@ export function AdminExhibitionArtworksClient({
                       </td>
 
                       {/* Medium */}
-                      <td className="py-4 px-4 text-[#4A453C]">
+                      <td className="py-3.5 px-4 text-[#4A453C]">
                         {art.medium || 'Oil on Canvas'}
                       </td>
 
                       {/* Real Dimensions in Centimeters */}
-                      <td className="py-4 px-4 font-mono font-medium text-[#1A1918]">
+                      <td className="py-3.5 px-4 font-mono font-medium text-[#1A1918]">
                         <span className="inline-block bg-[#FAF8F5] text-[#8C6D3F] border border-[#DDD6C8] px-2.5 py-1 rounded-md shadow-sm font-semibold">
                           {formatDimensionsInCm(art.dimensions, lang)}
                         </span>
                       </td>
 
                       {/* Year */}
-                      <td className="py-4 px-3 text-center font-mono text-[#7A7468]">
+                      <td className="py-3.5 px-3 text-center font-mono text-[#7A7468]">
                         {art.yearCreated || '2026'}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Jump to Top */}
+                          <button
+                            onClick={() => handleJumpToTop(idx)}
+                            disabled={idx === 0}
+                            className="p-1 rounded text-[#7A7468] hover:text-[#1A1918] hover:bg-[#EAE5DC] disabled:opacity-30 transition-colors"
+                            title="ย้ายไปบนสุด"
+                          >
+                            <ArrowUpToLine className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Move Up */}
+                          <button
+                            onClick={() => handleMoveUp(idx)}
+                            disabled={idx === 0}
+                            className="p-1 rounded text-[#7A7468] hover:text-[#1A1918] hover:bg-[#EAE5DC] disabled:opacity-30 transition-colors"
+                            title="เลื่อนขึ้น 1 ลำดับ"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </button>
+
+                          {/* Move Down */}
+                          <button
+                            onClick={() => handleMoveDown(idx)}
+                            disabled={idx === artworksList.length - 1}
+                            className="p-1 rounded text-[#7A7468] hover:text-[#1A1918] hover:bg-[#EAE5DC] disabled:opacity-30 transition-colors"
+                            title="เลื่อนลง 1 ลำดับ"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+
+                          {/* Jump to Bottom */}
+                          <button
+                            onClick={() => handleJumpToBottom(idx)}
+                            disabled={idx === artworksList.length - 1}
+                            className="p-1 rounded text-[#7A7468] hover:text-[#1A1918] hover:bg-[#EAE5DC] disabled:opacity-30 transition-colors"
+                            title="ย้ายไปล่างสุด"
+                          >
+                            <ArrowDownToLine className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Edit Artwork */}
                           <button
                             onClick={() => handleOpenEdit(art)}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#1A1918] border border-[#D5CEC0] rounded-lg text-xs font-semibold transition-all shadow-sm"
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#1A1918] border border-[#D5CEC0] rounded-lg text-xs font-semibold transition-all shadow-sm ml-1"
                           >
                             <Edit3 className="w-3.5 h-3.5 text-[#8C6D3F]" />
                             <span>{lang === 'th' ? 'แก้ไข' : 'Edit'}</span>
                           </button>
 
+                          {/* Remove Artwork */}
                           <button
                             onClick={() => handleRemoveArtwork(art.id, art.title)}
                             className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"

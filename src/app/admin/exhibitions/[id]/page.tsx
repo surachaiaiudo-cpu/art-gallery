@@ -29,6 +29,9 @@ import {
   ArrowRightLeft,
   Keyboard,
   Sliders,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 
 export type RoomSize = 'small' | 'medium' | 'large';
@@ -71,6 +74,28 @@ export default function AdminExhibitionBuilderPage({
   const [hoveredArtId, setHoveredArtId] = useState<string | null>(null);
   const [activeWallTab, setActiveWallTab] = useState<0 | 1 | 2 | 3>(0);
   const [customUniformGap, setCustomUniformGap] = useState<string>('1.20');
+  const [sidebarDragIndex, setSidebarDragIndex] = useState<number | null>(null);
+  const [sidebarOverIndex, setSidebarOverIndex] = useState<number | null>(null);
+
+  const handleReorderArtworks = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= artworks.length) return;
+    const updated = [...artworks];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+    const resequenced = updated.map((item, idx) => ({
+      ...item,
+      displayOrder: idx + 1,
+    }));
+    setArtworks(resequenced);
+  };
+
+  const handleNumberChange = (artId: string, newNum: number) => {
+    if (isNaN(newNum) || newNum < 1) return;
+    const targetOrder = Math.min(newNum, artworks.length);
+    const currentIndex = artworks.findIndex((a) => a.id === artId);
+    if (currentIndex === -1) return;
+    handleReorderArtworks(currentIndex, targetOrder - 1);
+  };
 
   const floorPlanRef = useRef<HTMLDivElement | null>(null);
 
@@ -747,39 +772,112 @@ export default function AdminExhibitionBuilderPage({
               const isSelected = art.id === selectedArtId;
               const pos = art.wallPosition;
               const dims = parseArtworkDimensions(art.dimensions);
+              const isDragged = sidebarDragIndex === idx;
+              const isDragOver = sidebarOverIndex === idx;
 
               return (
                 <div
                   key={art.id}
+                  draggable={true}
+                  onDragStart={() => setSidebarDragIndex(idx)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (sidebarOverIndex !== idx) setSidebarOverIndex(idx);
+                  }}
+                  onDrop={() => {
+                    if (sidebarDragIndex !== null && sidebarDragIndex !== idx) {
+                      handleReorderArtworks(sidebarDragIndex, idx);
+                    }
+                    setSidebarDragIndex(null);
+                    setSidebarOverIndex(null);
+                  }}
+                  onDragEnd={() => {
+                    setSidebarDragIndex(null);
+                    setSidebarOverIndex(null);
+                  }}
                   onClick={() => setSelectedArtId(art.id)}
                   onMouseEnter={() => setHoveredArtId(art.id)}
                   onMouseLeave={() => setHoveredArtId(null)}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
-                    isSelected
+                  className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 select-none ${
+                    isDragged
+                      ? 'opacity-40 border-dashed border-[#8C6D3F] bg-[#FAF4EB]'
+                      : isDragOver
+                      ? 'border-2 border-[#8C6D3F] bg-[#FAF4EB]'
+                      : isSelected
                       ? 'bg-[#FAF8F5] border-[#8C6D3F] shadow-md ring-2 ring-[#8C6D3F]/40'
                       : 'bg-white border-[#E8E2D6] hover:border-[#D0C7B6]'
                   }`}
                 >
-                  <div className="relative w-14 h-14 bg-[#1A1918] rounded-lg overflow-hidden shrink-0 shadow-sm">
-                    <Image src={art.imageUrl} alt={art.title} fill className="object-cover" />
+                  {/* Drag Handle */}
+                  <div
+                    className="pt-3 text-[#A8A295] hover:text-[#8C6D3F] cursor-grab active:cursor-grabbing shrink-0"
+                    title="คลิกค้างเพื่อลากวางสลับลำดับ"
+                  >
+                    <GripVertical className="w-3.5 h-3.5" />
+                  </div>
+
+                  <div className="relative w-12 h-12 bg-[#1A1918] rounded-lg overflow-hidden shrink-0 shadow-sm">
+                    <img src={art.imageUrl} alt={art.title} className="w-full h-full object-cover" />
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase font-bold text-[#8C6D3F]">
-                        #{idx + 1}
-                      </span>
-                      <span className="text-[10px] font-mono text-[#8C8477]">
-                        {dims.widthMeters.toFixed(2)}m × {dims.heightMeters.toFixed(2)}m
+                    <div className="flex items-center justify-between gap-1">
+                      {/* Numeric Order Input */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-bold text-[#8C6D3F]">#</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={artworks.length}
+                          value={art.displayOrder ?? idx + 1}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) =>
+                            handleNumberChange(art.id, parseInt(e.target.value, 10))
+                          }
+                          className="w-9 h-5 text-center font-mono text-[10px] font-bold text-[#1A1918] bg-white border border-[#D5CEC0] rounded focus:outline-none focus:ring-1 focus:ring-[#8C6D3F]"
+                          title="พิมพ์เพื่อเปลี่ยนลำดับทันที"
+                        />
+                      </div>
+
+                      {/* Move Up / Down Buttons */}
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (idx > 0) handleReorderArtworks(idx, idx - 1);
+                          }}
+                          disabled={idx === 0}
+                          className="p-0.5 rounded text-[#7A7468] hover:text-[#1A1918] hover:bg-[#EAE5DC] disabled:opacity-20"
+                          title="เลื่อนขึ้น"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (idx < artworks.length - 1) handleReorderArtworks(idx, idx + 1);
+                          }}
+                          disabled={idx === artworks.length - 1}
+                          className="p-0.5 rounded text-[#7A7468] hover:text-[#1A1918] hover:bg-[#EAE5DC] disabled:opacity-20"
+                          title="เลื่อนลง"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <span className="text-[9px] font-mono text-[#8C8477] shrink-0">
+                        {dims.widthMeters.toFixed(1)}m × {dims.heightMeters.toFixed(1)}m
                       </span>
                     </div>
 
                     <h4 className="font-serif text-xs font-bold text-[#1A1918] truncate mt-0.5">
                       {art.title}
                     </h4>
-                    <p className="text-[11px] text-[#6E685C] truncate">{art.artist?.name}</p>
+                    <p className="text-[10px] text-[#6E685C] truncate">{art.artist?.name}</p>
 
-                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-[#7A7468] bg-[#F4F1EA] px-2 py-0.5 rounded font-mono">
+                    <div className="mt-1 flex items-center justify-between text-[9px] text-[#7A7468] bg-[#F4F1EA] px-1.5 py-0.5 rounded font-mono">
                       <span>
                         X:{pos?.x.toFixed(1)} Z:{pos?.z.toFixed(1)}
                       </span>
