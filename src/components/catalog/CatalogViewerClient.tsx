@@ -58,7 +58,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const curator = exhibition.curator;
   const hasReviewers = peerReviewersList.length > 0;
 
-  // Direct File Download (100% Native Vector PDF with TrueType Vector Fonts) - No print dialog
+  // Direct File Download (100% Native Vector PDF with Embedded TrueType Vector Fonts) - No print dialog
   const handleDirectDownloadPDF = async (standard: PDFStandard = 'standard') => {
     try {
       setIsStandardModalOpen(false);
@@ -66,34 +66,34 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       setPdfStandardType(standard);
       setDownloaded(false);
       
-      const totalPages = (artworks.length || 0) + (hasReviewers ? 2 : 1);
-      setPdfProgress({ current: 1, total: totalPages });
-
       const isPdfX = standard === 'pdfx';
       const cleanSlug = exhibition.slug || 'exhibition';
       const fileName = isPdfX
         ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
         : `${cleanSlug}-catalog-Standard.pdf`;
 
-      // Generate 100% Vector PDF with EMBEDDED TrueType Vector Fonts (Sarabun)
-      const { generateEmbeddedVectorPDF } = await import('@/lib/vectorPdfGenerator');
-      const doc = await generateEmbeddedVectorPDF({
-        exhibition,
-        coverFooterText: coverFooter,
-        plateFooterText: plateFooter,
-        peerReviewers: peerReviewersList,
-        standard,
-        onProgress: (current, total) => setPdfProgress({ current, total }),
-      });
+      const downloadEndpoint = `/api/exhibitions/${encodeURIComponent(cleanSlug)}/catalog/pdf?standard=${standard}`;
+      const response = await fetch(downloadEndpoint);
 
-      // Save directly to disk with embedded vector fonts
-      doc.save(fileName);
+      if (!response.ok) {
+        throw new Error('Server PDF Generation failed');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
       setDownloaded(true);
       setTimeout(() => setDownloaded(false), 5000);
     } catch (err) {
-      console.error('Error generating Vector PDF download:', err);
-      alert('เกิดข้อผิดพลาดในการสร้างไฟล์ Vector PDF');
+      console.error('Error generating Vector PDF download, redirecting:', err);
+      window.location.href = `/api/exhibitions/${encodeURIComponent(exhibition.slug || '')}/catalog/pdf?standard=${standard}`;
     } finally {
       setIsGeneratingPdf(false);
     }
