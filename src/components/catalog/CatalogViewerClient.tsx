@@ -15,11 +15,8 @@ import {
   Edit3,
   X,
   Save,
-  Sparkles,
   Loader2,
   FileText,
-  Layers,
-  Check,
   ShieldCheck,
 } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
@@ -55,6 +52,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       setPdfStandardType(profile);
       setDownloaded(false);
       setIsExportOptionsOpen(false);
+
+      // Wait for all web fonts to load completely to prevent glyph overlap / text squishing
+      if (typeof document !== 'undefined' && document.fonts) {
+        await document.fonts.ready;
+      }
 
       // Dynamically import client-side PDF tools
       const { jsPDF } = await import('jspdf');
@@ -92,8 +94,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         creator: 'ARTVARA High-Fidelity Catalog System (ISO 15930-1 Prepress Engine)',
       });
 
-      // Scale: 2.5 for PDF/X-1a (300+ DPI Prepress), 1.8 for Standard
-      const scaleFactor = isPdfX ? 2.5 : 1.8;
+      // High resolution scale
+      const scaleFactor = isPdfX ? 3.0 : 2.0;
       const jpegQuality = isPdfX ? 0.98 : 0.92;
 
       for (let i = 0; i < total; i++) {
@@ -107,6 +109,22 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           backgroundColor: '#ffffff',
           logging: false,
           windowWidth: 1200,
+          onclone: (clonedDoc) => {
+            // Ensure typography inside cloned DOM has generous line-height and no overflow clipping
+            const clonedPages = clonedDoc.querySelectorAll<HTMLElement>('.catalog-a4-page');
+            clonedPages.forEach((p) => {
+              p.style.boxShadow = 'none';
+            });
+
+            const textEls = clonedDoc.querySelectorAll<HTMLElement>(
+              'h1, h2, h3, h4, h5, p, span, div'
+            );
+            textEls.forEach((t) => {
+              t.style.letterSpacing = 'normal';
+              t.style.wordSpacing = 'normal';
+              t.style.transform = 'none';
+            });
+          },
         });
 
         const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
@@ -544,10 +562,10 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
           <div>
             <div className="border-b border-[#E0E0E0] pb-3 mb-5">
-              <span className="font-serif text-3xl font-bold tracking-[0.2em] text-[#000000] block">
+              <span className="font-serif text-3xl font-bold tracking-[0.2em] text-[#000000] block leading-normal">
                 ARTVARA
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-[#666666] mt-1 block">
+              <span className="text-[10px] uppercase tracking-widest text-[#666666] mt-1 block leading-normal">
                 International Art Festival & Curated Exhibition
               </span>
             </div>
@@ -563,19 +581,19 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </div>
             )}
 
-            <div className="space-y-2 max-w-[170mm] mx-auto">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#333333] block">
+            <div className="space-y-2.5 max-w-[170mm] mx-auto">
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#333333] block leading-normal">
                 Official Exhibition Catalog (สูจิบัตร)
               </span>
               <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#000000] leading-snug">
                 {exhibition.title}
               </h1>
               {curator?.name && (
-                <p className="text-xs text-[#444444] font-medium pt-1">
+                <p className="text-xs text-[#444444] font-medium pt-1 leading-normal">
                   Curated by: <span className="font-semibold text-[#000000]">{curator.name}</span>
                 </p>
               )}
-              <p className="text-[11px] text-[#666666]">
+              <p className="text-[11px] text-[#666666] leading-normal">
                 {formatDateRange(exhibition.startDate, exhibition.endDate)}
               </p>
             </div>
@@ -614,8 +632,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                   />
                 </div>
 
-                {/* 2. Details Section (Starts at 8 inches from top of page - Pure K Black/Gray text) */}
-                <div className="relative z-10 flex flex-row items-start gap-5 pt-0.5">
+                {/* 2. Details Section (Starts at 8 inches from top of page - Pure K Black/Gray text with safe spacing) */}
+                <div className="relative z-10 flex flex-row items-start gap-5 pt-1">
                   {/* Left Column: Flag Image ON TOP, Artist Photo DIRECTLY BELOW */}
                   <div className="shrink-0 w-20 flex flex-col items-start">
                     {/* Flag Badge Image - Above Photo */}
@@ -645,27 +663,34 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                     )}
                   </div>
 
-                  {/* Right Column: Artist Info & Artwork Specs & Concept (Pure K-Plate Black/Grayscale) */}
-                  <div className="flex-1 space-y-1 text-xs text-[#222222] min-w-0">
-                    <div>
-                      <h3 className="font-sans text-sm font-bold text-[#000000] leading-tight truncate">
+                  {/* Right Column: Artist Info & Artwork Specs & Concept (Pure K-Plate Black/Grayscale with explicit line-height) */}
+                  <div className="flex-1 text-[#222222] min-w-0 space-y-2">
+                    {/* Artist Block */}
+                    <div className="space-y-0.5">
+                      <h3 className="font-sans text-sm font-bold text-[#000000] leading-snug">
                         {artist?.name || 'Artist'}
                       </h3>
                       {artist?.email && (
-                        <p className="text-[#666666] text-[10px] font-mono leading-tight">{artist.email}</p>
+                        <p className="text-[#666666] text-[10px] font-mono leading-normal">
+                          {artist.email}
+                        </p>
                       )}
-                      <p className="text-[#666666] text-[10px] leading-tight">{artist?.country || 'International'}</p>
+                      <p className="text-[#666666] text-[10px] leading-normal">
+                        {artist?.country || 'International'}
+                      </p>
                     </div>
 
-                    <div className="pt-0.5">
-                      <h4 className="font-sans text-xs sm:text-sm font-bold text-[#000000] leading-tight truncate">
+                    {/* Artwork Block */}
+                    <div className="space-y-0.5">
+                      <h4 className="font-sans text-xs sm:text-sm font-bold text-[#000000] leading-snug">
                         {art.title}
                       </h4>
-                      <p className="text-[#444444] text-[10px] leading-tight font-medium">
+                      <p className="text-[#444444] text-[10px] leading-normal font-medium">
                         {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
                       </p>
                     </div>
 
+                    {/* Concept Block */}
                     {(art.concept || art.description) && (
                       <div className="pt-0.5 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] line-clamp-3">
                         <span className="font-bold text-[#000000]">Concept : </span>
