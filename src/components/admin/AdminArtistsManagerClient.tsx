@@ -23,6 +23,9 @@ import {
   Table as TableIcon,
   Search,
   Sparkles,
+  FileText,
+  UploadCloud,
+  Users,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
@@ -59,6 +62,148 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
     instagram: '',
     website: '',
   });
+
+  // Batch Excel Import State
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [batchRawText, setBatchRawText] = useState('');
+  const [parsedBatch, setParsedBatch] = useState<Array<{ name: string; country: string; email: string; flagEmoji: string }>>([]);
+  const [isBatchSubmitting, setIsBatchSubmitting] = useState(false);
+
+  const parseMultiLineArtists = (text: string) => {
+    if (!text || !text.trim()) return [];
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const results: Array<{ name: string; country: string; email: string; flagEmoji: string }> = [];
+    const seenEmails = new Set<string>();
+
+    for (const line of lines) {
+      if (!line) continue;
+
+      const lowerLine = line.toLowerCase();
+      if (
+        lowerLine.startsWith('name\t') ||
+        lowerLine.startsWith('ชื่อ\t') ||
+        lowerLine.startsWith('artist\t') ||
+        lowerLine.includes('xxx\txxx')
+      ) {
+        continue;
+      }
+
+      let parts: string[] = [];
+      if (line.includes('\t')) {
+        parts = line.split('\t').map((s) => s.trim()).filter(Boolean);
+      } else if (line.includes('|')) {
+        parts = line.split('|').map((s) => s.trim()).filter(Boolean);
+      } else if (line.includes(',')) {
+        parts = line.split(',').map((s) => s.trim()).filter(Boolean);
+      } else {
+        const emailMatch = line.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+        if (emailMatch) {
+          const email = emailMatch[1];
+          const withoutEmail = line.replace(email, '').trim();
+          const rest = withoutEmail.split(/\s{2,}|\s-\s|\//).map((s) => s.trim()).filter(Boolean);
+          if (rest.length >= 2) {
+            parts = [rest[0], rest[1], email];
+          } else if (rest.length === 1) {
+            parts = [rest[0], '', email];
+          }
+        }
+      }
+
+      if (parts.length >= 2) {
+        let name = '';
+        let country = '';
+        let email = '';
+
+        const emailIndex = parts.findIndex((p) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p));
+        if (emailIndex !== -1) {
+          email = parts[emailIndex];
+          parts.splice(emailIndex, 1);
+        }
+
+        if (parts.length >= 2) {
+          name = parts[0];
+          country = parts[1];
+        } else if (parts.length === 1) {
+          name = parts[0];
+        }
+
+        if (name.toLowerCase() === 'xxx' || email.toLowerCase() === 'xxx') continue;
+
+        if (name && email) {
+          const cleanEmail = email.toLowerCase();
+          if (!seenEmails.has(cleanEmail)) {
+            seenEmails.add(cleanEmail);
+
+            let flag = '🌐';
+            const cLower = (country || '').toLowerCase();
+            if (cLower.includes('thai')) flag = '🇹🇭';
+            else if (cLower.includes('japan')) flag = '🇯🇵';
+            else if (cLower.includes('ital')) flag = '🇮🇹';
+            else if (cLower.includes('france')) flag = '🇫🇷';
+            else if (cLower.includes('austr')) flag = '🇦🇺';
+            else if (cLower.includes('chin')) flag = '🇨🇳';
+            else if (cLower.includes('indones')) flag = '🇮🇩';
+            else if (cLower.includes('kurd')) flag = '☀️';
+            else if (cLower.includes('malay')) flag = '🇲🇾';
+            else if (cLower.includes('mexic')) flag = '🇲🇽';
+            else if (cLower.includes('singap')) flag = '🇸🇬';
+            else if (cLower.includes('taiwan')) flag = '🇹🇼';
+            else if (cLower.includes('unit') || cLower.includes('king') || cLower.includes('uk')) flag = '🇬🇧';
+            else if (cLower.includes('viet')) flag = '🇻🇳';
+            else if (cLower.includes('us') || cLower.includes('america')) flag = '🇺🇸';
+
+            results.push({
+              name,
+              country: country || 'International',
+              email: cleanEmail,
+              flagEmoji: flag,
+            });
+          }
+        }
+      }
+    }
+
+    return results;
+  };
+
+  const handleBatchTextChange = (text: string) => {
+    setBatchRawText(text);
+    const parsed = parseMultiLineArtists(text);
+    setParsedBatch(parsed);
+  };
+
+  const handleBatchSubmit = async () => {
+    if (parsedBatch.length === 0) return;
+    setIsBatchSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/artists/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artists: parsedBatch }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to import');
+      }
+
+      showNotification(
+        'success',
+        lang === 'th'
+          ? `🎉 นำเข้าศิลปินทั้งหมด ${data.count} ท่านเรียบร้อยแล้ว!`
+          : `🎉 Successfully imported ${data.count} artists!`
+      );
+      setIsBatchModalOpen(false);
+      setBatchRawText('');
+      setParsedBatch([]);
+      await refreshList();
+    } catch (err: any) {
+      console.error(err);
+      showNotification('error', err.message || 'Error importing artists');
+    } finally {
+      setIsBatchSubmitting(false);
+    }
+  };
 
   const [smartPasteText, setSmartPasteText] = useState('');
   const [smartDetected, setSmartDetected] = useState(false);
@@ -298,13 +443,28 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-95 shrink-0"
-        >
-          <Plus className="w-4 h-4 text-[#C5A880]" />
-          <span>{lang === 'th' ? 'เพิ่มศิลปินใหม่' : 'Add New Artist'}</span>
-        </button>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            onClick={() => {
+              setBatchRawText('');
+              setParsedBatch([]);
+              setIsBatchModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#FAF8F5] hover:bg-[#EAE5DA] text-[#1A1918] border border-[#D5CFC3] rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm transition-all active:scale-95 shrink-0"
+            title="Batch Import Artists from Excel / CSV"
+          >
+            <FileText className="w-4 h-4 text-[#8C6D3F]" />
+            <span>{lang === 'th' ? '📊 นำเข้าจาก Excel' : '📊 Excel Import'}</span>
+          </button>
+
+          <button
+            onClick={handleOpenCreate}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-95 shrink-0"
+          >
+            <Plus className="w-4 h-4 text-[#C5A880]" />
+            <span>{lang === 'th' ? 'เพิ่มศิลปินใหม่' : 'Add New Artist'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Notification Banner */}
@@ -844,6 +1004,134 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* BATCH IMPORT FROM EXCEL MODAL */}
+      {isBatchModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#FAF8F5] border border-[#DDD6C8] rounded-2xl w-full max-w-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => setIsBatchModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="border-b border-[#E3DED4] pb-4 mb-6">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[#8C6D3F]" />
+                <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold">
+                  {lang === 'th' ? 'นำเข้าข้อมูลศิลปินจำนวนมากจาก Excel / CSV' : 'Batch Import Artists from Excel / CSV'}
+                </span>
+              </div>
+              <h2 className="font-serif text-2xl font-bold text-[#1A1918] mt-1">
+                {lang === 'th' ? 'คัดลอกตารางจาก Excel แล้ววางที่นี่' : 'Copy Table from Excel & Paste Here'}
+              </h2>
+              <p className="text-xs text-[#7A7468] mt-1">
+                {lang === 'th'
+                  ? 'ระบบจะตรวจจับชื่อ-นามสกุล, ประเทศ/สัญชาติ, ธงชาติ, และอีเมลของศิลปินแต่ละท่านให้อัตโนมัติทันที'
+                  : 'System will automatically detect artist name, country, flag, and email.'}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1.5">
+                  {lang === 'th' ? 'วางแถวข้อมูลจาก Excel ที่นี่ (Copy & Paste):' : 'Paste Excel Table Rows Here:'}
+                </label>
+                <textarea
+                  rows={8}
+                  value={batchRawText}
+                  onChange={(e) => handleBatchTextChange(e.target.value)}
+                  placeholder={`Fassih Keiso\tAustralia\tfassihkeiso@yahoo.com\nPimpisa Tinpalit\tAustralia\ttinpalit@gmail.com\nLiang Hongxia\tChina\tranfangge@163.com\nMen Longpeng\tChina\tmlpmenlongpeng@126.com\nEric Madeleine\tFrance\tmie@madeineric.com`}
+                  className="w-full p-3.5 bg-white border border-[#D5CFC3] rounded-xl text-xs font-mono leading-relaxed text-[#1A1918] placeholder:text-[#AAA396] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
+                />
+              </div>
+
+              {/* Live Preview of Parsed Artists */}
+              {parsedBatch.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#1A1918] flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-[#8C6D3F]" />
+                      <span>{lang === 'th' ? `ตรวจพบศิลปินทั้งหมด ${parsedBatch.length} ท่าน:` : `Detected ${parsedBatch.length} Artists:`}</span>
+                    </span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+                      ✓ พร้อมนำเข้า
+                    </span>
+                  </div>
+
+                  <div className="border border-[#E0D9CD] rounded-xl bg-white overflow-hidden max-h-60 overflow-y-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#FAF8F5] border-b border-[#E8E2D6] text-[#7A7468] uppercase font-semibold text-[10px]">
+                        <tr>
+                          <th className="p-2.5">#</th>
+                          <th className="p-2.5">{lang === 'th' ? 'ชื่อ-นามสกุล ศิลปิน' : 'Artist Name'}</th>
+                          <th className="p-2.5">{lang === 'th' ? 'ประเทศ' : 'Country'}</th>
+                          <th className="p-2.5">{lang === 'th' ? 'อีเมล' : 'Email'}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#F0ECE4]">
+                        {parsedBatch.map((art, idx) => (
+                          <tr key={idx} className="hover:bg-[#FAF8F5]">
+                            <td className="p-2.5 text-[#8C8477] font-mono text-[11px]">{idx + 1}</td>
+                            <td className="p-2.5 font-bold text-[#1A1918]">{art.name}</td>
+                            <td className="p-2.5">
+                              <span className="inline-flex items-center gap-1.5">
+                                <CountryFlag country={art.country} size="xs" />
+                                <span>{art.country}</span>
+                              </span>
+                            </td>
+                            <td className="p-2.5 font-mono text-[11px] text-[#8C6D3F]">{art.email}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-[#E5E0D5] flex items-center justify-between">
+                <span className="text-xs text-[#7A7468]">
+                  {parsedBatch.length > 0
+                    ? lang === 'th'
+                      ? `พร้อมนำเข้าศิลปิน ${parsedBatch.length} ท่าน`
+                      : `${parsedBatch.length} artists ready`
+                    : lang === 'th'
+                    ? 'กรุณาวางข้อมูลจาก Excel เพื่อดูตัวอย่าง'
+                    : 'Paste data above to preview'}
+                </span>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsBatchModalOpen(false)}
+                    className="px-4 py-2 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
+                  >
+                    {t.inquiryModal.cancel}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={parsedBatch.length === 0 || isBatchSubmitting}
+                    onClick={handleBatchSubmit}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all disabled:opacity-50 active:scale-95"
+                  >
+                    <UploadCloud className="w-4 h-4 text-[#C5A880]" />
+                    <span>
+                      {isBatchSubmitting
+                        ? lang === 'th'
+                          ? 'กำลังนำเข้าข้อมูล...'
+                          : 'Importing...'
+                        : lang === 'th'
+                        ? `🚀 นำเข้าศิลปินทั้ง ${parsedBatch.length} ท่าน`
+                        : `🚀 Import ${parsedBatch.length} Artists`}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
