@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Palette,
 } from 'lucide-react';
+import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
 
 interface AdminExhibitionsManagerClientProps {
   initialExhibitions: Exhibition[];
@@ -75,7 +76,7 @@ export function AdminExhibitionsManagerClient({
       title: '',
       slug: '',
       curatorNote: '',
-      bannerUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1600&auto=format&fit=crop',
+      bannerUrl: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
       status: 'active',
@@ -492,15 +493,18 @@ export function AdminExhibitionsManagerClient({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
-                  {lang === 'th' ? 'ภาพแบนเนอร์ปก (Image Banner URL)' : 'Banner Image URL'}
-                </label>
-                <input
-                  type="url"
+                <ImageUploadDropzone
+                  label={lang === 'th' ? 'ภาพแบนเนอร์ปกนิทรรศการ (Exhibition Banner Cover)' : 'Exhibition Banner Cover'}
                   value={formData.bannerUrl}
-                  onChange={(e) => setFormData({ ...formData, bannerUrl: e.target.value })}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg font-mono text-xs focus:outline-none"
+                  onChange={(url) => setFormData({ ...formData, bannerUrl: url })}
+                  titleHint={formData.slug || 'exhibition-banner'}
+                  folder="/artvara-exhibitions"
+                  shape="rounded"
+                  helperText={
+                    lang === 'th'
+                      ? 'ลากภาพปกนิทรรศการมาวาง หรือคลิกเพื่ออัปโหลดไปยัง ImageKit CDN'
+                      : 'Drag & drop exhibition cover banner or click to upload to ImageKit CDN'
+                  }
                 />
               </div>
 

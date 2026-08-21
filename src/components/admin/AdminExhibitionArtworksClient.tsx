@@ -111,13 +111,13 @@ export function AdminExhibitionArtworksClient({
   const [artworkForm, setArtworkForm] = useState({
     title: '',
     artistId: '',
-    artistName: 'สมโภชน์ บุญส่งประเสริฐ',
-    medium: 'Oil on Linen Canvas (สีน้ำมันบนผ้าลินิน)',
-    dimensions: '120 x 180 cm.',
+    artistName: '',
+    medium: '',
+    dimensions: '',
     yearCreated: 2026,
     concept: '',
     description: '',
-    imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop',
+    imageUrl: '',
   });
 
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -889,13 +889,13 @@ export function AdminExhibitionArtworksClient({
                       setArtworkForm({
                         title: '',
                         artistId: '',
-                        artistName: 'สมโภชน์ บุญส่งประเสริฐ',
-                        medium: 'Oil on Canvas',
-                        dimensions: '120 x 180 cm.',
+                        artistName: '',
+                        medium: '',
+                        dimensions: '',
                         yearCreated: 2026,
                         concept: '',
                         description: '',
-                        imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop',
+                        imageUrl: '',
                       });
                       setIsCreateNewModalOpen(true);
                     }}
@@ -1107,9 +1107,18 @@ export function AdminExhibitionArtworksClient({
 
               {/* Drag & Drop / File Picker / ImageKit Upload */}
               <ImageUploadDropzone
+                label={lang === 'th' ? 'รูปภาพผลงานศิลปกรรม (Artwork High-Res Image)' : 'Artwork Image (High-Res)'}
                 value={artworkForm.imageUrl}
                 onChange={(url) => setArtworkForm({ ...artworkForm, imageUrl: url })}
-                titleHint={artworkForm.title || 'artwork'}
+                titleHint={artworkForm.title || 'artwork-image'}
+                folder="/artvara-artworks"
+                shape="rounded"
+                required={true}
+                helperText={
+                  lang === 'th'
+                    ? 'ลากรูปผลงานศิลปกรรมมาวาง หรือคลิกเพื่ออัปโหลดไปยัง ImageKit CDN'
+                    : 'Drag & drop artwork image or click to upload to ImageKit CDN'
+                }
               />
 
               <div>

@@ -6,6 +6,39 @@ import { getAllExhibitions } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
+async function deleteFromImageKit(imageUrl: string, privateKey?: string) {
+  if (!privateKey || !imageUrl || !imageUrl.includes('ik.imagekit.io')) return;
+  try {
+    const cleanUrl = imageUrl.split('?')[0];
+    const parts = cleanUrl.split('/');
+    const fileName = parts[parts.length - 1];
+    if (!fileName) return;
+
+    const listRes = await fetch(
+      `https://api.imagekit.io/v1/files?name=${encodeURIComponent(fileName)}&limit=1`,
+      {
+        headers: {
+          Authorization: `Basic ${btoa(privateKey + ':')}`,
+        },
+      }
+    );
+
+    if (listRes.ok) {
+      const files: any = await listRes.json();
+      if (Array.isArray(files) && files.length > 0 && files[0].fileId) {
+        await fetch(`https://api.imagekit.io/v1/files/${files[0].fileId}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Basic ${btoa(privateKey + ':')}`,
+          },
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error deleting exhibition banner from ImageKit:', err);
+  }
+}
+
 // GET: List all exhibitions with full relations
 export async function GET() {
   try {
@@ -52,9 +85,7 @@ export async function POST(req: NextRequest) {
       title,
       slug: cleanSlug,
       curatorNote: curatorNote || '',
-      bannerUrl:
-        bannerUrl ||
-        'https://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1600&auto=format&fit=crop',
+      bannerUrl: bannerUrl || '',
       catalogPdfUrl: `/api/exhibitions/${cleanSlug}/catalog`,
       startDate: startDate || new Date().toISOString().split('T')[0],
       endDate: endDate || new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
@@ -98,6 +129,16 @@ export async function PUT(req: NextRequest) {
       updatedTheme.roomSize = roomSize;
     }
 
+    const imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+    if (
+      bannerUrl !== undefined &&
+      existing[0].bannerUrl &&
+      existing[0].bannerUrl !== bannerUrl &&
+      imageKitPrivateKey
+    ) {
+      await deleteFromImageKit(existing[0].bannerUrl, imageKitPrivateKey);
+    }
+
     await db
       .update(schema.exhibitions)
       .set({
@@ -128,6 +169,17 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Exhibition ID is required' }, { status: 400 });
     }
 
+    const existing = await db
+      .select()
+      .from(schema.exhibitions)
+      .where(eq(schema.exhibitions.id, id))
+      .limit(1);
+
+    const imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+    if (existing.length > 0 && existing[0].bannerUrl && imageKitPrivateKey) {
+      await deleteFromImageKit(existing[0].bannerUrl, imageKitPrivateKey);
+    }
+
     // Delete exhibition (CASCADE will automatically delete exhibition_artworks links)
     await db.delete(schema.exhibitions).where(eq(schema.exhibitions.id, id));
 
@@ -137,4 +189,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to delete exhibition' }, { status: 500 });
   }
 }
-
