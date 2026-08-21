@@ -22,6 +22,7 @@ import {
   LayoutGrid,
   Table as TableIcon,
   Search,
+  Sparkles,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
@@ -58,6 +59,94 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
     instagram: '',
     website: '',
   });
+
+  const [smartPasteText, setSmartPasteText] = useState('');
+  const [smartDetected, setSmartDetected] = useState(false);
+
+  const applyParsedArtistData = (text: string) => {
+    if (!text || !text.trim()) return false;
+    const raw = text.trim();
+
+    let parts: string[] = [];
+    if (raw.includes('\t')) {
+      parts = raw.split('\t').map((s) => s.trim()).filter(Boolean);
+    } else if (raw.includes('|')) {
+      parts = raw.split('|').map((s) => s.trim()).filter(Boolean);
+    } else if (raw.includes(',')) {
+      parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    } else {
+      const emailMatch = raw.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+      if (emailMatch) {
+        const email = emailMatch[1];
+        const withoutEmail = raw.replace(email, '').trim();
+        const rest = withoutEmail.split(/\s{2,}|\s-\s|\//).map((s) => s.trim()).filter(Boolean);
+        if (rest.length >= 2) {
+          parts = [rest[0], rest[1], email];
+        } else if (rest.length === 1) {
+          parts = [rest[0], '', email];
+        }
+      }
+    }
+
+    if (parts.length >= 2) {
+      let name = '';
+      let country = '';
+      let email = '';
+
+      const emailIndex = parts.findIndex((p) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p));
+      if (emailIndex !== -1) {
+        email = parts[emailIndex];
+        parts.splice(emailIndex, 1);
+      }
+
+      if (parts.length >= 2) {
+        name = parts[0];
+        country = parts[1];
+      } else if (parts.length === 1) {
+        name = parts[0];
+      }
+
+      if (name || country || email) {
+        setFormData((prev) => ({
+          ...prev,
+          name: name || prev.name,
+          country: country || prev.country,
+          email: email || prev.email,
+        }));
+        setSmartDetected(true);
+        setTimeout(() => setSmartDetected(false), 4000);
+        showNotification(
+          'success',
+          lang === 'th'
+            ? `⚡ ตรวจพบข้อมูลอัตโนมัติ: ${name} (${country}) [${email}]`
+            : `⚡ Auto-detected: ${name} (${country}) [${email}]`
+        );
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const handleSmartPasteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSmartPasteText(val);
+    if (val) {
+      const success = applyParsedArtistData(val);
+      if (success) {
+        setSmartPasteText('');
+      }
+    }
+  };
+
+  const handleNamePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData('text');
+    if (pasted && (pasted.includes('\t') || pasted.includes('@') || pasted.includes('|') || pasted.includes(','))) {
+      const success = applyParsedArtistData(pasted);
+      if (success) {
+        e.preventDefault();
+      }
+    }
+  };
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setFeedback({ type, message });
@@ -594,6 +683,37 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
             </div>
 
             <form onSubmit={handleSubmitForm} className="space-y-4">
+              {/* Smart Paste Excel/Text Bar */}
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#DCD6C8] shadow-sm">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#8C6D3F] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {lang === 'th' ? '⚡ วางข้อมูลแบบเร็วจาก Excel / ข้อความ (Smart Paste)' : '⚡ Quick Smart Paste from Excel / Text'}
+                  </span>
+                  {smartDetected && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full animate-pulse">
+                      {lang === 'th' ? '✓ ตรวจจับข้อมูลสำเร็จ' : '✓ Detected successfully'}
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={smartPasteText}
+                  onChange={handleSmartPasteChange}
+                  placeholder={
+                    lang === 'th'
+                      ? 'วางแถวข้อมูลจาก Excel เช่น Fassih Keiso\tAustralia\tfassihkeiso@yahoo.com'
+                      : 'Paste row e.g. Fassih Keiso\tAustralia\tfassihkeiso@yahoo.com'
+                  }
+                  className="w-full px-3 py-1.5 bg-white border border-[#DDD6C8] rounded-lg text-xs font-mono text-[#1A1918] placeholder:text-[#9E978B] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
+                />
+                <p className="text-[10px] text-[#7A7468] mt-1">
+                  {lang === 'th'
+                    ? '💡 วางแถวจาก Excel ระบบจะแยก ชื่อ, ประเทศ/สัญชาติ, และอีเมล แล้วกรอกลงฟอร์มให้อัตโนมัติทันที'
+                    : '💡 Automatically parses Name, Country, and Email into the form fields.'}
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
@@ -604,6 +724,7 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onPaste={handleNamePaste}
                     placeholder={lang === 'th' ? 'เช่น สมชาย ใจเย็น' : 'e.g. Somchai Jaiyen'}
                     className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-sm font-serif font-bold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
                   />
