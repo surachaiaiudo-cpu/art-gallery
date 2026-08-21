@@ -68,7 +68,7 @@ export function getCatalogFooterText(exhibition?: Exhibition | null): string {
 }
 
 export function getCatalogPlateFooterText(exhibition?: Exhibition | null): string {
-  if (!exhibition) return 'ARTVARA Catalog';
+  if (!exhibition) return '';
   if (exhibition.themeConfig) {
     try {
       const parsed = JSON.parse(exhibition.themeConfig);
@@ -77,7 +77,7 @@ export function getCatalogPlateFooterText(exhibition?: Exhibition | null): strin
       }
     } catch {}
   }
-  return 'ARTVARA Catalog';
+  return '';
 }
 
 export interface Exhibition {

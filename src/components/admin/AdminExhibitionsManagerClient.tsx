@@ -617,13 +617,13 @@ export function AdminExhibitionsManagerClient({
 
                 <div>
                   <label className="block text-[11px] font-semibold text-[#5A554A] mb-1">
-                    {lang === 'th' ? 'ข้อความกำกับเพลทแต่ละหน้า (Plate Footer Prefix)' : 'Plate Footer Prefix Text'}
+                    {lang === 'th' ? 'ข้อความ Footer ท้ายหน้ารูปผลงาน (Artwork Page Footer - ไม่บังคับ)' : 'Artwork Page Footer Text (Optional)'}
                   </label>
                   <input
                     type="text"
                     value={formData.catalogPlateFooterText}
                     onChange={(e) => setFormData({ ...formData, catalogPlateFooterText: e.target.value })}
-                    placeholder="ARTVARA Catalog"
+                    placeholder={lang === 'th' ? 'เช่น 18th Poh-Chang Art Festival 2026 หรือเว้นว่างไว้' : 'e.g. 18th Poh-Chang Art Festival 2026'}
                     className="w-full px-3 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs text-[#1A1918] focus:outline-none"
                   />
                 </div>

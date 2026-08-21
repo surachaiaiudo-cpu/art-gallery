@@ -344,10 +344,10 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                         loading="lazy"
                       />
 
-                      {/* Plate Badge with Flag Bubble */}
+                      {/* Country Flag Badge */}
                       <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold bg-black/75 text-white backdrop-blur flex items-center gap-1.5 shadow border border-white/20">
                         <CountryFlag country={artist?.country} size="xs" shape="circle" />
-                        <span className="text-[10px] font-mono text-[#E2CEB5]">Plate #{idx + 1}</span>
+                        <span className="text-[10px] text-[#E2CEB5]">{artist?.country || 'Artist'}</span>
                       </span>
                     </div>
 

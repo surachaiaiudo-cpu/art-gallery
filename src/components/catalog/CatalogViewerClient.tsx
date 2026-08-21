@@ -213,18 +213,17 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
               <div>
                 <label className="block text-xs font-bold text-[#4A443A] mb-1">
-                  2. ข้อความกำกับเพลทแต่ละหน้า (Artwork Plate Prefix)
+                  2. ข้อความ Footer ท้ายหน้ารูปผลงานแต่ละหน้า (Artwork Page Footer - ไม่บังคับ)
                 </label>
                 <input
                   type="text"
-                  required
                   value={plateFooter}
                   onChange={(e) => setPlateFooter(e.target.value)}
-                  placeholder="เช่น ARTVARA Catalog หรือ 18th Poh-Chang Art Festival Catalog"
+                  placeholder="เช่น 18th Poh-Chang Art Festival 2026 หรือเว้นว่างไว้"
                   className="w-full px-3.5 py-2.5 bg-white border border-[#D5CEC0] rounded-xl text-xs text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
                 />
                 <span className="text-[10px] text-[#8C8477] mt-1 block">
-                  จะแสดงนำหน้า เช่น: &quot;{plateFooter || 'ARTVARA Catalog'} • Plate #1&quot;
+                  จะแสดงที่แถบท้ายสุดของหน้ารูปผลงานแต่ละหน้า (หากไม่ต้องการให้แสดงข้อความสามารถเว้นว่างไว้ได้)
                 </span>
               </div>
 
@@ -413,9 +412,12 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </svg>
               </div>
 
-              {/* Bottom Footer Row: Dynamic Plate Prefix & Page Number */}
+              {/* Bottom Footer Row: Optional Custom Footer & Page Number */}
               <div className="relative z-10 mt-6 pt-3 border-t border-[#F0ECE4] flex items-center justify-between text-[10px] text-[#A69F92]">
-                <span>{plateFooter || 'ARTVARA Catalog'} • Plate #{idx + 1} {art.price ? `• ${formatPrice(art.price)}` : ''}</span>
+                <span>
+                  {plateFooter ? plateFooter : ''}
+                  {art.price ? (plateFooter ? ` • ${formatPrice(art.price)}` : formatPrice(art.price)) : ''}
+                </span>
                 <span className="font-mono">{pageNum}</span>
               </div>
             </section>
