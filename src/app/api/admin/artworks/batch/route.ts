@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 
+import { getCountryFlagEmoji } from '@/components/ui/CountryFlag';
+
 export const dynamic = 'force-dynamic';
 
 interface BatchArtworkRow {
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
           email: artistEmail,
           role: 'artist',
           country: artistCountry || null,
-          flagEmoji: artistCountry.toLowerCase().includes('thai') || artistCountry === 'Thailand' ? '🇹🇭' : (artistCountry ? '🌐' : null),
+          flagEmoji: getCountryFlagEmoji(artistCountry),
           bio: artistName !== 'ศิลปินร่วมแสดง' ? `ศิลปินผู้สร้างสรรค์ผลงานศิลปกรรม` : null,
           socialLinks: null,
         });
