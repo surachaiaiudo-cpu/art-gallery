@@ -142,8 +142,8 @@ export async function POST(req: NextRequest) {
       importedArtworks.push({ id: newArtId, title });
     }
 
-    // 4. BATCH INSERTS IN CHUNKS OF 50 (Blazing Fast & Stays well below Worker limits)
-    const CHUNK_SIZE = 50;
+    // 4. BATCH INSERTS IN SAFE CHUNKS OF 8 (Prevents D1 SQLITE_LIMIT_VARIABLE_NUMBER)
+    const CHUNK_SIZE = 8;
 
     // 4.1 Insert Artists
     for (let i = 0; i < newArtistsToInsert.length; i += CHUNK_SIZE) {
