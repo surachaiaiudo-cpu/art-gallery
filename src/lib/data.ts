@@ -312,8 +312,7 @@ export async function getArtistProfile(artistId: string) {
 export async function getAllArtistsWithStats() {
   try {
     // 1. Fetch all artists
-    const artists = await getAllArtists();
-    if (!artists || artists.length === 0) return [];
+    let artists = await getAllArtists();
 
     // 2. Fetch all artworks
     const allArtworks = await db
@@ -321,7 +320,32 @@ export async function getAllArtistsWithStats() {
       .from(schema.artworks)
       .orderBy(desc(schema.artworks.createdAt));
 
-    // 3. Fetch all exhibition links with exhibition info
+    // 3. Auto-heal: Check for any artworks whose artistId is not in users table
+    const existingArtistIdSet = new Set(artists.map((a) => a.id));
+    const missingArtists: User[] = [];
+
+    for (const art of allArtworks) {
+      if (art.artistId && !existingArtistIdSet.has(art.artistId)) {
+        missingArtists.push({
+          id: art.artistId,
+          name: art.artistId.startsWith('artist-') ? `ศิลปินผลงาน (${art.title})` : art.artistId,
+          email: `${art.artistId}@artvara-artists.com`,
+          role: 'artist',
+          country: 'Thailand',
+          flagEmoji: '🇹🇭',
+          bio: 'ศิลปินผู้สร้างสรรค์ผลงานศิลปกรรมในหอศิลป์',
+          avatarUrl: null,
+          socialLinks: null,
+          createdAt: art.createdAt || new Date().toISOString(),
+        });
+        existingArtistIdSet.add(art.artistId);
+      }
+    }
+
+    const allResolvedArtists = [...artists, ...missingArtists];
+    if (allResolvedArtists.length === 0) return [];
+
+    // 4. Fetch all exhibition links with exhibition info
     const allLinks = await db
       .select({
         artworkId: schema.exhibitionArtworks.artworkId,
@@ -352,7 +376,7 @@ export async function getAllArtistsWithStats() {
       });
     }
 
-    const result = artists.map((artist) => {
+    const result = allResolvedArtists.map((artist) => {
       const artworks = artworksByArtistId.get(artist.id) || [];
       const participatingExhibitionsMap = new Map<string, any>();
       for (const art of artworks) {

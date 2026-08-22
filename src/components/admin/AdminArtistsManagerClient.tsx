@@ -501,6 +501,29 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
     });
   }, [artists, searchQuery, selectedCountry, sortBy]);
 
+  const handleSyncArtists = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/artists/sync', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to sync artists');
+
+      showNotification(
+        'success',
+        lang === 'th'
+          ? `กู้คืนและซิงค์ข้อมูลศิลปินสำเร็จ (พบทั้งหมด ${data.totalArtists} ท่าน)`
+          : `Successfully synced & restored ${data.totalArtists} artists!`
+      );
+      if (data.artists) {
+        setArtists(data.artists);
+      }
+    } catch (err: any) {
+      showNotification('error', err.message || 'Error syncing artists');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 select-none">
       {/* Top Header */}
@@ -519,7 +542,17 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button
+            onClick={handleSyncArtists}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm transition-all active:scale-95 shrink-0"
+            title="ซิงค์และกู้คืนรายชื่อศิลปินจากผลงานทั้งหมดและระบบตั้งต้น"
+          >
+            <Sparkles className="w-4 h-4 text-amber-700" />
+            <span>{loading ? (lang === 'th' ? 'กำลังซิงค์...' : 'Syncing...') : (lang === 'th' ? '🔄 ซิงค์/กู้คืนศิลปิน' : '🔄 Sync Artists')}</span>
+          </button>
+
           <button
             onClick={() => {
               setBatchRawText('');
@@ -966,6 +999,31 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {filteredArtists.length === 0 && (
+        <div className="bg-white rounded-2xl border border-[#DDD6C8] p-12 text-center space-y-4 shadow-sm">
+          <Users className="w-12 h-12 text-[#8C6D3F] mx-auto opacity-50" />
+          <h3 className="font-serif text-xl font-bold text-[#1A1918]">
+            {lang === 'th' ? 'ไม่พบข้อมูลศิลปิน' : 'No Artists Found'}
+          </h3>
+          <p className="text-xs text-[#7A7468] max-w-md mx-auto leading-relaxed">
+            {lang === 'th'
+              ? 'ฐานข้อมูลศิลปินอาจยังว่างอยู่ หรือยังไม่ได้ซิงค์จากผลงานศิลปะ สามารถกดปุ่มด้านล่างเพื่อกู้คืนและซิงค์รายชื่อศิลปินทั้งหมดได้ทันที'
+              : 'Artist records may not be loaded yet. Click below to sync and restore all artists from artworks and defaults.'}
+          </p>
+          <div className="pt-2 flex justify-center gap-3">
+            <button
+              onClick={handleSyncArtists}
+              disabled={loading}
+              className="px-6 py-2.5 bg-[#8C6D3F] hover:bg-[#A3804C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-95 flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-amber-200" />
+              <span>{lang === 'th' ? 'กู้คืนและซิงค์รายชื่อศิลปินทันที' : 'Sync & Restore Artists Now'}</span>
+            </button>
           </div>
         </div>
       )}
