@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { User, Artwork } from '@/types/exhibition';
@@ -49,7 +49,7 @@ interface AdminArtistsManagerClientProps {
 
 export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManagerClientProps) {
   const { lang, t } = useLanguage();
-  const [artists, setArtists] = useState<ArtistWithStats[]>(initialArtists);
+  const [artists, setArtists] = useState<ArtistWithStats[]>(Array.isArray(initialArtists) ? initialArtists : []);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'country-asc' | 'country-desc' | 'artworks-desc' | 'default'>('name-asc');
@@ -58,6 +58,15 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
   const [editingArtist, setEditingArtist] = useState<ArtistWithStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Sync state if initialArtists changes, or auto-fetch if empty
+  useEffect(() => {
+    if (initialArtists && initialArtists.length > 0) {
+      setArtists(initialArtists);
+    } else {
+      refreshList();
+    }
+  }, [initialArtists]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -451,51 +460,53 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
 
   const countries = useMemo(() => {
     const set = new Set<string>();
-    artists.forEach((a) => {
-      if (a.country && a.country.trim()) set.add(a.country.trim());
+    (artists || []).forEach((a) => {
+      if (a?.country && a.country.trim()) set.add(a.country.trim());
     });
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'th'));
+    return Array.from(set).sort((a, b) => (a || '').localeCompare(b || '', 'th'));
   }, [artists]);
 
   const filteredArtists = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    const filtered = artists.filter((artist) => {
-      const matchesQuery =
-        !q ||
-        artist.name.toLowerCase().includes(q) ||
-        (artist.country || '').toLowerCase().includes(q) ||
-        (artist.email || '').toLowerCase().includes(q) ||
-        (artist.bio || '').toLowerCase().includes(q);
+    const filtered = (artists || []).filter((artist) => {
+      if (!artist) return false;
+      const name = (artist.name || '').toLowerCase();
+      const country = (artist.country || '').toLowerCase();
+      const email = (artist.email || '').toLowerCase();
+      const bio = (artist.bio || '').toLowerCase();
 
+      const matchesQuery = !q || name.includes(q) || country.includes(q) || email.includes(q) || bio.includes(q);
       const matchesCountry =
-        selectedCountry === 'all' || (artist.country || 'Thailand').trim() === selectedCountry;
+        selectedCountry === 'all' || (artist.country || '').trim().toLowerCase() === selectedCountry.trim().toLowerCase();
 
       return matchesQuery && matchesCountry;
     });
 
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
+      const nameA = a?.name || '';
+      const nameB = b?.name || '';
       if (sortBy === 'name-asc') {
-        return a.name.localeCompare(b.name, 'th');
+        return nameA.localeCompare(nameB, 'th');
       }
       if (sortBy === 'name-desc') {
-        return b.name.localeCompare(a.name, 'th');
+        return nameB.localeCompare(nameA, 'th');
       }
       if (sortBy === 'country-asc') {
-        const cA = (a.country || 'Thailand').trim();
-        const cB = (b.country || 'Thailand').trim();
+        const cA = (a?.country || '').trim();
+        const cB = (b?.country || '').trim();
         const cComp = cA.localeCompare(cB, 'th');
         if (cComp !== 0) return cComp;
-        return a.name.localeCompare(b.name, 'th');
+        return nameA.localeCompare(nameB, 'th');
       }
       if (sortBy === 'country-desc') {
-        const cA = (a.country || 'Thailand').trim();
-        const cB = (b.country || 'Thailand').trim();
+        const cA = (a?.country || '').trim();
+        const cB = (b?.country || '').trim();
         const cComp = cB.localeCompare(cA, 'th');
         if (cComp !== 0) return cComp;
-        return a.name.localeCompare(b.name, 'th');
+        return nameA.localeCompare(nameB, 'th');
       }
       if (sortBy === 'artworks-desc') {
-        return (b.artworkCount || 0) - (a.artworkCount || 0);
+        return (b?.artworkCount || 0) - (a?.artworkCount || 0);
       }
       return 0;
     });
