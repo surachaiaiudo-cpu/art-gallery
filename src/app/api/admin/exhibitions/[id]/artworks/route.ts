@@ -1,7 +1,7 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,13 +18,30 @@ export async function POST(
       return NextResponse.json({ error: 'Artwork ID is required' }, { status: 400 });
     }
 
+    // Resolve exhibition ID if slug was passed
+    let targetExhibitionId = params.id;
+    try {
+      const exhRow = await db
+        .select({ id: schema.exhibitions.id })
+        .from(schema.exhibitions)
+        .where(or(eq(schema.exhibitions.id, params.id), eq(schema.exhibitions.slug, params.id)))
+        .limit(1);
+
+      if (exhRow && exhRow.length > 0) {
+        targetExhibitionId = exhRow[0].id;
+      }
+    } catch (e) {}
+
     // Check if already linked
     const existing = await db
       .select()
       .from(schema.exhibitionArtworks)
       .where(
         and(
-          eq(schema.exhibitionArtworks.exhibitionId, params.id),
+          or(
+            eq(schema.exhibitionArtworks.exhibitionId, targetExhibitionId),
+            eq(schema.exhibitionArtworks.exhibitionId, params.id)
+          ),
           eq(schema.exhibitionArtworks.artworkId, artworkId)
         )
       )
@@ -35,7 +52,7 @@ export async function POST(
     }
 
     await db.insert(schema.exhibitionArtworks).values({
-      exhibitionId: params.id,
+      exhibitionId: targetExhibitionId,
       artworkId,
       displayOrder: 99,
       wallPosition: JSON.stringify({
@@ -68,37 +85,72 @@ export async function DELETE(
     let idsToDelete: string[] = [];
 
     if (artworkIdsParam) {
-      idsToDelete = artworkIdsParam.split(',').map((s) => s.trim()).filter(Boolean);
+      idsToDelete = artworkIdsParam
+        .split(',')
+        .map((s) => decodeURIComponent(s).trim())
+        .filter(Boolean);
     } else if (singleArtworkId) {
-      idsToDelete = [singleArtworkId];
-    } else {
-      // Also try parsing JSON body if sent in payload
+      idsToDelete = [decodeURIComponent(singleArtworkId).trim()];
+    }
+
+    // If not found in query params, safely parse request body
+    if (idsToDelete.length === 0) {
       try {
-        const body = await req.json();
-        if (Array.isArray(body?.artworkIds) && body.artworkIds.length > 0) {
-          idsToDelete = body.artworkIds.map((s: any) => String(s).trim()).filter(Boolean);
-        } else if (body?.artworkId) {
-          idsToDelete = [String(body.artworkId).trim()];
+        const text = await req.text();
+        if (text && text.trim().length > 0) {
+          const body = JSON.parse(text);
+          if (Array.isArray(body?.artworkIds) && body.artworkIds.length > 0) {
+            idsToDelete = body.artworkIds.map((s: any) => String(s).trim()).filter(Boolean);
+          } else if (body?.artworkId) {
+            idsToDelete = [String(body.artworkId).trim()];
+          }
         }
-      } catch {}
+      } catch (parseErr) {
+        console.warn('Could not parse JSON body in DELETE:', parseErr);
+      }
     }
 
     if (idsToDelete.length === 0) {
       return NextResponse.json({ error: 'Artwork ID(s) required' }, { status: 400 });
     }
 
-    await db
-      .delete(schema.exhibitionArtworks)
-      .where(
-        and(
-          eq(schema.exhibitionArtworks.exhibitionId, params.id),
-          inArray(schema.exhibitionArtworks.artworkId, idsToDelete)
-        )
-      );
+    // Resolve actual exhibition ID if slug was passed in params
+    let targetExhibitionId = params.id;
+    try {
+      const exhRow = await db
+        .select({ id: schema.exhibitions.id })
+        .from(schema.exhibitions)
+        .where(or(eq(schema.exhibitions.id, params.id), eq(schema.exhibitions.slug, params.id)))
+        .limit(1);
+
+      if (exhRow && exhRow.length > 0) {
+        targetExhibitionId = exhRow[0].id;
+      }
+    } catch (e) {
+      console.warn('Could not resolve exhibition ID:', e);
+    }
+
+    // Delete each link reliably from Cloudflare D1
+    for (const artId of idsToDelete) {
+      await db
+        .delete(schema.exhibitionArtworks)
+        .where(
+          and(
+            or(
+              eq(schema.exhibitionArtworks.exhibitionId, targetExhibitionId),
+              eq(schema.exhibitionArtworks.exhibitionId, params.id)
+            ),
+            eq(schema.exhibitionArtworks.artworkId, artId)
+          )
+        );
+    }
 
     return NextResponse.json({ success: true, count: idsToDelete.length });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error removing artwork(s) from exhibition:', error);
-    return NextResponse.json({ error: 'Failed to remove artwork(s) from exhibition' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to remove artwork(s) from exhibition', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 }

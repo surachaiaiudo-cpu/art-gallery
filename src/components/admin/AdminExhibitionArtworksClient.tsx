@@ -385,7 +385,8 @@ export function AdminExhibitionArtworksClient({
 
     setIsBulkDeleting(true);
     try {
-      const res = await fetch(`/api/admin/exhibitions/${exhibition.id}/artworks`, {
+      const idsParam = encodeURIComponent(selectedArtworkIds.join(','));
+      const res = await fetch(`/api/admin/exhibitions/${exhibition.id}/artworks?artworkIds=${idsParam}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ artworkIds: selectedArtworkIds }),
