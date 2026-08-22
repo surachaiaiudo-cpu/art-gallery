@@ -312,6 +312,34 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
     <div className="min-h-screen flex flex-col bg-[#F6F4F0] text-[#1E1D1B]">
       {/* 100% WYSIWYG A4 Layout Stylesheet */}
       <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;600;700&family=Maitree:wght@300;400;500;600;700&display=swap');
+
+        @font-face {
+          font-family: 'CatalogHeading';
+          src: local('Sukhumvit Set'), local('SukhumvitSet'), local('Sukhumvit Set Bold');
+          font-weight: 300 700;
+          font-style: normal;
+          font-display: swap;
+        }
+
+        .catalog-a4-page,
+        .catalog-a4-page * {
+          font-kerning: none !important;
+          -webkit-font-feature-settings: "kern" 0 !important;
+          font-feature-settings: "kern" 0, "liga" 0, "clig" 0 !important;
+          text-rendering: optimizeSpeed !important;
+        }
+
+        .catalog-heading-th {
+          font-family: 'CatalogHeading', 'Noto Sans Thai', 'Helvetica Neue', sans-serif !important;
+          letter-spacing: 0em !important;
+        }
+
+        .catalog-body-th {
+          font-family: 'Maitree', 'Noto Sans Thai', Georgia, serif !important;
+          letter-spacing: 0em !important;
+        }
+
         @media print {
           @page {
             size: 210mm 297mm;
@@ -1051,11 +1079,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
           <div>
             <div className="border-b border-[#E0E0E0] pb-3 mb-5">
-              <span className="font-serif text-3xl font-bold tracking-[0.2em] text-[#000000] block leading-normal">
+              <span className="catalog-heading-th font-serif text-3xl font-bold tracking-[0.2em] text-[#000000] block leading-normal">
                 ARTVARA
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-[#666666] mt-1 block leading-normal">
-                International Art Festival & Curated Exhibition
+              <span className="catalog-body-th text-[10px] uppercase tracking-widest text-[#666666] mt-1 block leading-normal">
+                International Art Festival &amp; Curated Exhibition
               </span>
             </div>
 
@@ -1071,26 +1099,26 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             )}
 
             <div className="space-y-2.5 max-w-[170mm] mx-auto">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#333333] block leading-normal">
+              <span className="catalog-body-th text-xs font-bold uppercase tracking-[0.2em] text-[#333333] block leading-normal">
                 Official Exhibition Catalog (สูจิบัตร)
               </span>
-              <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#000000] leading-snug">
+              <h1 className="catalog-heading-th font-serif text-2xl sm:text-3xl font-bold text-[#000000] leading-snug">
                 {exhibition.title}
               </h1>
               {curator?.name && (
-                <p className="text-xs text-[#444444] font-medium pt-1 leading-normal">
+                <p className="catalog-body-th text-xs text-[#444444] font-medium pt-1 leading-normal">
                   Curated by: <span className="font-semibold text-[#000000]">{curator.name}</span>
                 </p>
               )}
               {hasReviewers && (
-                <p className="text-[11px] text-[#555555] font-medium pt-0.5 leading-normal">
+                <p className="catalog-body-th text-[11px] text-[#555555] font-medium pt-0.5 leading-normal">
                   Peer Review Committee:{' '}
                   <span className="font-semibold text-[#000000]">
                     {peerReviewersList.map((r) => [r.academicTitle, r.name].filter(Boolean).join(' ')).join(' • ')}
                   </span>
                 </p>
               )}
-              <p className="text-[11px] text-[#666666] leading-normal">
+              <p className="catalog-body-th text-[11px] text-[#666666] leading-normal">
                 {formatDateRange(exhibition.startDate, exhibition.endDate)}
               </p>
             </div>
@@ -1098,7 +1126,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
           {/* Dynamic Cover Footer Text - Pure K Tint */}
           <div className="pt-4 border-t border-[#E0E0E0] text-center">
-            <p className="text-[10px] text-[#666666] uppercase tracking-widest leading-relaxed font-sans">
+            <p className="catalog-body-th text-[10px] text-[#666666] uppercase tracking-widest leading-relaxed">
               {coverFooter}
             </p>
           </div>
@@ -1110,21 +1138,21 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             <div className="space-y-6">
               {/* Header */}
               <div className="border-b border-[#E0E0E0] pb-3">
-                <span className="font-serif text-2xl font-bold tracking-[0.15em] text-[#000000] block">
+                <span className="catalog-heading-th font-serif text-2xl font-bold tracking-[0.15em] text-[#000000] block">
                   ARTVARA
                 </span>
-                <span className="text-[9px] uppercase tracking-widest text-[#666666] mt-0.5 block">
-                  Academic Peer Review Board & Curatorial Statement
+                <span className="catalog-body-th text-[9px] uppercase tracking-widest text-[#666666] mt-0.5 block">
+                  Academic Peer Review Board &amp; Curatorial Statement
                 </span>
               </div>
 
               {/* Peer Review Board List */}
               <div className="space-y-3">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-[0.15em] text-[#000000] block">
+                  <span className="catalog-heading-th text-xs font-bold uppercase tracking-[0.15em] text-[#000000] block">
                     คณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Peer Review Committee)
                   </span>
-                  <p className="text-[10px] text-[#666666] mt-0.5">
+                  <p className="catalog-body-th text-[10px] text-[#666666] mt-0.5">
                     รายนามคณะกรรมการผู้ทรงคุณวุฒิในการพิจารณาและประเมินผลงานศิลปกรรมในนิทรรศการ
                   </p>
                 </div>
@@ -1147,22 +1175,22 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                             />
                           </div>
                         ) : (
-                          <div className="w-11 h-12 rounded-md bg-[#EFEFEF] border border-[#DCDCDC] flex items-center justify-center font-serif text-sm font-bold text-[#444444] shrink-0">
+                          <div className="w-11 h-12 rounded-md bg-[#EFEFEF] border border-[#DCDCDC] flex items-center justify-center catalog-heading-th text-sm font-bold text-[#444444] shrink-0">
                             {reviewer.name?.trim().charAt(0).toUpperCase() || 'R'}
                           </div>
                         )}
 
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-[#000000] bg-[#EAEAEA] px-1.5 py-0.5 rounded">
+                            <span className="catalog-body-th text-[9px] font-bold uppercase tracking-wider text-[#000000] bg-[#EAEAEA] px-1.5 py-0.5 rounded">
                               {reviewer.role || (idx === 0 ? 'ประธานกรรมการ' : `กรรมการผู้ทรงคุณวุฒิ`)}
                             </span>
-                            <h4 className="font-serif text-xs font-bold text-[#000000]">
+                            <h4 className="catalog-heading-th text-xs font-bold text-[#000000]">
                               {[reviewer.academicTitle, reviewer.name].filter(Boolean).join(' ')}
                             </h4>
                           </div>
                           {reviewer.institution && (
-                            <p className="text-[10px] text-[#555555]">
+                            <p className="catalog-body-th text-[10px] text-[#555555]">
                               {reviewer.institution}
                             </p>
                           )}
@@ -1170,7 +1198,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                       </div>
 
                       {reviewer.country && (
-                        <span className="text-[10px] font-mono text-[#777777] shrink-0">
+                        <span className="catalog-body-th text-[10px] text-[#777777] shrink-0">
                           {reviewer.country}
                         </span>
                       )}
@@ -1182,14 +1210,14 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               {/* Curatorial Statement Block */}
               {exhibition.curatorNote && (
                 <div className="space-y-2 pt-2 border-t border-[#E8E8E8]">
-                  <span className="text-xs font-bold uppercase tracking-[0.15em] text-[#000000] block">
+                  <span className="catalog-heading-th text-xs font-bold uppercase tracking-[0.15em] text-[#000000] block">
                     คำนำภัณฑารักษ์ (Curatorial Statement)
                   </span>
-                  <p className="text-[11px] text-[#333333] leading-relaxed font-serif italic whitespace-pre-line max-h-[75mm] overflow-hidden">
-                    "{exhibition.curatorNote}"
+                  <p className="catalog-body-th text-[11px] text-[#333333] leading-relaxed italic whitespace-pre-line max-h-[75mm] overflow-hidden">
+                    &quot;{exhibition.curatorNote}&quot;
                   </p>
                   {curator?.name && (
-                    <p className="text-[10px] font-bold text-[#000000] text-right pt-1">
+                    <p className="catalog-body-th text-[10px] font-bold text-[#000000] text-right pt-1">
                       — {curator.name} (Curator)
                     </p>
                   )}
@@ -1255,42 +1283,45 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                         />
                       </div>
                     ) : (
-                      <div className="w-20 h-24 bg-[#F8F8F8] border border-[#D0D0D0] rounded-lg flex items-center justify-center font-serif text-2xl font-bold text-[#333333] shadow-sm">
-                        {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
+                      <div className="w-20 h-24 bg-[#EFEFEF] border border-[#D0D0D0] rounded-lg flex flex-col items-center justify-center shadow-sm overflow-hidden">
+                        <span className="catalog-heading-th text-2xl font-bold text-[#444444] leading-none select-none">
+                          {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
+                        </span>
+                        <span className="catalog-body-th text-[8px] text-[#999999] mt-1 font-medium leading-none">No Photo</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Right Column: Artist Info & Artwork Specs & Concept (Pure K-Plate Black/Grayscale Text) */}
+                  {/* Right Column: Artist Info & Artwork Specs & Concept */}
                   <div className="flex-1 text-[#222222] min-w-0 space-y-2">
                     {/* Artist Block */}
                     <div className="space-y-0.5">
-                      <h3 className="font-sans text-sm font-bold text-[#000000] leading-snug">
+                      <h3 className="catalog-heading-th text-sm font-bold text-[#000000] leading-snug">
                         {artist?.name || 'Artist'}
                       </h3>
                       {artist?.email && (
-                        <p className="text-[#666666] text-[10px] font-mono leading-normal">
+                        <p className="catalog-body-th text-[#666666] text-[10px] leading-normal">
                           {artist.email}
                         </p>
                       )}
-                      <p className="text-[#666666] text-[10px] leading-normal">
+                      <p className="catalog-body-th text-[#666666] text-[10px] leading-normal">
                         {artist?.country || 'International'}
                       </p>
                     </div>
 
                     {/* Artwork Block */}
                     <div className="space-y-0.5">
-                      <h4 className="font-sans text-xs sm:text-sm font-bold text-[#000000] leading-snug">
+                      <h4 className="catalog-heading-th text-xs sm:text-sm font-bold text-[#000000] leading-snug">
                         {art.title}
                       </h4>
-                      <p className="text-[#444444] text-[10px] leading-normal font-medium">
+                      <p className="catalog-body-th text-[#444444] text-[10px] leading-normal font-medium">
                         {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
                       </p>
                     </div>
 
-                    {/* Concept Block (Optional: Only rendered if provided by artist, otherwise left blank) */}
+                    {/* Concept Block */}
                     {(art.concept?.trim() || art.description?.trim()) && (
-                      <div className="pt-0.5 pb-1 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] break-words">
+                      <div className="catalog-body-th pt-0.5 pb-1 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] break-words">
                         <span className="font-bold text-[#000000]">Concept : </span>
                         <span>{art.concept?.trim() || art.description?.trim()}</span>
                       </div>
