@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 import { getAllArtworks } from '@/lib/data';
+import { getCountryFlagEmoji } from '@/components/ui/CountryFlag';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export async function GET() {
   }
 }
 
-// POST: Create a new artwork
+// POST: Create a new artwork (auto-detects or creates artist instantly)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest) {
       title,
       artistId,
       artistName,
+      artistCountry,
+      artistEmail,
+      country,
       medium,
       dimensions,
       yearCreated,
@@ -41,21 +45,35 @@ export async function POST(req: NextRequest) {
     }
 
     let finalArtistId = artistId;
-    if (!finalArtistId && artistName) {
-      const existingArtist = await db.select().from(schema.users).where(eq(schema.users.name, artistName)).limit(1);
-      if (existingArtist.length > 0) {
-        finalArtistId = existingArtist[0].id;
+    const resolvedArtistName = (artistName || '').trim();
+    const resolvedCountry = (artistCountry || country || 'Thailand').trim();
+
+    // Auto-detect existing artist or create a new master artist profile
+    if (!finalArtistId && resolvedArtistName) {
+      const allUsers = await db.select().from(schema.users);
+      const existingArtist = allUsers.find(
+        (u: any) =>
+          u.name.toLowerCase().trim() === resolvedArtistName.toLowerCase() ||
+          (artistEmail && u.email.toLowerCase().trim() === artistEmail.toLowerCase().trim())
+      );
+
+      if (existingArtist) {
+        finalArtistId = existingArtist.id;
       } else {
         const newArtistId = `artist-${Date.now()}`;
+        const finalEmail =
+          artistEmail ||
+          `${resolvedArtistName.toLowerCase().replace(/[^a-z0-9]+/g, '.')}-${Date.now()}@artvara-artists.com`;
+
         await db.insert(schema.users).values({
           id: newArtistId,
-          name: artistName,
-          email: `${artistName.toLowerCase().replace(/[^a-z0-9]+/g, '.')}@artvara.gallery`,
+          name: resolvedArtistName,
+          email: finalEmail,
           role: 'artist',
-          country: 'Thailand',
-          flagEmoji: '🇹🇭',
-          avatarUrl: '',
-          bio: 'Featured artist in ARTVARA Gallery collection.',
+          country: resolvedCountry,
+          flagEmoji: getCountryFlagEmoji(resolvedCountry),
+          avatarUrl: null,
+          bio: `ศิลปินผู้สร้างสรรค์ผลงานศิลปกรรม ${title}`,
         });
         finalArtistId = newArtistId;
       }

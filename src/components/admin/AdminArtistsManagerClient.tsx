@@ -491,8 +491,8 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
     const count = selectedArtistIds.size;
     const confirmMsg =
       lang === 'th'
-        ? `⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบศิลปินที่เลือกทั้งหมด ${count} ท่าน?\n\n(ผลงานศิลปะของศิลปินเหล่านี้จะถูกลบออกจากระบบด้วย)`
-        : `⚠️ Are you sure you want to delete ${count} selected artist(s)? (Their artworks will also be removed).`;
+        ? `⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบโปรไฟล์ของศิลปินที่เลือกทั้งหมด ${count} ท่าน?\n\n(ผลงานศิลปะในระบบจะยังคงอยู่และไม่ถูกลบ)`
+        : `⚠️ Are you sure you want to delete ${count} selected artist profile(s)? (Artworks will remain safe and intact).`;
 
     if (!window.confirm(confirmMsg)) return;
 

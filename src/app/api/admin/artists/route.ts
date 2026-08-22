@@ -151,7 +151,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE: Delete artist(s) and clean up cascading artworks and exhibition links
+// DELETE: Delete artist(s) only (keep artworks intact independently)
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -179,24 +179,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Artist ID or IDs are required' }, { status: 400 });
     }
 
-    // 1. Fetch all artworks by these artists
-    const allArtworks = await db.select({ id: schema.artworks.id, artistId: schema.artworks.artistId }).from(schema.artworks);
-    const targetArtistIdSet = new Set(targetIds);
-    const artworkIdsToDelete = allArtworks
-      .filter((a: any) => targetArtistIdSet.has(a.artistId))
-      .map((a: any) => a.id);
-
-    // 2. Delete exhibition links for these artworks
-    if (artworkIdsToDelete.length > 0) {
-      const CHUNK_SIZE = 50;
-      for (let i = 0; i < artworkIdsToDelete.length; i += CHUNK_SIZE) {
-        const chunk = artworkIdsToDelete.slice(i, i + CHUNK_SIZE);
-        await db.delete(schema.exhibitionArtworks).where(inArray(schema.exhibitionArtworks.artworkId, chunk));
-        await db.delete(schema.artworks).where(inArray(schema.artworks.id, chunk));
-      }
-    }
-
-    // 3. Delete artists from users table
+    // Delete artist profiles from users table only (do not delete artworks)
     const CHUNK_SIZE = 50;
     for (let i = 0; i < targetIds.length; i += CHUNK_SIZE) {
       const chunk = targetIds.slice(i, i + CHUNK_SIZE);
@@ -206,7 +189,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({
       success: true,
       deletedArtistsCount: targetIds.length,
-      deletedArtworksCount: artworkIdsToDelete.length,
     });
   } catch (error) {
     console.error('Error deleting artist(s):', error);
