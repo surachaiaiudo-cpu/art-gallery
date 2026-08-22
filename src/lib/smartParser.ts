@@ -273,6 +273,72 @@ function detectDimensions(str: string): string {
  * 7: Concept (concept)
  * 8: Image URL (รูปภาพ / URL)
  */
+/**
+ * Check if the first row is truly a table header row (e.g. "ชื่อศิลปิน", "ประเทศ", "email", etc.)
+ * vs a normal data row (which might contain words like "ภาพ" in the title or "แนวคิด" in the concept).
+ */
+function isLikelyHeaderRow(cols: string[]): boolean {
+  if (!cols || cols.length === 0) return false;
+
+  // 1. If any column contains an actual email address, it is 100% a DATA row!
+  if (cols.some((c) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.trim()))) {
+    return false;
+  }
+
+  // 2. If any column contains dimension numbers (e.g. 120 x 180, 100x100), it is 100% a DATA row!
+  if (cols.some((c) => /\d+\s*(?:x|×|X|\*)\s*\d+/.test(c.trim()))) {
+    return false;
+  }
+
+  // 3. If any column contains an image URL, it is 100% a DATA row!
+  if (cols.some((c) => /^https?:\/\//i.test(c.trim()))) {
+    return false;
+  }
+
+  // 4. If any column is a long paragraph (> 50 chars), it is a concept/bio, not a header!
+  if (cols.some((c) => c.trim().length > 50)) {
+    return false;
+  }
+
+  // 5. Count how many columns match known header names
+  const HEADER_TOKENS = [
+    'artist', 'ศิลปิน', 'ชื่อศิลปิน', 'ผู้สร้าง', 'creator', 'author',
+    'country', 'ประเทศ', 'สัญชาติ', 'nationality', 'nation',
+    'email', 'อีเมล', 'mail', 'e-mail',
+    'title', 'ชื่อผลงาน', 'ชื่องาน', 'ชื่อภาพ', 'artwork', 'work', 'piece',
+    'medium', 'เทคนิค', 'วัสดุ', 'technique', 'material',
+    'dimension', 'dimensions', 'ขนาด', 'ขนาดผลงาน', 'size',
+    'unit', 'หน่วย', 'หน่วยวัด',
+    'year', 'ปี', 'ปีที่สร้าง', 'date',
+    'concept', 'แนวคิด', 'แนวคิดผลงาน', 'คำอธิบาย', 'description', 'statement',
+    'image', 'url', 'ภาพ', 'รูป', 'รูปภาพ', 'photo', 'link'
+  ];
+
+  let headerMatches = 0;
+  for (const col of cols) {
+    const clean = col.trim().toLowerCase();
+    if (!clean) continue;
+    if (clean.length <= 25 && HEADER_TOKENS.some((t) => clean === t || clean.startsWith(t) || clean.endsWith(t))) {
+      headerMatches++;
+    }
+  }
+
+  return headerMatches >= 3;
+}
+
+/**
+ * Parse full multi-line table from Excel/CSV
+ * Follows the user's exact column sequence:
+ * 0: Artist (ชื่อศิลปิน)
+ * 1: Country (ประเทศ)
+ * 2: Email (email)
+ * 3: Title (ชื่อผลงาน)
+ * 4: Medium (เทคนิค)
+ * 5: Dimensions (ขนาด)
+ * 6: Unit (หน่วยวัด)
+ * 7: Concept (concept)
+ * 8: Image URL (รูปภาพ / URL)
+ */
 export function parseTabularText(fullText: string): DetectedArtworkFields[] {
   if (!fullText || !fullText.trim()) return [];
 
@@ -280,13 +346,7 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
   if (allRows.length === 0) return [];
 
   const firstLineCols = allRows[0].map((c) => c.toLowerCase());
-
-  // Check if first line contains header keywords
-  const isHeaderRow = firstLineCols.some((col) =>
-    ['artist', 'ศิลปิน', 'country', 'ประเทศ', 'สัญชาติ', 'email', 'อีเมล', 'title', 'ชื่อ', 'ชื่องาน', 'ชื่อผลงาน', 'medium', 'เทคนิค', 'dimension', 'ขนาด', 'unit', 'หน่วย', 'concept', 'แนวคิด', 'image', 'url', 'ภาพ', 'รูป'].some((kw) =>
-      col.includes(kw)
-    )
-  );
+  const isHeaderRow = isLikelyHeaderRow(allRows[0]);
 
   let headerMap: {
     artist?: number;
