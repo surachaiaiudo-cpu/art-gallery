@@ -1,8 +1,6 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
-import { eq } from 'drizzle-orm';
-
 import { getCountryFlagEmoji } from '@/components/ui/CountryFlag';
 
 export const dynamic = 'force-dynamic';
@@ -28,34 +26,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No artwork items provided for import' }, { status: 400 });
     }
 
-    // 1. Fetch existing artists
-    const existingArtists = await db.select().from(schema.users).where(eq(schema.users.role, 'artist'));
+    // 1. Fetch all existing users to map artists and check email uniqueness
+    const allUsers = await db.select().from(schema.users);
     const artistNameMap = new Map<string, string>();
-    for (const a of existingArtists) {
-      artistNameMap.set(a.name.toLowerCase().trim(), a.id);
-    }
+    const existingEmails = new Set<string>();
 
-    const importedArtworks: Array<{ id: string; title: string }> = [];
+    for (const u of allUsers) {
+      if (u.name) artistNameMap.set(u.name.toLowerCase().trim(), u.id);
+      if (u.email) existingEmails.add(u.email.toLowerCase().trim());
+    }
 
     // 2. Resolve Exhibition ID & current Max Display Order
     let targetExhibitionId: string | undefined = exhibitionId;
     let maxOrder = 0;
     if (exhibitionId) {
-      const existingExh = await db
-        .select({ id: schema.exhibitions.id })
-        .from(schema.exhibitions)
-        .where(eq(schema.exhibitions.id, exhibitionId));
-      if (existingExh.length > 0) {
-        targetExhibitionId = existingExh[0].id;
+      const allExhibitions = await db.select().from(schema.exhibitions);
+      const existingExh = allExhibitions.find((e: any) => e.id === exhibitionId);
+      if (existingExh) {
+        targetExhibitionId = existingExh.id;
       }
 
       if (targetExhibitionId) {
-        const existingArtworks = await db
-          .select({ displayOrder: schema.exhibitionArtworks.displayOrder })
-          .from(schema.exhibitionArtworks)
-          .where(eq(schema.exhibitionArtworks.exhibitionId, targetExhibitionId));
-
-        for (const row of existingArtworks) {
+        const existingArtworks = await db.select().from(schema.exhibitionArtworks);
+        const exhArtworks = existingArtworks.filter((ea: any) => ea.exhibitionId === targetExhibitionId);
+        for (const row of exhArtworks) {
           if (row.displayOrder && row.displayOrder > maxOrder) {
             maxOrder = row.displayOrder;
           }
@@ -63,44 +57,57 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Process each artwork row
+    const newArtistsToInsert: any[] = [];
+    const newArtworksToInsert: any[] = [];
+    const newLinksToInsert: any[] = [];
+    const importedArtworks: Array<{ id: string; title: string }> = [];
+
+    const now = Date.now();
+
+    // 3. Process rows and build batch arrays
     for (let i = 0; i < items.length; i++) {
       const row = items[i];
       if (!row.title && !row.artistName && !row.imageUrl && !row.concept) continue;
 
-      const title = (row.title || '').trim() || (row.artistName ? `ผลงานของ ${(row.artistName).trim()}` : 'ผลงานศิลปกรรม');
       const artistName = (row.artistName || '').trim() || 'ศิลปินร่วมแสดง';
-      const artistCountry = (row.artistCountry || '').trim();
-      const artistEmail = (row.artistEmail || '').trim() || `${artistName.toLowerCase().replace(/[^a-z0-9]+/g, '.') || 'artist'}-${Date.now()}-${i}@artvara-artists.com`;
+      const title = (row.title || '').trim() || (artistName ? `ผลงานของ ${artistName}` : 'ผลงานศิลปกรรม');
+      const artistCountry = (row.artistCountry || '').trim() || 'Thailand';
 
-      // Find or create artist
+      // Resolve artistId
       let artistId = artistNameMap.get(artistName.toLowerCase());
       if (!artistId) {
-        artistId = `artist-${Date.now()}-${i}`;
-        await db.insert(schema.users).values({
+        artistId = `artist-${now}-${i}-${Math.random().toString(36).substring(2, 6)}`;
+
+        let candidateEmail = (row.artistEmail || '').trim();
+        if (!candidateEmail || existingEmails.has(candidateEmail.toLowerCase())) {
+          candidateEmail = `${artistName.toLowerCase().replace(/[^a-z0-9]+/g, '.') || 'artist'}.${now}.${i}@artvara-artists.com`;
+        }
+        existingEmails.add(candidateEmail.toLowerCase());
+
+        newArtistsToInsert.push({
           id: artistId,
           name: artistName,
-          email: artistEmail,
+          email: candidateEmail,
           role: 'artist',
-          country: artistCountry || null,
+          country: artistCountry,
           flagEmoji: getCountryFlagEmoji(artistCountry),
           bio: artistName !== 'ศิลปินร่วมแสดง' ? `ศิลปินผู้สร้างสรรค์ผลงานศิลปกรรม` : null,
+          avatarUrl: null,
           socialLinks: null,
         });
+
         artistNameMap.set(artistName.toLowerCase(), artistId);
       }
 
-      const newArtId = `art-${Date.now()}-${i}`;
+      const newArtId = `art-${now}-${i}`;
       const cleanPublicId = `artvara/batch-${newArtId}`;
-
-      const yearCreated = row.yearCreated ? parseInt(String(row.yearCreated), 10) || null : null;
-      const medium = (row.medium || '').trim() || null;
-      const dimensions = (row.dimensions || '').trim() || null;
+      const yearCreated = row.yearCreated ? parseInt(String(row.yearCreated), 10) || null : 2026;
+      const medium = (row.medium || '').trim() || 'Mixed Media';
+      const dimensions = (row.dimensions || '').trim() || '100 x 100 cm.';
       const concept = (row.concept || '').trim() || null;
       const imageUrl = (row.imageUrl || '').trim() || 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop';
 
-      // Insert artwork
-      await db.insert(schema.artworks).values({
+      newArtworksToInsert.push({
         id: newArtId,
         artistId,
         title,
@@ -115,10 +122,9 @@ export async function POST(req: NextRequest) {
         status: 'available',
       });
 
-      // If exhibitionId provided, link to exhibition with exact sequential display order
       if (targetExhibitionId) {
-        const wallIdx = i % 4; // distribute across 4 walls
-        await db.insert(schema.exhibitionArtworks).values({
+        const wallIdx = i % 4;
+        newLinksToInsert.push({
           exhibitionId: targetExhibitionId,
           artworkId: newArtId,
           displayOrder: maxOrder + i + 1,
@@ -136,10 +142,32 @@ export async function POST(req: NextRequest) {
       importedArtworks.push({ id: newArtId, title });
     }
 
+    // 4. BATCH INSERTS IN CHUNKS OF 50 (Blazing Fast & Stays well below Worker limits)
+    const CHUNK_SIZE = 50;
+
+    // 4.1 Insert Artists
+    for (let i = 0; i < newArtistsToInsert.length; i += CHUNK_SIZE) {
+      const chunk = newArtistsToInsert.slice(i, i + CHUNK_SIZE);
+      await db.insert(schema.users).values(chunk);
+    }
+
+    // 4.2 Insert Artworks
+    for (let i = 0; i < newArtworksToInsert.length; i += CHUNK_SIZE) {
+      const chunk = newArtworksToInsert.slice(i, i + CHUNK_SIZE);
+      await db.insert(schema.artworks).values(chunk);
+    }
+
+    // 4.3 Insert Exhibition Links
+    for (let i = 0; i < newLinksToInsert.length; i += CHUNK_SIZE) {
+      const chunk = newLinksToInsert.slice(i, i + CHUNK_SIZE);
+      await db.insert(schema.exhibitionArtworks).values(chunk);
+    }
+
     return NextResponse.json({
       success: true,
       count: importedArtworks.length,
       importedArtworks,
+      newArtistsCount: newArtistsToInsert.length,
     });
   } catch (error) {
     console.error('Error batch importing artworks:', error);
