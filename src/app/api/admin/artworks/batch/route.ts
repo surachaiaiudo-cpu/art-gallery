@@ -142,25 +142,20 @@ export async function POST(req: NextRequest) {
       importedArtworks.push({ id: newArtId, title });
     }
 
-    // 4. BATCH INSERTS IN SAFE CHUNKS OF 8 (Prevents D1 SQLITE_LIMIT_VARIABLE_NUMBER)
-    const CHUNK_SIZE = 8;
-
+    // 4. INSERTS (Guaranteed to stay within D1 99-variable limit)
     // 4.1 Insert Artists
-    for (let i = 0; i < newArtistsToInsert.length; i += CHUNK_SIZE) {
-      const chunk = newArtistsToInsert.slice(i, i + CHUNK_SIZE);
-      await db.insert(schema.users).values(chunk);
+    for (const artist of newArtistsToInsert) {
+      await db.insert(schema.users).values(artist);
     }
 
     // 4.2 Insert Artworks
-    for (let i = 0; i < newArtworksToInsert.length; i += CHUNK_SIZE) {
-      const chunk = newArtworksToInsert.slice(i, i + CHUNK_SIZE);
-      await db.insert(schema.artworks).values(chunk);
+    for (const art of newArtworksToInsert) {
+      await db.insert(schema.artworks).values(art);
     }
 
     // 4.3 Insert Exhibition Links
-    for (let i = 0; i < newLinksToInsert.length; i += CHUNK_SIZE) {
-      const chunk = newLinksToInsert.slice(i, i + CHUNK_SIZE);
-      await db.insert(schema.exhibitionArtworks).values(chunk);
+    for (const link of newLinksToInsert) {
+      await db.insert(schema.exhibitionArtworks).values(link);
     }
 
     return NextResponse.json({
