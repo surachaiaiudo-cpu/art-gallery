@@ -411,7 +411,9 @@ export function getCountryCode(countryName?: string | null): string {
  */
 export function getCountryFlagEmoji(countryName?: string | null): string {
   const code = getCountryCode(countryName);
-  if (!code || code.length !== 2) return '🌐';
+  if (!code) return '🌐';
+  if (code === 'krd') return '☀️';
+  if (code.length !== 2) return '🌐';
   return String.fromCodePoint(...code.toUpperCase().split('').map((c) => 127397 + c.charCodeAt(0)));
 }
 
@@ -419,11 +421,13 @@ export function getCountryFlagEmoji(countryName?: string | null): string {
  * Custom High-Resolution Flag Image URLs for Autonomous / Cultural Regions
  */
 export const CUSTOM_FLAG_URLS: Record<string, string> = {
-  krd: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
-  kurdistan: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
-  kurdish: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
-  'เคอร์ดิสถาน': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
-  'เคิร์ด': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
+  krd: '/flags/kurdistan.svg',
+  kurdistan: '/flags/kurdistan.svg',
+  kurdish: '/flags/kurdistan.svg',
+  'เคอร์ดิสถาน': '/flags/kurdistan.svg',
+  'เคิร์ด': '/flags/kurdistan.svg',
+  kurdistani: '/flags/kurdistan.svg',
+  kurd: '/flags/kurdistan.svg',
   tibet: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Flag_of_Tibet.svg/160px-Flag_of_Tibet.svg.png',
   'ทิเบต': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Flag_of_Tibet.svg/160px-Flag_of_Tibet.svg.png',
   'ธิเบต': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Flag_of_Tibet.svg/160px-Flag_of_Tibet.svg.png',
