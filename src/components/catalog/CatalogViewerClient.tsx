@@ -76,53 +76,115 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
     reader.readAsDataURL(file);
   };
 
-  // Direct File Download (100% Native Vector PDF with Embedded TrueType Vector Fonts) - No print dialog
+  // Direct File Download — html2canvas + jsPDF
+  // Captures the LIVE rendered pages from the DOM → 100% correct Thai text, fonts, colors, layout
   const handleDirectDownloadPDF = async (standard: PDFStandard = 'standard') => {
     try {
       setIsStandardModalOpen(false);
       setIsGeneratingPdf(true);
       setPdfStandardType(standard);
       setDownloaded(false);
-      
-      const isPdfX = standard === 'pdfx';
+
       const cleanSlug = exhibition.slug || 'exhibition';
+      const isPdfX = standard === 'pdfx';
       const fileName = isPdfX
         ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
         : `${cleanSlug}-catalog-Standard.pdf`;
 
-      // Generate 100% Genuine Vector PDF with Embedded Sukhumvit & Maitree Fonts
-      const { pdf } = await import('@react-pdf/renderer');
-      const { ExhibitionCatalogPDF } = await import('@/components/catalog/ExhibitionCatalogPDF');
+      // Dynamically import html2canvas and jsPDF (client-side only)
+      const [html2canvas, { jsPDF }] = await Promise.all([
+        import('html2canvas').then(m => m.default),
+        import('jspdf'),
+      ]);
 
-      const blob = await pdf(
-        <ExhibitionCatalogPDF
-          exhibition={exhibition}
-          coverFooterText={coverFooter}
-          plateFooterText={plateFooter}
-          peerReviewers={peerReviewersList}
-          standard={standard}
-          footerGraphicType={footerGraphicType}
-          customFooterImageUrl={customFooterImageUrl}
-        />
-      ).toBlob();
+      // A4 in pt: 595.28 x 841.89 pt (72 DPI)
+      const A4_W = 595.28;
+      const A4_H = 841.89;
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Get all A4 page sections from the DOM
+      const pages = Array.from(
+        document.querySelectorAll<HTMLElement>('.catalog-a4-page')
+      );
+
+      if (pages.length === 0) {
+        throw new Error('No catalog pages found in DOM');
+      }
+
+      setPdfProgress({ current: 0, total: pages.length });
+
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'pt',
+        format: 'a4',
+        compress: true,
+      });
+
+      // Add PDF/X metadata if needed
+      if (isPdfX) {
+        doc.setProperties({
+          title: `${exhibition.title} - Official Exhibition Catalog`,
+          author: exhibition.curator?.name || 'ARTVARA Curatorial Team',
+          subject: 'PDF/X-1a:2001 ISO 15930-1 Prepress Commercial Print-Ready Catalog',
+          keywords: 'ARTVARA, Exhibition Catalog, Poh-Chang, ISO 15930-1',
+          creator: 'ARTVARA Catalog Generator',
+        });
+      }
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+
+        // Temporarily force the page to be fully visible (even if scrolled out of view)
+        const prevVisibility = page.style.visibility;
+        page.style.visibility = 'visible';
+
+        const canvas = await html2canvas(page, {
+          scale: 2.5,          // 2.5× → ~212 DPI, sharp and crisp on print
+          useCORS: true,        // Allow cross-origin images (artwork photos, flags, etc.)
+          allowTaint: false,
+          backgroundColor: '#FFFFFF',
+          logging: false,
+          imageTimeout: 15000,
+          windowWidth: page.scrollWidth,
+          windowHeight: page.scrollHeight,
+          onclone: (clonedDoc) => {
+            // In the clone, hide the floating download button and any tooltips
+            clonedDoc.querySelectorAll('.no-print').forEach((el) => {
+              (el as HTMLElement).style.display = 'none';
+            });
+          },
+        });
+
+        page.style.visibility = prevVisibility;
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+        if (i > 0) doc.addPage();
+
+        doc.addImage(
+          imgData,
+          'JPEG',
+          0,
+          0,
+          A4_W,
+          A4_H,
+          undefined,
+          'FAST'
+        );
+
+        setPdfProgress({ current: i + 1, total: pages.length });
+      }
+
+      doc.save(fileName);
 
       setDownloaded(true);
       setTimeout(() => setDownloaded(false), 5000);
     } catch (err) {
-      console.error('Error generating Vector PDF download:', err);
-      // If direct download fails completely, invoke Method 2 (Save as PDF)
+      console.error('Error generating PDF via html2canvas:', err);
+      // Fallback: open browser print dialog
       handleSaveVectorPDF100Percent();
     } finally {
       setIsGeneratingPdf(false);
+      setPdfProgress({ current: 0, total: 0 });
     }
   };
 
