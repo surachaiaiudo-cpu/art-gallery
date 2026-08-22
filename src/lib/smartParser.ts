@@ -186,17 +186,19 @@ export function parseTableRows(text: string): string[][] {
 
       // If orphanText is an Image URL that got bumped to a new line
       if (/^https?:\/\//i.test(orphanText)) {
-        if (prevRow.length >= 8 && !prevRow[7]) {
-          prevRow[7] = orphanText;
-        } else if (prevRow.length === 7) {
+        if (prevRow.length >= 9 && !prevRow[8]) {
+          prevRow[8] = orphanText;
+        } else if (prevRow.length === 8) {
           prevRow.push(orphanText);
         } else {
           cleanedRows.push(row);
         }
       } else {
         // It is a continuation of the previous row's concept!
-        // Index 6 is Concept in 8-column layout (0:Title, 1:Artist, 2:Country, 3:Medium, 4:Dim, 5:Year, 6:Concept, 7:Image)
-        if (prevRow.length >= 7) {
+        // Index 7 is Concept in user's layout (0:Artist, 1:Country, 2:Email, 3:Title, 4:Medium, 5:Dim, 6:Unit, 7:Concept, 8:Image)
+        if (prevRow.length >= 8) {
+          prevRow[7] = prevRow[7] ? `${prevRow[7]}\n${orphanText}` : orphanText;
+        } else if (prevRow.length >= 7) {
           prevRow[6] = prevRow[6] ? `${prevRow[6]}\n${orphanText}` : orphanText;
         } else if (prevRow.length > 0) {
           prevRow[prevRow.length - 1] = `${prevRow[prevRow.length - 1]}\n${orphanText}`;
@@ -260,7 +262,16 @@ function detectDimensions(str: string): string {
 
 /**
  * Parse full multi-line table from Excel/CSV
- * Detects headers automatically or maps positional columns accurately
+ * Follows the user's exact column sequence:
+ * 0: Artist (ชื่อศิลปิน)
+ * 1: Country (ประเทศ)
+ * 2: Email (email)
+ * 3: Title (ชื่อผลงาน)
+ * 4: Medium (เทคนิค)
+ * 5: Dimensions (ขนาด)
+ * 6: Unit (หน่วยวัด)
+ * 7: Concept (concept)
+ * 8: Image URL (รูปภาพ / URL)
  */
 export function parseTabularText(fullText: string): DetectedArtworkFields[] {
   if (!fullText || !fullText.trim()) return [];
@@ -272,17 +283,19 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
 
   // Check if first line contains header keywords
   const isHeaderRow = firstLineCols.some((col) =>
-    ['title', 'ชื่อ', 'ชื่องาน', 'ชื่อผลงาน', 'artist', 'ศิลปิน', 'country', 'ประเทศ', 'สัญชาติ', 'medium', 'เทคนิค', 'dimension', 'ขนาด', 'year', 'ปี', 'concept', 'แนวคิด', 'image', 'url', 'ภาพ', 'รูป'].some((kw) =>
+    ['artist', 'ศิลปิน', 'country', 'ประเทศ', 'สัญชาติ', 'email', 'อีเมล', 'title', 'ชื่อ', 'ชื่องาน', 'ชื่อผลงาน', 'medium', 'เทคนิค', 'dimension', 'ขนาด', 'unit', 'หน่วย', 'concept', 'แนวคิด', 'image', 'url', 'ภาพ', 'รูป'].some((kw) =>
       col.includes(kw)
     )
   );
 
   let headerMap: {
-    title?: number;
     artist?: number;
     country?: number;
+    email?: number;
+    title?: number;
     medium?: number;
     dimensions?: number;
+    unit?: number;
     year?: number;
     concept?: number;
     imageUrl?: number;
@@ -290,21 +303,25 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
 
   if (isHeaderRow) {
     firstLineCols.forEach((col, idx) => {
-      if (['title', 'ชื่อ', 'ชื่องาน', 'ชื่อผลงาน', 'work', 'piece'].some((kw) => col.includes(kw))) {
-        if (headerMap.title === undefined) headerMap.title = idx;
-      } else if (['artist', 'ศิลปิน', 'ผู้สร้าง', 'author'].some((kw) => col.includes(kw))) {
+      if (['ชื่อศิลปิน', 'ศิลปิน', 'artist', 'creator', 'author'].some((kw) => col.includes(kw))) {
         if (headerMap.artist === undefined) headerMap.artist = idx;
-      } else if (['country', 'ประเทศ', 'สัญชาติ', 'nation'].some((kw) => col.includes(kw))) {
+      } else if (['ประเทศ', 'สัญชาติ', 'country', 'nation', 'nationality'].some((kw) => col.includes(kw))) {
         if (headerMap.country === undefined) headerMap.country = idx;
-      } else if (['medium', 'เทคนิค', 'วัสดุ', 'technique', 'material'].some((kw) => col.includes(kw))) {
+      } else if (['email', 'อีเมล', 'mail', 'e-mail'].some((kw) => col.includes(kw))) {
+        if (headerMap.email === undefined) headerMap.email = idx;
+      } else if (['ชื่อผลงาน', 'ชื่องาน', 'ชื่อภาพ', 'title', 'artwork', 'piece'].some((kw) => col.includes(kw))) {
+        if (headerMap.title === undefined) headerMap.title = idx;
+      } else if (['เทคนิค', 'วัสดุ', 'medium', 'technique', 'material'].some((kw) => col.includes(kw))) {
         if (headerMap.medium === undefined) headerMap.medium = idx;
-      } else if (['dimension', 'ขนาด', 'size', 'wxh'].some((kw) => col.includes(kw))) {
+      } else if (['ขนาด', 'ขนาดผลงาน', 'dimension', 'dimensions', 'size', 'wxh'].some((kw) => col.includes(kw))) {
         if (headerMap.dimensions === undefined) headerMap.dimensions = idx;
-      } else if (['year', 'ปี', 'ปีที่สร้าง', 'date'].some((kw) => col.includes(kw))) {
+      } else if (['หน่วย', 'หน่วยวัด', 'unit'].some((kw) => col.includes(kw))) {
+        if (headerMap.unit === undefined) headerMap.unit = idx;
+      } else if (['ปี', 'ปีที่สร้าง', 'year', 'date'].some((kw) => col.includes(kw))) {
         if (headerMap.year === undefined) headerMap.year = idx;
-      } else if (['concept', 'แนวคิด', 'คำอธิบาย', 'description', 'statement'].some((kw) => col.includes(kw))) {
+      } else if (['แนวคิด', 'แนวคิดผลงาน', 'concept', 'คำอธิบาย', 'description', 'statement'].some((kw) => col.includes(kw))) {
         if (headerMap.concept === undefined) headerMap.concept = idx;
-      } else if (['image', 'url', 'ภาพ', 'รูป', 'รูปภาพ', 'link', 'photo'].some((kw) => col.includes(kw))) {
+      } else if (['รูป', 'ภาพ', 'รูปภาพ', 'image', 'url', 'photo', 'link'].some((kw) => col.includes(kw))) {
         if (headerMap.imageUrl === undefined) headerMap.imageUrl = idx;
       }
     });
@@ -318,30 +335,38 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
 
     // If headers were found and mapped
     if (isHeaderRow && Object.keys(headerMap).length >= 2) {
-      const title = (headerMap.title !== undefined ? cols[headerMap.title] || '' : '').trim();
       const artistName = (headerMap.artist !== undefined ? cols[headerMap.artist] || '' : '').trim();
       let artistCountry = (headerMap.country !== undefined ? cols[headerMap.country] || '' : '').trim();
       if (artistCountry) {
         const detected = detectCountry(artistCountry);
         if (detected) artistCountry = detected;
       }
+      const artistEmail = (headerMap.email !== undefined ? cols[headerMap.email] || '' : '').trim();
+      const title = (headerMap.title !== undefined ? cols[headerMap.title] || '' : '').trim();
       const medium = (headerMap.medium !== undefined ? cols[headerMap.medium] || '' : '').trim();
-      let dimensions = (headerMap.dimensions !== undefined ? cols[headerMap.dimensions] || '' : '').trim();
-      if (dimensions && !/(?:cm|ซม|mm|m|in)/i.test(dimensions) && /\d+\s*[x×X]\s*\d+/.test(dimensions)) {
-        dimensions = `${dimensions} cm.`;
+      
+      let rawDim = (headerMap.dimensions !== undefined ? cols[headerMap.dimensions] || '' : '').trim();
+      let rawUnit = (headerMap.unit !== undefined ? cols[headerMap.unit] || '' : '').trim();
+      let dimensions = rawDim;
+      if (rawDim && rawUnit) {
+        if (!rawDim.toLowerCase().includes(rawUnit.toLowerCase())) {
+          dimensions = `${rawDim} ${rawUnit}`;
+        }
+      } else if (rawDim && !/(?:cm|ซม|mm|m|in)/i.test(rawDim) && /\d+\s*[x×X]\s*\d+/.test(rawDim)) {
+        dimensions = `${rawDim} cm.`;
       }
+
       const rawYear = headerMap.year !== undefined ? cols[headerMap.year] || '' : '';
       const yearCreated = detectYear(rawYear);
       const concept = (headerMap.concept !== undefined ? cols[headerMap.concept] || '' : '').trim();
       const imageUrl = (headerMap.imageUrl !== undefined ? cols[headerMap.imageUrl] || '' : '').trim();
 
-      // Only add if at least one meaningful field exists
       if (title || artistName || imageUrl || concept) {
         results.push({
           title,
           artistName,
           artistCountry,
-          artistEmail: '',
+          artistEmail,
           medium,
           dimensions,
           yearCreated,
@@ -350,27 +375,75 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
         });
       }
     } else {
-      // Positional / Standard Column Mapping (without header)
-      // Standard: 0:Title, 1:Artist, 2:Country, 3:Medium, 4:Dimensions, 5:Year, 6:Concept, 7:ImageUrl
-      if (cols.length >= 3) {
-        let title = (cols[0] || '').trim();
-        let artistName = (cols[1] || '').trim();
-        let artistCountry = (cols[2] || '').trim();
-        let medium = (cols[3] || '').trim();
-        let dimensions = (cols[4] || '').trim();
-        let yearCreated: number | string = detectYear(cols[5] || '');
-        let concept = (cols[6] || '').trim();
-        let imageUrl = (cols[7] || '').trim();
+      // Positional Mapping (Without Header Row)
+      // Exactly as requested:
+      // 0: Artist Name (ชื่อศิลปิน)
+      // 1: Country (ประเทศ)
+      // 2: Email (email)
+      // 3: Title (ชื่อผลงาน)
+      // 4: Medium (เทคนิค)
+      // 5: Dimensions (ขนาด)
+      // 6: Unit (หน่วยวัด)
+      // 7: Concept (concept)
+      // 8: Image URL (รูปภาพ)
+      if (cols.length >= 2) {
+        let artistName = (cols[0] || '').trim();
+        let artistCountry = (cols[1] || '').trim();
+        let artistEmail = '';
+        let title = '';
+        let medium = '';
+        let rawDim = '';
+        let rawUnit = '';
+        let concept = '';
+        let imageUrl = '';
 
-        // Check if country was placed in column 2
+        // Check if cols[2] is email
+        if (cols.length >= 8) {
+          artistEmail = (cols[2] || '').trim();
+          title = (cols[3] || '').trim();
+          medium = (cols[4] || '').trim();
+          rawDim = (cols[5] || '').trim();
+          rawUnit = (cols[6] || '').trim();
+          concept = (cols[7] || '').trim();
+          imageUrl = (cols[8] || '').trim();
+        } else if (cols.length === 7) {
+          // If 7 columns: check if cols[2] has '@'
+          if ((cols[2] || '').includes('@')) {
+            artistEmail = (cols[2] || '').trim();
+            title = (cols[3] || '').trim();
+            medium = (cols[4] || '').trim();
+            rawDim = (cols[5] || '').trim();
+            concept = (cols[6] || '').trim();
+          } else {
+            // No email column: 0:Artist, 1:Country, 2:Title, 3:Medium, 4:Dimensions, 5:Unit, 6:Concept
+            title = (cols[2] || '').trim();
+            medium = (cols[3] || '').trim();
+            rawDim = (cols[4] || '').trim();
+            rawUnit = (cols[5] || '').trim();
+            concept = (cols[6] || '').trim();
+          }
+        } else {
+          // General 3-6 columns
+          title = (cols[3] || cols[2] || '').trim();
+          medium = (cols[4] || cols[3] || '').trim();
+          rawDim = (cols[5] || cols[4] || '').trim();
+          concept = (cols[6] || cols[5] || '').trim();
+        }
+
+        // Normalize country if matched
         const detectedCountry = detectCountry(artistCountry);
         if (detectedCountry) {
           artistCountry = detectedCountry;
         }
 
-        // If dimensions in col 4
-        if (dimensions && !/(?:cm|ซม|mm|m|in)/i.test(dimensions) && /\d+\s*[x×X]\s*\d+/.test(dimensions)) {
-          dimensions = `${dimensions} cm.`;
+        // Combine dimensions + unit
+        let dimensions = rawDim;
+        if (rawDim && rawUnit) {
+          if (!rawDim.toLowerCase().includes(rawUnit.toLowerCase())) {
+            dimensions = `${rawDim} ${rawUnit}`;
+          }
+        } else if (rawDim && !/(?:cm|ซม|mm|m|in)/i.test(rawDim) && /\d+\s*[x×X]\s*\d+/.test(rawDim)) {
+          dimensions = `${rawDim} cm.`;
         }
 
         if (title || artistName || imageUrl || concept) {
@@ -378,20 +451,13 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
             title,
             artistName,
             artistCountry,
-            artistEmail: '',
+            artistEmail,
             medium,
             dimensions,
-            yearCreated,
+            yearCreated: '',
             concept,
             imageUrl,
           });
-        }
-      } else {
-        // Fallback for single non-standard row
-        const line = cols.join('\t');
-        const detected = smartDetectArtwork(line);
-        if (detected.title || detected.artistName || detected.imageUrl) {
-          results.push(detected);
         }
       }
     }

@@ -52,6 +52,7 @@ interface ParsedBatchRow {
   title: string;
   artistName: string;
   artistCountry: string;
+  artistEmail?: string;
   medium: string;
   dimensions: string;
   yearCreated: string | number;
@@ -495,6 +496,7 @@ export function AdminExhibitionArtworksClient({
         title: d.title,
         artistName: d.artistName,
         artistCountry: d.artistCountry,
+        artistEmail: d.artistEmail,
         medium: d.medium,
         dimensions: d.dimensions,
         yearCreated: d.yearCreated,
@@ -521,11 +523,11 @@ export function AdminExhibitionArtworksClient({
 
   // Download Sample Excel Template (CSV)
   const handleDownloadSampleTemplate = () => {
-    const headers = 'ชื่อผลงาน (Title)\tศิลปิน (Artist)\tประเทศ (Country)\tเทคนิค (Medium)\tขนาด (Dimensions)\tปี (Year)\tแนวคิดผลงาน (Concept)\tURL รูปภาพ (Image URL)\n';
+    const headers = 'ชื่อศิลปิน (Artist)\tประเทศ (Country)\temail\tชื่อผลงาน (Title)\tเทคนิค (Medium)\tขนาด (Dimensions)\tหน่วยวัด (Unit)\tconcept\tURL รูปภาพ (Image URL)\n';
     const sampleData = [
-      'แสงอรุณเหนือวิหารหลวง\tสมชาย ใจเย็น\tThailand\tOil on Canvas\t140 x 200 cm.\t2026\tแสงแรกแห่งวันสะท้อนองค์พระปรางค์โบราณ สัญลักษณ์แห่งการเกิดใหม่ทางจิตวิญญาณ\thttps://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1200&auto=format&fit=crop',
-      'เสียงสะท้อนแห่งความเงียบ\tElena Rossi\tItaly\tTempera & Gold Leaf on Linen\t110 x 160 cm.\t2025\tการตีความมิติทางประวัติศาสตร์การค้าทางทะเลผ่านศิลปะยุคฟื้นฟูศิลปวิทยา\thttps://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop',
-      'สัจธรรมแห่งสายน้ำ\tKenji Takahashi\tJapan\tInk and Acrylic on Washi Paper\t100 x 150 cm.\t2026\tความสงบนิ่งและจิตวิญญาณแห่งความเรียบง่ายตามปรัชญาเซนริมแม่น้ำเจ้าพระยา\thttps://images.unsplash.com/photo-1552465011-b4e21bf6e79a?q=80&w=1200&auto=format&fit=crop',
+      'สมชาย ใจเย็น\tThailand\tsomchai@gmail.com\tแสงอรุณเหนือวิหารหลวง\tOil on Canvas\t140 x 200\tcm.\tแสงแรกแห่งวันสะท้อนองค์พระปรางค์โบราณ สัญลักษณ์แห่งการเกิดใหม่ทางจิตวิญญาณ\thttps://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1200&auto=format&fit=crop',
+      'Elena Rossi\tItaly\telena.rossi@art.it\tเสียงสะท้อนแห่งความเงียบ\tTempera & Gold Leaf on Linen\t110 x 160\tcm.\tการตีความมิติทางประวัติศาสตร์การค้าทางทะเลผ่านศิลปะยุคฟื้นฟูศิลปวิทยา\thttps://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop',
+      'Kenji Takahashi\tJapan\tkenji@kyoto-art.jp\tสัจธรรมแห่งสายน้ำ\tInk and Acrylic on Washi Paper\t100 x 150\tcm.\tความสงบนิ่งและจิตวิญญาณแห่งความเรียบง่ายตามปรัชญาเซนริมแม่น้ำเจ้าพระยา\thttps://images.unsplash.com/photo-1552465011-b4e21bf6e79a?q=80&w=1200&auto=format&fit=crop',
     ].join('\n');
 
     const blob = new Blob(['\uFEFF' + headers + sampleData], { type: 'text/csv;charset=utf-8;' });
@@ -1391,7 +1393,7 @@ export function AdminExhibitionArtworksClient({
                   rows={4}
                   value={rawPastedText}
                   onChange={(e) => parseExcelText(e.target.value)}
-                  placeholder={`ชื่อผลงาน\tศิลปิน\tประเทศ\tเทคนิค\tขนาด\tปี\tแนวคิดผลงาน\tURL รูปภาพ\nแสงอรุณเหนือวิหาร\tสมชาย ใจเย็น\tThailand\tOil on Canvas\t120 x 180 cm.\t2026\tภาพสะท้อนแสงแรก...\thttps://...`}
+                  placeholder={`ชื่อศิลปิน\tประเทศ\temail\tชื่อผลงาน\tเทคนิค\tขนาด\tหน่วยวัด\tconcept\tURL รูปภาพ\nสมชาย ใจเย็น\tThailand\tsomchai@gmail.com\tแสงอรุณเหนือวิหาร\tOil on Canvas\t120 x 180\tcm.\tภาพสะท้อนแสงแรก...\thttps://...`}
                   className="w-full p-3 bg-white border border-[#D5CFC3] rounded-xl font-mono text-xs text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-emerald-700 leading-relaxed"
                 />
               </div>
@@ -1410,16 +1412,17 @@ export function AdminExhibitionArtworksClient({
                   </div>
 
                   <div className="max-h-[250px] overflow-x-auto overflow-y-auto border border-[#DDD6C8] rounded-xl bg-white shadow-inner">
-                    <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                    <table className="w-full text-left text-xs border-collapse min-w-[750px]">
                       <thead className="bg-[#FAF8F5] border-b border-[#DDD6C8] sticky top-0 text-[10px] uppercase font-bold text-[#7A7468]">
                         <tr>
                           <th className="p-2.5 w-10 text-center">#</th>
-                          <th className="p-2.5">{lang === 'th' ? 'ชื่อผลงาน' : 'Title'}</th>
                           <th className="p-2.5">{lang === 'th' ? 'ศิลปิน' : 'Artist'}</th>
                           <th className="p-2.5">{lang === 'th' ? 'ประเทศ' : 'Country'}</th>
+                          <th className="p-2.5">email</th>
+                          <th className="p-2.5">{lang === 'th' ? 'ชื่อผลงาน' : 'Title'}</th>
                           <th className="p-2.5">{lang === 'th' ? 'เทคนิค' : 'Medium'}</th>
                           <th className="p-2.5">{lang === 'th' ? 'ขนาด (W×H)' : 'Dimensions'}</th>
-                          <th className="p-2.5 text-center">{lang === 'th' ? 'ปี' : 'Year'}</th>
+                          <th className="p-2.5">concept</th>
                           <th className="p-2.5">URL ภาพ</th>
                         </tr>
                       </thead>
@@ -1427,25 +1430,28 @@ export function AdminExhibitionArtworksClient({
                         {parsedRows.map((row, rIdx) => (
                           <tr key={rIdx} className="hover:bg-[#FAF8F5] transition-colors">
                             <td className="p-2.5 font-mono text-[#8C6D3F] font-bold text-center">#{rIdx + 1}</td>
-                            <td className="p-2.5 font-serif font-bold text-[#1A1918] max-w-[140px] truncate">
-                              {row.title || <span className="text-neutral-400 font-sans font-normal italic">—</span>}
-                            </td>
-                            <td className="p-2.5 text-[#5A554A] max-w-[120px] truncate">
+                            <td className="p-2.5 font-semibold text-[#1A1918] max-w-[130px] truncate">
                               {row.artistName || <span className="text-neutral-400 italic">—</span>}
                             </td>
-                            <td className="p-2.5 text-[#5A554A] max-w-[100px] truncate">
+                            <td className="p-2.5 text-[#5A554A] max-w-[90px] truncate">
                               {row.artistCountry || <span className="text-neutral-400 italic">—</span>}
                             </td>
-                            <td className="p-2.5 text-[#7A7468] max-w-[120px] truncate">
+                            <td className="p-2.5 font-mono text-[11px] text-[#7A7468] max-w-[120px] truncate">
+                              {(row as any).artistEmail || <span className="text-neutral-400 italic">—</span>}
+                            </td>
+                            <td className="p-2.5 font-serif font-bold text-[#8C6D3F] max-w-[140px] truncate">
+                              {row.title || <span className="text-neutral-400 font-sans font-normal italic">—</span>}
+                            </td>
+                            <td className="p-2.5 text-[#7A7468] max-w-[110px] truncate">
                               {row.medium || <span className="text-neutral-400 italic">—</span>}
                             </td>
                             <td className="p-2.5 font-mono text-[11px] text-emerald-800 font-semibold max-w-[110px] truncate">
                               {row.dimensions || <span className="text-neutral-400 font-normal italic">—</span>}
                             </td>
-                            <td className="p-2.5 font-mono text-[11px] text-[#7A7468] text-center">
-                              {row.yearCreated || <span className="text-neutral-400 italic">—</span>}
+                            <td className="p-2.5 text-[#5A554A] max-w-[150px] truncate">
+                              {row.concept || <span className="text-neutral-400 italic">—</span>}
                             </td>
-                            <td className="p-2.5 font-mono text-[10px] text-blue-600 max-w-[130px] truncate">
+                            <td className="p-2.5 font-mono text-[10px] text-blue-600 max-w-[120px] truncate">
                               {row.imageUrl || <span className="text-neutral-400 italic">—</span>}
                             </td>
                           </tr>

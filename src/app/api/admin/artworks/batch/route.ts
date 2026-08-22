@@ -9,6 +9,7 @@ interface BatchArtworkRow {
   title: string;
   artistName?: string;
   artistCountry?: string;
+  artistEmail?: string;
   medium?: string;
   dimensions?: string;
   yearCreated?: number | string;
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
       const title = (row.title || '').trim() || (row.artistName ? `ผลงานของ ${(row.artistName).trim()}` : 'ผลงานศิลปกรรม');
       const artistName = (row.artistName || '').trim() || 'ศิลปินร่วมแสดง';
       const artistCountry = (row.artistCountry || '').trim();
+      const artistEmail = (row.artistEmail || '').trim() || `${artistName.toLowerCase().replace(/[^a-z0-9]+/g, '.') || 'artist'}-${Date.now()}-${i}@artvara-artists.com`;
 
       // Find or create artist
       let artistId = artistNameMap.get(artistName.toLowerCase());
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
         await db.insert(schema.users).values({
           id: artistId,
           name: artistName,
-          email: `${artistName.toLowerCase().replace(/[^a-z0-9]+/g, '.') || 'artist'}-${Date.now()}-${i}@artvara-artists.com`,
+          email: artistEmail,
           role: 'artist',
           country: artistCountry || null,
           flagEmoji: artistCountry.toLowerCase().includes('thai') || artistCountry === 'Thailand' ? '🇹🇭' : (artistCountry ? '🌐' : null),
