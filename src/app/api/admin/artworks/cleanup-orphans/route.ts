@@ -48,15 +48,12 @@ async function executeCleanup() {
     }
 
     let deletedCount = 0;
-    // Delete orphan artworks
-    for (const orphanId of orphanArtworkIds) {
-      await db.delete(schema.artworks).where(eq(schema.artworks.id, orphanId));
-      deletedCount++;
-    }
-
-    // 3. Clean up exhibition links if any pointed to deleted artworks
-    for (const orphanId of orphanArtworkIds) {
-      await db.delete(schema.exhibitionArtworks).where(eq(schema.exhibitionArtworks.artworkId, orphanId));
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < orphanArtworkIds.length; i += CHUNK_SIZE) {
+      const chunk = orphanArtworkIds.slice(i, i + CHUNK_SIZE);
+      await db.delete(schema.artworks).where(inArray(schema.artworks.id, chunk));
+      await db.delete(schema.exhibitionArtworks).where(inArray(schema.exhibitionArtworks.artworkId, chunk));
+      deletedCount += chunk.length;
     }
 
     // 4. Get updated counts
