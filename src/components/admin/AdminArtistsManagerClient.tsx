@@ -596,6 +596,36 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
     }
   };
 
+  const handleDeduplicateArtists = async () => {
+    if (
+      !confirm(
+        lang === 'th'
+          ? 'ต้องการค้นหาและผสานรวมชื่อศิลปินที่ซ้ำกัน (เช่น ซ้ำวรรค, พิมพ์ชื่อคล้ายกัน หรือซ้ำจากการนำเข้า) ให้เหลือศิลปินหลักท่านเดียวใช่หรือไม่?'
+          : 'Merge duplicate artists into single master profiles?'
+      )
+    )
+      return;
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/artists/deduplicate', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to merge artists');
+
+      showNotification(
+        'success',
+        lang === 'th'
+          ? `ผสานศิลปินที่ซ้ำกันสำเร็จ (รวมรายการซ้ำ ${data.mergedCount} รายการ, คงเหลือศิลปินหลัก ${data.totalRemainingArtists} ท่าน)`
+          : `Successfully merged ${data.mergedCount} duplicate artists!`
+      );
+      await refreshList();
+    } catch (err: any) {
+      showNotification('error', err.message || 'Error merging duplicate artists');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 select-none">
       {/* Top Header */}
@@ -615,6 +645,16 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button
+            onClick={handleDeduplicateArtists}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm transition-all active:scale-95 shrink-0"
+            title="ค้นหาและรวมศิลปินที่ชื่อซ้ำกันให้เหลือ 1 ท่าน"
+          >
+            <Sparkles className="w-4 h-4 text-emerald-700" />
+            <span>{loading ? (lang === 'th' ? 'กำลังผสาน...' : 'Merging...') : (lang === 'th' ? '👥 รวมศิลปินที่ซ้ำ' : '👥 Merge Duplicates')}</span>
+          </button>
+
           <button
             onClick={handleSyncArtists}
             disabled={loading}

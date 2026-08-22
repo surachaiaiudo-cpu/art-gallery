@@ -2,6 +2,7 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { getCountryFlagEmoji } from '@/lib/countryUtils';
+import { findMatchingArtist } from '@/lib/artistMatcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,13 +27,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No artwork items provided for import' }, { status: 400 });
     }
 
-    // 1. Fetch all existing users to map artists and check email uniqueness
+    // 1. Fetch all existing users and maintain dynamic candidate list
     const allUsers = await db.select().from(schema.users);
-    const artistNameMap = new Map<string, string>();
+    const candidateArtists: any[] = allUsers.filter((u: any) => u.role !== 'curator');
     const existingEmails = new Set<string>();
 
     for (const u of allUsers) {
-      if (u.name) artistNameMap.set(u.name.toLowerCase().trim(), u.id);
       if (u.email) existingEmails.add(u.email.toLowerCase().trim());
     }
 
@@ -73,9 +73,18 @@ export async function POST(req: NextRequest) {
       const title = (row.title || '').trim() || (artistName ? `ผลงานของ ${artistName}` : 'ผลงานศิลปกรรม');
       const artistCountry = (row.artistCountry || '').trim() || 'Thailand';
 
-      // Resolve artistId
-      let artistId = artistNameMap.get(artistName.toLowerCase());
-      if (!artistId) {
+      // Smart Artist Detection: match against all existing + newly created in this batch
+      const matchedArtist = findMatchingArtist(candidateArtists, {
+        name: artistName,
+        email: row.artistEmail,
+        country: artistCountry,
+      });
+
+      let artistId: string;
+
+      if (matchedArtist) {
+        artistId = matchedArtist.id;
+      } else {
         artistId = `artist-${now}-${i}-${Math.random().toString(36).substring(2, 6)}`;
 
         let candidateEmail = (row.artistEmail || '').trim();
@@ -84,7 +93,7 @@ export async function POST(req: NextRequest) {
         }
         existingEmails.add(candidateEmail.toLowerCase());
 
-        newArtistsToInsert.push({
+        const newArtistObj = {
           id: artistId,
           name: artistName,
           email: candidateEmail,
@@ -94,9 +103,10 @@ export async function POST(req: NextRequest) {
           bio: artistName !== 'ศิลปินร่วมแสดง' ? `ศิลปินผู้สร้างสรรค์ผลงานศิลปกรรม` : null,
           avatarUrl: null,
           socialLinks: null,
-        });
+        };
 
-        artistNameMap.set(artistName.toLowerCase(), artistId);
+        newArtistsToInsert.push(newArtistObj);
+        candidateArtists.push(newArtistObj);
       }
 
       const newArtId = `art-${now}-${i}`;

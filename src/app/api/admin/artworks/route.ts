@@ -4,6 +4,7 @@ import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 import { getAllArtworks } from '@/lib/data';
 import { getCountryFlagEmoji } from '@/lib/countryUtils';
+import { findMatchingArtist } from '@/lib/artistMatcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,17 +49,18 @@ export async function POST(req: NextRequest) {
     const resolvedArtistName = (artistName || '').trim();
     const resolvedCountry = (artistCountry || country || 'Thailand').trim();
 
-    // Auto-detect existing artist or create a new master artist profile
+    // Auto-detect existing artist with smart fuzzy/token matching or create a new master artist profile
     if (!finalArtistId && resolvedArtistName) {
       const allUsers = await db.select().from(schema.users);
-      const existingArtist = allUsers.find(
-        (u: any) =>
-          u.name.toLowerCase().trim() === resolvedArtistName.toLowerCase() ||
-          (artistEmail && u.email.toLowerCase().trim() === artistEmail.toLowerCase().trim())
-      );
+      const artists = allUsers.filter((u: any) => u.role !== 'curator');
+      const matchedArtist = findMatchingArtist(artists, {
+        name: resolvedArtistName,
+        email: artistEmail,
+        country: resolvedCountry,
+      });
 
-      if (existingArtist) {
-        finalArtistId = existingArtist.id;
+      if (matchedArtist) {
+        finalArtistId = matchedArtist.id;
       } else {
         const newArtistId = `artist-${Date.now()}`;
         const finalEmail =
