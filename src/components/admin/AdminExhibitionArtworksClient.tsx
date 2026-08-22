@@ -90,7 +90,13 @@ export function AdminExhibitionArtworksClient({
   // Sync artworksList and prune selectedArtworkIds when exhibition changes
   useEffect(() => {
     if (exhibition.artworks) {
-      setArtworksList(exhibition.artworks);
+      const sorted = [...exhibition.artworks]
+        .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+        .map((art, idx) => ({
+          ...art,
+          displayOrder: idx + 1,
+        }));
+      setArtworksList(sorted);
       setHasChanges(false);
       const existingIds = new Set(exhibition.artworks.map((a) => a.id));
       setSelectedArtworkIds((prev) => prev.filter((id) => existingIds.has(id)));
@@ -894,13 +900,16 @@ export function AdminExhibitionArtworksClient({
             const isDragOver = dragOverIndex === idx;
             const isSelected = selectedArtworkIds.includes(art.id);
 
+            const actualIndex = artworksList.findIndex((a) => a.id === art.id);
+            const currentDisplayNumber = actualIndex !== -1 ? actualIndex + 1 : idx + 1;
+
             return (
               <div
                 key={art.id}
                 draggable={true}
-                onDragStart={() => handleDragStart(idx)}
-                onDragOver={(e) => handleDragOver(e, idx)}
-                onDrop={() => handleDrop(idx)}
+                onDragStart={() => handleDragStart(actualIndex !== -1 ? actualIndex : idx)}
+                onDragOver={(e) => handleDragOver(e, actualIndex !== -1 ? actualIndex : idx)}
+                onDrop={() => handleDrop(actualIndex !== -1 ? actualIndex : idx)}
                 onDragEnd={handleDragEnd}
                 className={`bg-white rounded-2xl border shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between select-none ${
                   isDragged
@@ -955,7 +964,7 @@ export function AdminExhibitionArtworksClient({
                             type="number"
                             min={1}
                             max={artworksList.length}
-                            value={art.displayOrder || idx + 1}
+                            value={currentDisplayNumber}
                             onChange={(e) =>
                               handleOrderInputChange(art.id, parseInt(e.target.value, 10))
                             }
@@ -1097,17 +1106,19 @@ export function AdminExhibitionArtworksClient({
               </thead>
               <tbody className="divide-y divide-[#F0ECE4] text-xs text-[#2C2925]">
                 {filteredCurrentArtworks.map((art, idx) => {
-                  const isDragged = draggedIndex === idx;
-                  const isDragOver = dragOverIndex === idx;
+                  const actualIndex = artworksList.findIndex((a) => a.id === art.id);
+                  const currentDisplayNumber = actualIndex !== -1 ? actualIndex + 1 : idx + 1;
+                  const isDragged = draggedIndex === (actualIndex !== -1 ? actualIndex : idx);
+                  const isDragOver = dragOverIndex === (actualIndex !== -1 ? actualIndex : idx);
                   const isSelected = selectedArtworkIds.includes(art.id);
 
                   return (
                     <tr
                       key={art.id}
                       draggable={true}
-                      onDragStart={() => handleDragStart(idx)}
-                      onDragOver={(e) => handleDragOver(e, idx)}
-                      onDrop={() => handleDrop(idx)}
+                      onDragStart={() => handleDragStart(actualIndex !== -1 ? actualIndex : idx)}
+                      onDragOver={(e) => handleDragOver(e, actualIndex !== -1 ? actualIndex : idx)}
+                      onDrop={() => handleDrop(actualIndex !== -1 ? actualIndex : idx)}
                       onDragEnd={handleDragEnd}
                       className={`transition-colors group select-none ${
                         isDragged
@@ -1140,7 +1151,7 @@ export function AdminExhibitionArtworksClient({
                           type="number"
                           min={1}
                           max={artworksList.length}
-                          value={art.displayOrder ?? idx + 1}
+                          value={currentDisplayNumber}
                           onChange={(e) =>
                             handleOrderInputChange(art.id, parseInt(e.target.value, 10))
                           }
