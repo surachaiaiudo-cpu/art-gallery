@@ -54,6 +54,7 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'country-asc' | 'country-desc' | 'artworks-desc' | 'default'>('name-asc');
   const [selectedCountry, setSelectedCountry] = useState<string>('all');
+  const [selectedArtistIds, setSelectedArtistIds] = useState<Set<string>>(new Set());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingArtist, setEditingArtist] = useState<ArtistWithStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,6 +68,28 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
       refreshList();
     }
   }, [initialArtists]);
+
+  // Selection Handlers
+  const handleToggleSelect = (id: string) => {
+    setSelectedArtistIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedArtistIds.size === filteredArtists.length) {
+      setSelectedArtistIds(new Set());
+    } else {
+      setSelectedArtistIds(new Set(filteredArtists.map((a) => a.id)));
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedArtistIds(new Set());
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -451,10 +474,48 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
 
       if (res.ok) {
         showNotification('success', lang === 'th' ? 'ลบศิลปินสำเร็จ' : 'Artist deleted');
+        setSelectedArtistIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         await refreshList();
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedArtistIds.size === 0) return;
+    const count = selectedArtistIds.size;
+    const confirmMsg =
+      lang === 'th'
+        ? `⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบศิลปินที่เลือกทั้งหมด ${count} ท่าน?\n\n(ผลงานศิลปะของศิลปินเหล่านี้จะถูกลบออกจากระบบด้วย)`
+        : `⚠️ Are you sure you want to delete ${count} selected artist(s)? (Their artworks will also be removed).`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/artists', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedArtistIds) }),
+      });
+
+      if (!res.ok) throw new Error('Failed to delete selected artists');
+
+      showNotification(
+        'success',
+        lang === 'th' ? `ลบศิลปินที่เลือก ${count} ท่านเรียบร้อยแล้ว` : `Deleted ${count} artist(s) successfully`
+      );
+      setSelectedArtistIds(new Set());
+      await refreshList();
+    } catch (err: any) {
+      showNotification('error', err.message || 'Error deleting artists');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -599,6 +660,48 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
         </div>
       )}
 
+      {/* Floating Bulk Actions Bar */}
+      {selectedArtistIds.size > 0 && (
+        <div className="sticky top-4 z-30 p-3.5 bg-[#1A1918] text-white rounded-2xl shadow-2xl flex items-center justify-between gap-4 border border-[#C5A880]/40 animate-slide-up">
+          <div className="flex items-center gap-3">
+            <span className="w-6 h-6 rounded-full bg-[#C5A880] text-[#1A1918] text-xs font-bold flex items-center justify-center">
+              {selectedArtistIds.size}
+            </span>
+            <span className="text-xs font-semibold">
+              {lang === 'th'
+                ? `เลือกศิลปินแล้ว ${selectedArtistIds.size} จาก ${filteredArtists.length} ท่าน`
+                : `Selected ${selectedArtistIds.size} of ${filteredArtists.length} artists`}
+            </span>
+            <button
+              onClick={handleSelectAll}
+              className="text-xs text-[#C5A880] hover:underline underline-offset-2 ml-2 font-medium"
+            >
+              {selectedArtistIds.size === filteredArtists.length
+                ? (lang === 'th' ? 'ยกเลิกการเลือกทั้งหมด' : 'Deselect All')
+                : (lang === 'th' ? 'เลือกทั้งหมด' : 'Select All')}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDeleteSelected}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow active:scale-95 disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{loading ? (lang === 'th' ? 'กำลังลบ...' : 'Deleting...') : (lang === 'th' ? `ลบศิลปินที่เลือก (${selectedArtistIds.size})` : `Delete Selected (${selectedArtistIds.size})`)}</span>
+            </button>
+            <button
+              onClick={handleDeselectAll}
+              className="p-2 text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-800 transition-colors"
+              title="Cancel Selection"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar: Search + Country Filter + Sort Selector + View Mode Switcher */}
       <div className="bg-white p-4 rounded-2xl border border-[#E0D9CD] shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
         {/* Search Input */}
@@ -706,11 +809,24 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
             return (
               <div
                 key={artist.id}
-                className="bg-white rounded-2xl border border-[#DDD6C8] shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between"
+                className={`bg-white rounded-2xl border shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between ${
+                  selectedArtistIds.has(artist.id) ? 'border-[#C5A880] ring-2 ring-[#C5A880]/50' : 'border-[#DDD6C8]'
+                }`}
               >
                 <div>
                   {/* Header Banner */}
                   <div className="relative bg-[#26201B] p-5 text-white flex items-center gap-4">
+                    {/* Multi-Select Checkbox */}
+                    <div className="shrink-0 flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedArtistIds.has(artist.id)}
+                        onChange={() => handleToggleSelect(artist.id)}
+                        className="w-4 h-4 rounded border-[#C5A880] text-[#8C6D3F] focus:ring-[#C5A880] cursor-pointer accent-[#C5A880]"
+                        title={lang === 'th' ? 'เลือกศิลปินนี้' : 'Select Artist'}
+                      />
+                    </div>
+
                     {/* Avatar with Floating Real Flag Badge */}
                     <div className="relative shrink-0">
                       <div className="border-2 border-[#C5A880] rounded-full shadow-lg">
@@ -807,6 +923,16 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#1A1918] text-[#E5D2B8] text-xs font-bold uppercase tracking-wider border-b border-[#33302C]">
+                  {/* Select All Checkbox */}
+                  <th className="py-4 px-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filteredArtists.length > 0 && selectedArtistIds.size === filteredArtists.length}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded border-[#C5A880] text-[#8C6D3F] focus:ring-[#C5A880] cursor-pointer accent-[#C5A880]"
+                      title={selectedArtistIds.size === filteredArtists.length ? (lang === 'th' ? 'ยกเลิกการเลือกทั้งหมด' : 'Deselect All') : (lang === 'th' ? 'เลือกทั้งหมด' : 'Select All')}
+                    />
+                  </th>
                   <th
                     className="py-4 px-3 w-12 text-center cursor-pointer select-none hover:text-white transition-colors"
                     onClick={() => setSortBy('default')}
@@ -878,8 +1004,20 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                   return (
                     <tr
                       key={artist.id}
-                      className="hover:bg-[#FAF8F5] transition-colors group"
+                      className={`transition-colors group ${
+                        selectedArtistIds.has(artist.id) ? 'bg-[#FAF2E6]' : 'hover:bg-[#FAF8F5]'
+                      }`}
                     >
+                      {/* Checkbox */}
+                      <td className="py-4 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedArtistIds.has(artist.id)}
+                          onChange={() => handleToggleSelect(artist.id)}
+                          className="w-4 h-4 rounded border-[#C5A880] text-[#8C6D3F] focus:ring-[#C5A880] cursor-pointer accent-[#C5A880]"
+                        />
+                      </td>
+
                       {/* # Index */}
                       <td className="py-4 px-3 text-center font-mono text-[#8C8477] font-semibold">
                         {idx + 1}

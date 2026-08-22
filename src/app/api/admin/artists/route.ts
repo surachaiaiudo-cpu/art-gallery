@@ -1,7 +1,7 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { getAllArtistsWithStats } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
@@ -151,48 +151,65 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE: Delete artist and clean up ImageKit avatar and artwork photos
+// DELETE: Delete artist(s) and clean up cascading artworks and exhibition links
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    const queryId = searchParams.get('id');
+    const queryIds = searchParams.get('ids');
 
-    if (!id) {
-      return NextResponse.json({ error: 'Artist ID is required' }, { status: 400 });
+    let targetIds: string[] = [];
+
+    if (queryId) {
+      targetIds.push(queryId);
+    } else if (queryIds) {
+      targetIds = queryIds.split(',').map((s) => s.trim()).filter(Boolean);
+    } else {
+      try {
+        const body = await req.json();
+        if (body.ids && Array.isArray(body.ids)) {
+          targetIds = body.ids;
+        } else if (body.id) {
+          targetIds = [body.id];
+        }
+      } catch {}
     }
 
-    const symbol = Symbol.for('__cloudflare-request-context__');
-    const ctx = (globalThis as any)[symbol];
-    const imageKitPrivateKey =
-      ctx?.env?.IMAGEKIT_PRIVATE_KEY ||
-      ctx?.env?.IMAGEKIT_KEY ||
-      process.env.IMAGEKIT_PRIVATE_KEY ||
-      process.env.IMAGEKIT_KEY;
-
-    // 1. Fetch artist avatarUrl
-    const existing = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1);
-    if (existing.length > 0 && existing[0].avatarUrl) {
-      await deleteFromImageKit(existing[0].avatarUrl, imageKitPrivateKey);
+    if (targetIds.length === 0) {
+      return NextResponse.json({ error: 'Artist ID or IDs are required' }, { status: 400 });
     }
 
-    // 2. Fetch all artworks by this artist to delete their images from ImageKit
-    const artistArtworks = await db
-      .select()
-      .from(schema.artworks)
-      .where(eq(schema.artworks.artistId, id));
+    // 1. Fetch all artworks by these artists
+    const allArtworks = await db.select({ id: schema.artworks.id, artistId: schema.artworks.artistId }).from(schema.artworks);
+    const targetArtistIdSet = new Set(targetIds);
+    const artworkIdsToDelete = allArtworks
+      .filter((a: any) => targetArtistIdSet.has(a.artistId))
+      .map((a: any) => a.id);
 
-    for (const art of artistArtworks) {
-      if (art.imageUrl) {
-        await deleteFromImageKit(art.imageUrl, imageKitPrivateKey);
+    // 2. Delete exhibition links for these artworks
+    if (artworkIdsToDelete.length > 0) {
+      const CHUNK_SIZE = 50;
+      for (let i = 0; i < artworkIdsToDelete.length; i += CHUNK_SIZE) {
+        const chunk = artworkIdsToDelete.slice(i, i + CHUNK_SIZE);
+        await db.delete(schema.exhibitionArtworks).where(inArray(schema.exhibitionArtworks.artworkId, chunk));
+        await db.delete(schema.artworks).where(inArray(schema.artworks.id, chunk));
       }
     }
 
-    // 3. Delete artist from database (cascades to artworks)
-    await db.delete(schema.users).where(eq(schema.users.id, id));
+    // 3. Delete artists from users table
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < targetIds.length; i += CHUNK_SIZE) {
+      const chunk = targetIds.slice(i, i + CHUNK_SIZE);
+      await db.delete(schema.users).where(inArray(schema.users.id, chunk));
+    }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      deletedArtistsCount: targetIds.length,
+      deletedArtworksCount: artworkIdsToDelete.length,
+    });
   } catch (error) {
-    console.error('Error deleting artist:', error);
-    return NextResponse.json({ error: 'Failed to delete artist' }, { status: 500 });
+    console.error('Error deleting artist(s):', error);
+    return NextResponse.json({ error: 'Failed to delete artist(s)', details: String(error) }, { status: 500 });
   }
 }
