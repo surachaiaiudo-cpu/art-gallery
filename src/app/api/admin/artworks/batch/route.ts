@@ -37,11 +37,11 @@ export async function POST(req: NextRequest) {
     // 2. Process each artwork row
     for (let i = 0; i < items.length; i++) {
       const row = items[i];
-      if (!row.title || !row.imageUrl) continue;
+      if (!row.title && !row.artistName && !row.imageUrl && !row.concept) continue;
 
-      const title = row.title.trim();
-      const artistName = (row.artistName || 'สมโภชน์ บุญส่งประเสริฐ').trim();
-      const artistCountry = (row.artistCountry || 'Thailand').trim();
+      const title = (row.title || '').trim() || (row.artistName ? `ผลงานของ ${(row.artistName).trim()}` : 'ผลงานศิลปกรรม');
+      const artistName = (row.artistName || '').trim() || 'ศิลปินร่วมแสดง';
+      const artistCountry = (row.artistCountry || '').trim();
 
       // Find or create artist
       let artistId = artistNameMap.get(artistName.toLowerCase());
@@ -50,12 +50,12 @@ export async function POST(req: NextRequest) {
         await db.insert(schema.users).values({
           id: artistId,
           name: artistName,
-          email: `${artistName.toLowerCase().replace(/[^a-z0-9]+/g, '.')}@artvara-artists.com`,
+          email: `${artistName.toLowerCase().replace(/[^a-z0-9]+/g, '.') || 'artist'}-${Date.now()}-${i}@artvara-artists.com`,
           role: 'artist',
-          country: artistCountry,
-          flagEmoji: artistCountry.toLowerCase().includes('thai') ? '🇹🇭' : '🌐',
-          bio: `ศิลปินผู้สร้างสรรค์ผลงานศิลปกรรมในชุด ${title}`,
-          socialLinks: JSON.stringify({ instagram: `@${artistName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}` }),
+          country: artistCountry || null,
+          flagEmoji: artistCountry.toLowerCase().includes('thai') || artistCountry === 'Thailand' ? '🇹🇭' : (artistCountry ? '🌐' : null),
+          bio: artistName !== 'ศิลปินร่วมแสดง' ? `ศิลปินผู้สร้างสรรค์ผลงานศิลปกรรม` : null,
+          socialLinks: null,
         });
         artistNameMap.set(artistName.toLowerCase(), artistId);
       }
@@ -63,10 +63,11 @@ export async function POST(req: NextRequest) {
       const newArtId = `art-${Date.now()}-${i}`;
       const cleanPublicId = `artvara/batch-${newArtId}`;
 
-      const yearCreated = row.yearCreated ? parseInt(String(row.yearCreated)) : 2026;
-      const medium = row.medium ? row.medium.trim() : 'Oil on Canvas';
-      const dimensions = row.dimensions ? row.dimensions.trim() : '120 x 180 cm.';
-      const concept = row.concept ? row.concept.trim() : '';
+      const yearCreated = row.yearCreated ? parseInt(String(row.yearCreated), 10) || null : null;
+      const medium = (row.medium || '').trim() || null;
+      const dimensions = (row.dimensions || '').trim() || null;
+      const concept = (row.concept || '').trim() || null;
+      const imageUrl = (row.imageUrl || '').trim() || 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop';
 
       // Insert artwork
       await db.insert(schema.artworks).values({
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
         medium,
         dimensions,
         cloudinaryPublicId: cleanPublicId,
-        imageUrl: row.imageUrl.trim(),
+        imageUrl,
         price: 0,
         status: 'available',
       });

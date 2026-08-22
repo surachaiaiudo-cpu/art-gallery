@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
-import { smartDetectArtwork } from '@/lib/smartParser';
+import { smartDetectArtwork, parseTabularText } from '@/lib/smartParser';
 
 interface AdminExhibitionArtworksClientProps {
   exhibition: Exhibition;
@@ -264,12 +264,11 @@ export function AdminExhibitionArtworksClient({
       artistName: detected.artistName || prev.artistName,
       medium: detected.medium || prev.medium,
       dimensions: detected.dimensions || prev.dimensions,
-      yearCreated: detected.yearCreated || prev.yearCreated,
+      yearCreated: detected.yearCreated
+        ? parseInt(String(detected.yearCreated), 10) || prev.yearCreated
+        : prev.yearCreated,
       concept: detected.concept || prev.concept,
-      imageUrl:
-        detected.imageUrl && !detected.imageUrl.includes('unsplash.com/photo-1579783900882')
-          ? detected.imageUrl
-          : prev.imageUrl,
+      imageUrl: detected.imageUrl || prev.imageUrl,
     }));
 
     showNotification('success', lang === 'th' ? '✨ ระบบตรวจจับและแยกข้อมูลลงช่องให้อัตโนมัติแล้ว!' : '✨ Fields auto-detected & populated!');
@@ -490,41 +489,19 @@ export function AdminExhibitionArtworksClient({
       return;
     }
 
-    const lines = text.trim().split(/\r?\n/);
-    const rows: ParsedBatchRow[] = [];
-
-    // Check if first line is a header
-    const firstLineLower = lines[0].toLowerCase();
-    const hasHeader =
-      firstLineLower.includes('title') ||
-      firstLineLower.includes('ชื่อ') ||
-      firstLineLower.includes('artist') ||
-      firstLineLower.includes('ศิลปิน') ||
-      firstLineLower.includes('image') ||
-      firstLineLower.includes('ภาพ');
-
-    const startIndex = hasHeader ? 1 : 0;
-
-    for (let i = startIndex; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      const detected = smartDetectArtwork(line);
-      if (detected.title || detected.artistName) {
-        rows.push({
-          title: detected.title,
-          artistName: detected.artistName,
-          artistCountry: detected.artistCountry,
-          medium: detected.medium,
-          dimensions: detected.dimensions,
-          yearCreated: detected.yearCreated,
-          concept: detected.concept,
-          imageUrl: detected.imageUrl,
-        });
-      }
-    }
-
-    setParsedRows(rows);
+    const detected = parseTabularText(text);
+    setParsedRows(
+      detected.map((d) => ({
+        title: d.title,
+        artistName: d.artistName,
+        artistCountry: d.artistCountry,
+        medium: d.medium,
+        dimensions: d.dimensions,
+        yearCreated: d.yearCreated,
+        concept: d.concept,
+        imageUrl: d.imageUrl,
+      }))
+    );
   };
 
   // Handle CSV File Upload
@@ -1432,27 +1409,45 @@ export function AdminExhibitionArtworksClient({
                     </span>
                   </div>
 
-                  <div className="max-h-[220px] overflow-y-auto border border-[#DDD6C8] rounded-xl bg-white shadow-inner">
-                    <table className="w-full text-left text-xs">
+                  <div className="max-h-[250px] overflow-x-auto overflow-y-auto border border-[#DDD6C8] rounded-xl bg-white shadow-inner">
+                    <table className="w-full text-left text-xs border-collapse min-w-[700px]">
                       <thead className="bg-[#FAF8F5] border-b border-[#DDD6C8] sticky top-0 text-[10px] uppercase font-bold text-[#7A7468]">
                         <tr>
-                          <th className="p-2.5">#</th>
+                          <th className="p-2.5 w-10 text-center">#</th>
                           <th className="p-2.5">{lang === 'th' ? 'ชื่อผลงาน' : 'Title'}</th>
                           <th className="p-2.5">{lang === 'th' ? 'ศิลปิน' : 'Artist'}</th>
-                          <th className="p-2.5">{lang === 'th' ? 'ขนาด (W×H)' : 'Dimensions'}</th>
+                          <th className="p-2.5">{lang === 'th' ? 'ประเทศ' : 'Country'}</th>
                           <th className="p-2.5">{lang === 'th' ? 'เทคนิค' : 'Medium'}</th>
+                          <th className="p-2.5">{lang === 'th' ? 'ขนาด (W×H)' : 'Dimensions'}</th>
+                          <th className="p-2.5 text-center">{lang === 'th' ? 'ปี' : 'Year'}</th>
                           <th className="p-2.5">URL ภาพ</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#F0ECE4]">
                         {parsedRows.map((row, rIdx) => (
                           <tr key={rIdx} className="hover:bg-[#FAF8F5] transition-colors">
-                            <td className="p-2.5 font-mono text-[#8C6D3F] font-bold">#{rIdx + 1}</td>
-                            <td className="p-2.5 font-serif font-bold text-[#1A1918] max-w-[140px] truncate">{row.title}</td>
-                            <td className="p-2.5 text-[#5A554A] max-w-[120px] truncate">{row.artistName} ({row.artistCountry})</td>
-                            <td className="p-2.5 font-mono text-[11px] text-emerald-800 font-semibold">{row.dimensions}</td>
-                            <td className="p-2.5 text-[#7A7468] max-w-[110px] truncate">{row.medium}</td>
-                            <td className="p-2.5 font-mono text-[10px] text-blue-600 max-w-[130px] truncate">{row.imageUrl}</td>
+                            <td className="p-2.5 font-mono text-[#8C6D3F] font-bold text-center">#{rIdx + 1}</td>
+                            <td className="p-2.5 font-serif font-bold text-[#1A1918] max-w-[140px] truncate">
+                              {row.title || <span className="text-neutral-400 font-sans font-normal italic">—</span>}
+                            </td>
+                            <td className="p-2.5 text-[#5A554A] max-w-[120px] truncate">
+                              {row.artistName || <span className="text-neutral-400 italic">—</span>}
+                            </td>
+                            <td className="p-2.5 text-[#5A554A] max-w-[100px] truncate">
+                              {row.artistCountry || <span className="text-neutral-400 italic">—</span>}
+                            </td>
+                            <td className="p-2.5 text-[#7A7468] max-w-[120px] truncate">
+                              {row.medium || <span className="text-neutral-400 italic">—</span>}
+                            </td>
+                            <td className="p-2.5 font-mono text-[11px] text-emerald-800 font-semibold max-w-[110px] truncate">
+                              {row.dimensions || <span className="text-neutral-400 font-normal italic">—</span>}
+                            </td>
+                            <td className="p-2.5 font-mono text-[11px] text-[#7A7468] text-center">
+                              {row.yearCreated || <span className="text-neutral-400 italic">—</span>}
+                            </td>
+                            <td className="p-2.5 font-mono text-[10px] text-blue-600 max-w-[130px] truncate">
+                              {row.imageUrl || <span className="text-neutral-400 italic">—</span>}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
