@@ -1,7 +1,7 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,17 +55,36 @@ export async function POST(
   }
 }
 
-// DELETE: Remove artwork from exhibition
+// DELETE: Remove one or multiple artworks from exhibition
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const { searchParams } = new URL(req.url);
-    const artworkId = searchParams.get('artworkId');
+    const singleArtworkId = searchParams.get('artworkId');
+    const artworkIdsParam = searchParams.get('artworkIds');
 
-    if (!artworkId) {
-      return NextResponse.json({ error: 'Artwork ID is required' }, { status: 400 });
+    let idsToDelete: string[] = [];
+
+    if (artworkIdsParam) {
+      idsToDelete = artworkIdsParam.split(',').map((s) => s.trim()).filter(Boolean);
+    } else if (singleArtworkId) {
+      idsToDelete = [singleArtworkId];
+    } else {
+      // Also try parsing JSON body if sent in payload
+      try {
+        const body = await req.json();
+        if (Array.isArray(body?.artworkIds) && body.artworkIds.length > 0) {
+          idsToDelete = body.artworkIds.map((s: any) => String(s).trim()).filter(Boolean);
+        } else if (body?.artworkId) {
+          idsToDelete = [String(body.artworkId).trim()];
+        }
+      } catch {}
+    }
+
+    if (idsToDelete.length === 0) {
+      return NextResponse.json({ error: 'Artwork ID(s) required' }, { status: 400 });
     }
 
     await db
@@ -73,13 +92,13 @@ export async function DELETE(
       .where(
         and(
           eq(schema.exhibitionArtworks.exhibitionId, params.id),
-          eq(schema.exhibitionArtworks.artworkId, artworkId)
+          inArray(schema.exhibitionArtworks.artworkId, idsToDelete)
         )
       );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, count: idsToDelete.length });
   } catch (error) {
-    console.error('Error removing artwork from exhibition:', error);
-    return NextResponse.json({ error: 'Failed to remove artwork from exhibition' }, { status: 500 });
+    console.error('Error removing artwork(s) from exhibition:', error);
+    return NextResponse.json({ error: 'Failed to remove artwork(s) from exhibition' }, { status: 500 });
   }
 }

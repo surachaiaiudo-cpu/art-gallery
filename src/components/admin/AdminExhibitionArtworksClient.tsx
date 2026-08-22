@@ -36,6 +36,8 @@ import {
   ArrowDownToLine,
   Save,
   Info,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
@@ -80,11 +82,17 @@ export function AdminExhibitionArtworksClient({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // Sync artworksList when exhibition changes
+  // Multi-selection state for batch delete
+  const [selectedArtworkIds, setSelectedArtworkIds] = useState<string[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  // Sync artworksList and prune selectedArtworkIds when exhibition changes
   useEffect(() => {
     if (exhibition.artworks) {
       setArtworksList(exhibition.artworks);
       setHasChanges(false);
+      const existingIds = new Set(exhibition.artworks.map((a) => a.id));
+      setSelectedArtworkIds((prev) => prev.filter((id) => existingIds.has(id)));
     }
   }, [exhibition]);
 
@@ -313,7 +321,34 @@ export function AdminExhibitionArtworksClient({
     }
   };
 
-  // Remove artwork from exhibition
+  // Toggle selection for single artwork
+  const toggleSelectArtwork = (artId: string) => {
+    setSelectedArtworkIds((prev) =>
+      prev.includes(artId) ? prev.filter((id) => id !== artId) : [...prev, artId]
+    );
+  };
+
+  // Toggle select all filtered artworks
+  const toggleSelectAllFiltered = () => {
+    const visibleIds = filteredCurrentArtworks.map((a) => a.id);
+    if (visibleIds.length === 0) return;
+    const allSelected = visibleIds.every((id) => selectedArtworkIds.includes(id));
+
+    if (allSelected) {
+      // Deselect all visible
+      setSelectedArtworkIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+    } else {
+      // Add all visible to selection
+      setSelectedArtworkIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+    }
+  };
+
+  // Clear all selections
+  const handleClearSelection = () => {
+    setSelectedArtworkIds([]);
+  };
+
+  // Remove single artwork from exhibition
   const handleRemoveArtwork = async (artId: string, artTitle: string) => {
     if (!confirm(lang === 'th' ? `นำ "${artTitle}" ออกจากนิทรรศการนี้หรือไม่?` : `Remove "${artTitle}" from this exhibition?`)) {
       return;
@@ -326,10 +361,54 @@ export function AdminExhibitionArtworksClient({
 
       if (res.ok) {
         showNotification('success', lang === 'th' ? 'นำผลงานออกจากนิทรรศการสำเร็จ' : 'Artwork removed');
+        setSelectedArtworkIds((prev) => prev.filter((id) => id !== artId));
         await refreshExhibition();
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // Remove multiple selected artworks from exhibition (Batch Delete)
+  const handleBatchRemoveArtworks = async () => {
+    const count = selectedArtworkIds.length;
+    if (count === 0) return;
+
+    const confirmMsg =
+      lang === 'th'
+        ? `⚠️ คุณแน่ใจหรือไม่ว่าต้องการนำผลงานที่เลือกทั้งหมด ${count} รายการ ออกจากนิทรรศการนี้?`
+        : `⚠️ Are you sure you want to remove all ${count} selected artworks from this exhibition?`;
+
+    if (!confirm(confirmMsg)) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/exhibitions/${exhibition.id}/artworks`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artworkIds: selectedArtworkIds }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to remove selected artworks');
+      }
+
+      showNotification(
+        'success',
+        lang === 'th'
+          ? `นำผลงาน ${count} รายการออกจากนิทรรศการเรียบร้อยแล้ว`
+          : `Successfully removed ${count} artworks from exhibition`
+      );
+      setSelectedArtworkIds([]);
+      await refreshExhibition();
+    } catch (err: any) {
+      console.error(err);
+      showNotification('error', err.message || 'Error removing artworks');
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -531,8 +610,14 @@ export function AdminExhibitionArtworksClient({
     );
   });
 
+  const visibleIds = filteredCurrentArtworks.map((a) => a.id);
+  const isAllFilteredSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedArtworkIds.includes(id));
+  const isPartiallySelected =
+    visibleIds.some((id) => selectedArtworkIds.includes(id)) && !isAllFilteredSelected;
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6 select-none">
+    <div className="max-w-6xl mx-auto space-y-6 select-none pb-20">
       {/* Top Header Navigation */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#DCD5C8] pb-6">
         <div>
@@ -627,9 +712,9 @@ export function AdminExhibitionArtworksClient({
         </div>
       )}
 
-      {/* Toolbar: Search + Auto-Sort + View Mode Switcher */}
+      {/* Toolbar: Search + Multi-select Controls + Auto-Sort + View Mode Switcher */}
       <div className="bg-[#FAF8F5] border border-[#E0D9CD] p-4 rounded-2xl shadow-sm space-y-3.5">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           {/* Search Input */}
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-[#8C6D3F] absolute left-3.5 top-3" />
@@ -650,9 +735,54 @@ export function AdminExhibitionArtworksClient({
             )}
           </div>
 
-          {/* View Mode Toggle Buttons */}
-          <div className="flex items-center gap-3 justify-between sm:justify-end">
-            <span className="text-xs text-[#7A7468] font-medium hidden sm:inline">
+          {/* Multi-Select Quick Action Bar & View Mode Toggle Buttons */}
+          <div className="flex items-center gap-2.5 flex-wrap justify-between md:justify-end">
+            {/* Select All Button */}
+            <button
+              onClick={toggleSelectAllFiltered}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-sm active:scale-95 ${
+                isAllFilteredSelected
+                  ? 'bg-[#1A1918] text-[#E5D2B8] border-[#1A1918]'
+                  : isPartiallySelected
+                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                  : 'bg-white hover:bg-[#F2ECE0] text-[#4A453C] border-[#DDD6C8]'
+              }`}
+              title="เลือกผลงานทั้งหมดที่แสดงอยู่เพื่อลบหรือจัดการพร้อมกัน"
+            >
+              <CheckSquare className="w-3.5 h-3.5 text-[#8C6D3F]" />
+              <span>
+                {isAllFilteredSelected
+                  ? lang === 'th'
+                    ? 'ยกเลิกเลือกทั้งหมด'
+                    : 'Deselect All'
+                  : lang === 'th'
+                  ? `เลือกทั้งหมด (${filteredCurrentArtworks.length})`
+                  : `Select All (${filteredCurrentArtworks.length})`}
+              </span>
+            </button>
+
+            {/* Batch Delete Trigger Button in Toolbar (Visible when items selected) */}
+            {selectedArtworkIds.length > 0 && (
+              <button
+                onClick={handleBatchRemoveArtworks}
+                disabled={isBulkDeleting}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow border border-rose-500 animate-fade-in"
+                title="ลบผลงานที่เลือกทั้งหมดออกจากนิทรรศการนี้"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>
+                  {isBulkDeleting
+                    ? lang === 'th'
+                      ? 'กำลังลบ...'
+                      : 'Deleting...'
+                    : lang === 'th'
+                    ? `ลบที่เลือก (${selectedArtworkIds.length})`
+                    : `Delete (${selectedArtworkIds.length})`}
+                </span>
+              </button>
+            )}
+
+            <span className="text-xs text-[#7A7468] font-medium hidden lg:inline border-l border-[#DCD5C8] pl-2.5">
               {lang === 'th' ? `ผลงาน ${filteredCurrentArtworks.length} ชิ้น` : `${filteredCurrentArtworks.length} Artworks`}
             </span>
 
@@ -739,8 +869,8 @@ export function AdminExhibitionArtworksClient({
         <Info className="w-4 h-4 text-amber-700 shrink-0" />
         <span>
           {lang === 'th'
-            ? '💡 คำแนะนำ: คุณสามารถคลิกพิมพ์เลขลำดับ [ 1, 2, 3... ] หรือคลิกค้างที่ไอคอน ⠿ เพื่อลากวางสลับตำแหน่งผลงานในนิทรรศการนี้ได้ทันที'
-            : '💡 Tip: You can type a new number into the sequence box or drag & drop rows using ⠿ handle.'}
+            ? '💡 คำแนะนำ: คุณสามารถคลิกเลือกหลายรายการเพื่อลบพร้อมกัน หรือพิมพ์เลขลำดับ [ 1, 2, 3... ] และลากวางสลับตำแหน่งผลงานได้ทันที'
+            : '💡 Tip: You can select multiple artworks to delete in bulk, or reorder by dragging ⠿ handles.'}
         </span>
       </div>
 
@@ -750,6 +880,7 @@ export function AdminExhibitionArtworksClient({
           {filteredCurrentArtworks.map((art, idx) => {
             const isDragged = draggedIndex === idx;
             const isDragOver = dragOverIndex === idx;
+            const isSelected = selectedArtworkIds.includes(art.id);
 
             return (
               <div
@@ -764,29 +895,62 @@ export function AdminExhibitionArtworksClient({
                     ? 'opacity-40 border-dashed border-[#8C6D3F] bg-[#FAF4EB]'
                     : isDragOver
                     ? 'border-2 border-[#8C6D3F] ring-4 ring-[#8C6D3F]/20'
+                    : isSelected
+                    ? 'border-rose-400 ring-2 ring-rose-500 bg-rose-50/20'
                     : 'border-[#DDD6C8]'
                 }`}
               >
                 <div>
-                  {/* Artwork Thumbnail with Sequence Reorder Controls */}
+                  {/* Artwork Thumbnail with Sequence Reorder Controls & Multi-Select Checkbox */}
                   <div className="relative aspect-[4/3] bg-[#FAF8F5] overflow-hidden">
                     <img src={art.imageUrl} alt={art.title} className="w-full h-full object-cover" />
 
-                    {/* Top Overlay: Sequence Number Input + Drag Grip Handle */}
+                    {/* Top Overlay: Checkbox + Sequence Number Input + Drag Grip Handle */}
                     <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-auto">
-                      <div className="flex items-center gap-1 bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg border border-white/20 shadow">
-                        <span className="text-[10px] text-[#C5A880] font-bold">#</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={artworksList.length}
-                          value={art.displayOrder || idx + 1}
-                          onChange={(e) =>
-                            handleOrderInputChange(art.id, parseInt(e.target.value, 10))
+                      <div className="flex items-center gap-1.5">
+                        {/* Multi-Select Checkbox */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelectArtwork(art.id);
+                          }}
+                          className={`flex items-center justify-center w-7 h-7 rounded-lg transition-all shadow border ${
+                            isSelected
+                              ? 'bg-rose-600 border-rose-400 text-white ring-2 ring-rose-400/50'
+                              : 'bg-black/75 hover:bg-black/90 border-white/30 text-white/70 hover:text-white'
+                          }`}
+                          title={
+                            isSelected
+                              ? lang === 'th'
+                                ? 'ยกเลิกเลือก'
+                                : 'Deselect'
+                              : lang === 'th'
+                              ? 'เลือกผลงานนี้เพื่อลบหลายรายการ'
+                              : 'Select artwork for bulk delete'
                           }
-                          className="w-10 h-6 text-center font-mono text-xs font-bold text-white bg-white/20 rounded border border-white/30 focus:outline-none focus:ring-1 focus:ring-[#C5A880]"
-                          title="พิมพ์เพื่อเปลี่ยนลำดับทันที"
-                        />
+                        >
+                          {isSelected ? (
+                            <Check className="w-4 h-4 stroke-[3]" />
+                          ) : (
+                            <div className="w-3.5 h-3.5 rounded border border-white/60" />
+                          )}
+                        </button>
+
+                        <div className="flex items-center gap-1 bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg border border-white/20 shadow">
+                          <span className="text-[10px] text-[#C5A880] font-bold">#</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={artworksList.length}
+                            value={art.displayOrder || idx + 1}
+                            onChange={(e) =>
+                              handleOrderInputChange(art.id, parseInt(e.target.value, 10))
+                            }
+                            className="w-10 h-6 text-center font-mono text-xs font-bold text-white bg-white/20 rounded border border-white/30 focus:outline-none focus:ring-1 focus:ring-[#C5A880]"
+                            title="พิมพ์เพื่อเปลี่ยนลำดับทันที"
+                          />
+                        </div>
                       </div>
 
                       {/* Grip Drag Handle */}
@@ -845,7 +1009,7 @@ export function AdminExhibitionArtworksClient({
                     <button
                       onClick={() => handleRemoveArtwork(art.id, art.title)}
                       className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="Remove from Exhibition"
+                      title="นำออกจากนิทรรศการนี้"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -893,7 +1057,22 @@ export function AdminExhibitionArtworksClient({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#1A1918] text-[#E5D2B8] text-xs font-bold uppercase tracking-wider border-b border-[#33302C]">
-                  <th className="py-4 px-3 w-24 text-center">{lang === 'th' ? 'ลำดับ' : 'Order #'}</th>
+                  {/* Select All Checkbox Header */}
+                  <th className="py-4 px-3 w-10 text-center">
+                    <label
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center justify-center cursor-pointer"
+                      title={lang === 'th' ? 'เลือกทั้งหมด / ยกเลิก' : 'Select / Deselect All'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isAllFilteredSelected}
+                        onChange={toggleSelectAllFiltered}
+                        className="w-4 h-4 rounded border-[#D5CEC0] text-rose-600 focus:ring-rose-500 accent-rose-600 cursor-pointer"
+                      />
+                    </label>
+                  </th>
+                  <th className="py-4 px-3 w-20 text-center">{lang === 'th' ? 'ลำดับ' : 'Order #'}</th>
                   <th className="py-4 px-2 w-8 text-center"></th>
                   <th className="py-4 px-4">{lang === 'th' ? 'ผลงานศิลปะ' : 'Artwork'}</th>
                   <th className="py-4 px-4">{lang === 'th' ? 'ศิลปินผู้สร้างสรรค์' : 'Artist'}</th>
@@ -908,6 +1087,7 @@ export function AdminExhibitionArtworksClient({
                 {filteredCurrentArtworks.map((art, idx) => {
                   const isDragged = draggedIndex === idx;
                   const isDragOver = dragOverIndex === idx;
+                  const isSelected = selectedArtworkIds.includes(art.id);
 
                   return (
                     <tr
@@ -922,9 +1102,26 @@ export function AdminExhibitionArtworksClient({
                           ? 'opacity-40 bg-[#FAF4EB]'
                           : isDragOver
                           ? 'bg-[#EAE2D2] border-t-2 border-b-2 border-[#8C6D3F]'
+                          : isSelected
+                          ? 'bg-rose-50/60 hover:bg-rose-50/80'
                           : 'hover:bg-[#FAF8F5]'
                       }`}
                     >
+                      {/* Checkbox Column */}
+                      <td className="py-3.5 px-3 text-center">
+                        <label
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center justify-center cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectArtwork(art.id)}
+                            className="w-4 h-4 rounded border-[#D5CEC0] text-rose-600 focus:ring-rose-500 accent-rose-600 cursor-pointer"
+                          />
+                        </label>
+                      </td>
+
                       {/* # Numeric Order Input */}
                       <td className="py-3.5 px-3 text-center">
                         <input
@@ -1058,7 +1255,7 @@ export function AdminExhibitionArtworksClient({
                           <button
                             onClick={() => handleRemoveArtwork(art.id, art.title)}
                             className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="Remove from Exhibition"
+                            title="นำออกจากนิทรรศการนี้"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1069,6 +1266,75 @@ export function AdminExhibitionArtworksClient({
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Batch Action Bar for Multiple Deletions */}
+      {selectedArtworkIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-2xl w-[94%] sm:w-auto bg-[#1A1918]/95 backdrop-blur-md text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-[#C5A880]/50 flex flex-wrap items-center justify-between sm:justify-start gap-3.5 animate-slide-up">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-600 text-white font-mono text-xs font-bold shadow">
+              {selectedArtworkIds.length}
+            </span>
+            <div className="text-xs">
+              <p className="font-bold text-[#E5D2B8]">
+                {lang === 'th'
+                  ? `เลือกอยู่ ${selectedArtworkIds.length} รายการ`
+                  : `${selectedArtworkIds.length} items selected`}
+              </p>
+              <p className="text-[11px] text-[#A8A295] hidden sm:block">
+                {lang === 'th'
+                  ? `จากผลงานในนิทรรศการทั้งหมด ${artworksList.length} รายการ`
+                  : `Out of ${artworksList.length} total artworks`}
+              </p>
+            </div>
+          </div>
+
+          <div className="h-6 w-[1px] bg-white/15 hidden sm:block" />
+
+          <div className="flex items-center gap-2 flex-wrap ml-auto sm:ml-0">
+            <button
+              onClick={toggleSelectAllFiltered}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-[#E5D2B8] border border-white/15 transition-all"
+            >
+              {isAllFilteredSelected
+                ? lang === 'th'
+                  ? 'ยกเลิกเลือกทั้งหมด'
+                  : 'Deselect All'
+                : lang === 'th'
+                ? `เลือกทั้งหมด (${filteredCurrentArtworks.length})`
+                : `Select All (${filteredCurrentArtworks.length})`}
+            </button>
+
+            <button
+              onClick={handleClearSelection}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/10 transition-all"
+            >
+              {lang === 'th' ? 'ล้างที่เลือก' : 'Clear'}
+            </button>
+
+            <button
+              onClick={handleBatchRemoveArtworks}
+              disabled={isBulkDeleting}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 disabled:opacity-50 text-white rounded-lg text-xs font-bold tracking-wide shadow-lg transition-all border border-rose-400/30"
+            >
+              {isBulkDeleting ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>{lang === 'th' ? 'กำลังนำออก...' : 'Removing...'}</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>
+                    {lang === 'th'
+                      ? `นำออกจากนิทรรศการ (${selectedArtworkIds.length})`
+                      : `Remove (${selectedArtworkIds.length})`}
+                  </span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}
