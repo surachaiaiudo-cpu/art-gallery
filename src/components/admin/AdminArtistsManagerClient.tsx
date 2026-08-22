@@ -30,6 +30,7 @@ import {
   ArrowUp,
   ArrowDown,
   Filter,
+  Camera,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
@@ -626,6 +627,36 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
     }
   };
 
+  const handleRecoverPhotos = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/artists/recover-photos', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to recover photos');
+
+      if (data.recoveredCount > 0) {
+        showNotification(
+          'success',
+          lang === 'th'
+            ? `⚡ กู้คืนรูปถ่ายศิลปินจากระบบจัดเก็บสำเร็จ ${data.recoveredCount} ท่าน!`
+            : `⚡ Successfully recovered photos for ${data.recoveredCount} artists!`
+        );
+        await refreshList();
+      } else {
+        showNotification(
+          'success',
+          lang === 'th'
+            ? `สแกนไฟล์ทั้งหมด ${data.totalImageKitFilesScanned || 0} ไฟล์ — ไม่พบรูปถ่ายใหม่ที่ต้องกู้คืน (ศิลปินมีรูปครบแล้วหรือยังไม่ได้อัปโหลด)`
+            : `Scanned ${data.totalImageKitFilesScanned || 0} files — no additional photos to recover.`
+        );
+      }
+    } catch (err: any) {
+      showNotification('error', err.message || 'Error recovering artist photos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 select-none">
       {/* Top Header */}
@@ -645,6 +676,16 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button
+            onClick={handleRecoverPhotos}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-300 rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm transition-all active:scale-95 shrink-0"
+            title="ค้นหาและกู้คืนรูปโปรไฟล์ศิลปินจาก ImageKit อัตโนมัติ"
+          >
+            <Camera className="w-4 h-4 text-sky-700" />
+            <span>{loading ? (lang === 'th' ? 'กำลังสแกน...' : 'Scanning...') : (lang === 'th' ? '⚡ กู้คืนรูปศิลปิน' : '⚡ Recover Photos')}</span>
+          </button>
+
           <button
             onClick={handleDeduplicateArtists}
             disabled={loading}
