@@ -24,6 +24,13 @@ import {
   FileText,
   Loader2,
   Upload,
+  LayoutGrid,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Maximize2,
+  ZoomIn,
 } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
@@ -62,6 +69,28 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const artworks = exhibition.artworks || [];
   const curator = exhibition.curator;
   const hasReviewers = peerReviewersList.length > 0;
+  const totalPages = 1 + (hasReviewers ? 1 : 0) + artworks.length;
+
+  // Reading Modes: 'grid3' (3-Column Preview Grid - Default) or 'full' (Continuous Full A4 Pages)
+  const [activeViewMode, setActiveViewMode] = useState<'grid3' | 'full'>('grid3');
+  // Selected page index for full-screen large reader modal (null = closed)
+  const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
+
+  // Keyboard navigation for large page reader modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedPageModalIndex === null) return;
+      if (e.key === 'Escape') {
+        setSelectedPageModalIndex(null);
+      } else if (e.key === 'ArrowLeft') {
+        setSelectedPageModalIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
+      } else if (e.key === 'ArrowRight') {
+        setSelectedPageModalIndex((prev) => (prev !== null && prev < totalPages - 1 ? prev + 1 : prev));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedPageModalIndex, totalPages]);
 
   const handleFooterImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,12 +130,20 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       const A4_W = 595.28;
       const A4_H = 841.89;
 
+      // Ensure main container is visible in DOM for html2canvas measurement
+      const mainEl = document.querySelector('main');
+      const prevMainDisplay = mainEl ? mainEl.style.display : '';
+      if (mainEl) {
+        mainEl.style.display = 'block';
+      }
+
       // Get all A4 page sections from the DOM
       const pages = Array.from(
         document.querySelectorAll<HTMLElement>('.catalog-a4-page')
       );
 
       if (pages.length === 0) {
+        if (mainEl) mainEl.style.display = prevMainDisplay;
         throw new Error('No catalog pages found in DOM');
       }
 
@@ -183,6 +220,10 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       // Fallback: open browser print dialog
       handleSaveVectorPDF100Percent();
     } finally {
+      const mainEl = document.querySelector('main');
+      if (mainEl && activeViewMode === 'grid3') {
+        mainEl.style.display = '';
+      }
       setIsGeneratingPdf(false);
       setPdfProgress({ current: 0, total: 0 });
     }
@@ -582,6 +623,34 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
             {/* Action Buttons Toolbar */}
             <div className="flex items-center gap-2.5 flex-wrap">
+              {/* View Mode Switcher: 3-Column Grid vs Full View */}
+              <div className="bg-[#DDD7CC] p-1 rounded-full flex items-center gap-1 border border-[#C5BDAF]">
+                <button
+                  onClick={() => setActiveViewMode('grid3')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    activeViewMode === 'grid3'
+                      ? 'bg-[#1A1918] text-white shadow-sm'
+                      : 'text-[#5C5548] hover:text-[#1A1918]'
+                  }`}
+                  title="แสดงภาพตัวอย่าง 3 คอลัมน์ (คลิกเลือกดูหน้าใหญ่)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>3 คอลัมน์</span>
+                </button>
+                <button
+                  onClick={() => setActiveViewMode('full')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    activeViewMode === 'full'
+                      ? 'bg-[#1A1918] text-white shadow-sm'
+                      : 'text-[#5C5548] hover:text-[#1A1918]'
+                  }`}
+                  title="แสดงหน้าสูจิบัตรทุกหน้าต่อเนื่อง (มุมมองยาว)"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>หน้าเต็มต่อเนื่อง</span>
+                </button>
+              </div>
+
               {/* Direct Peer Reviewers Editor Button */}
               <button
                 onClick={() => setIsPeerReviewModalOpen(true)}
@@ -1073,8 +1142,612 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         </div>
       )}
 
+      {/* ── 3-Column Preview Thumbnail Grid (โหมดอ่านแบบ 3 คอลัมน์) ──────────── */}
+      {activeViewMode === 'grid3' && (
+        <div className="no-print max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
+          {/* Header Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#DCD5C8] pb-4">
+            <div>
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#8C6D3F] block">
+                Catalog Page Index (สารบัญสูจิบัตร)
+              </span>
+              <h2 className="font-serif text-2xl font-bold text-[#1A1918] mt-0.5">
+                📖 ภาพตัวอย่างสูจิบัตร (ทั้งหมด {totalPages} หน้า)
+              </h2>
+              <p className="text-xs text-[#6E685C] mt-0.5">
+                แสดงภาพตัวอย่าง 3 คอลัมน์ • คลิกเลือกหน้าที่ต้องการเพื่อเปิดอ่านหน้าใหญ่แบบเต็มจอ
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-mono text-[#7A7265]">
+              <span className="px-3 py-1 bg-[#EAE4D8] rounded-full border border-[#D5CEC0] font-semibold">
+                📄 ทั้งหมด {totalPages} หน้า
+              </span>
+            </div>
+          </div>
+
+          {/* 3-Column Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {/* 1. Cover Thumbnail Card */}
+            <div
+              onClick={() => setSelectedPageModalIndex(0)}
+              className="bg-white border-2 border-[#DDD6C8] hover:border-[#8C6D3F] rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col justify-between"
+            >
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-0.5 bg-[#1A1918] text-[#E5D2B8] rounded text-[10px] font-mono font-bold uppercase">
+                    หน้า 1 • หน้าปก
+                  </span>
+                  <span className="text-[10px] text-[#8C6D3F] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ZoomIn className="w-3.5 h-3.5" />
+                    เปิดอ่านหน้าใหญ่
+                  </span>
+                </div>
+
+                {/* Banner Mockup */}
+                <div className="relative aspect-[210/160] bg-[#FAF8F5] rounded-xl overflow-hidden border border-[#EBE6DC] flex items-center justify-center p-2">
+                  {exhibition.bannerUrl ? (
+                    <img
+                      src={exhibition.bannerUrl}
+                      alt={exhibition.title}
+                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="text-center font-serif text-sm font-bold text-[#8C6D3F]">
+                      ARTVARA COVER
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <span className="catalog-heading-th text-[10px] uppercase tracking-wider text-[#8C6D3F] font-bold block">
+                    ARTVARA Official Catalog
+                  </span>
+                  <h3 className="catalog-heading-th font-serif text-sm font-bold text-[#1A1918] line-clamp-2 leading-snug">
+                    {exhibition.title}
+                  </h3>
+                  {curator?.name && (
+                    <p className="catalog-body-th text-[11px] text-[#666]">
+                      Curated by: {curator.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-[#FAF8F5] px-4 py-2.5 border-t border-[#EFEBE3] flex items-center justify-between text-xs text-[#8C6D3F] font-semibold">
+                <span>🔍 คลิกเพื่อเปิดอ่านหน้าปก</span>
+                <span className="group-hover:translate-x-1 transition-transform">→</span>
+              </div>
+            </div>
+
+            {/* 2. Peer Reviewers Thumbnail Card (if hasReviewers) */}
+            {hasReviewers && (
+              <div
+                onClick={() => setSelectedPageModalIndex(1)}
+                className="bg-white border-2 border-[#DDD6C8] hover:border-[#8C6D3F] rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col justify-between"
+              >
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 bg-[#8C6D3F] text-white rounded text-[10px] font-mono font-bold uppercase">
+                      หน้า 2 • ผู้ทรงคุณวุฒิ
+                    </span>
+                    <span className="text-[10px] text-[#8C6D3F] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ZoomIn className="w-3.5 h-3.5" />
+                      เปิดอ่านหน้าใหญ่
+                    </span>
+                  </div>
+
+                  <div className="aspect-[210/160] bg-[#FAF8F5] rounded-xl overflow-hidden border border-[#EBE6DC] p-3 flex flex-col justify-between">
+                    <div className="space-y-1.5">
+                      <span className="catalog-heading-th text-[9px] font-bold text-[#555] uppercase block">
+                        คณะกรรมการผู้ทรงคุณวุฒิ ({peerReviewersList.length} ท่าน)
+                      </span>
+                      <div className="space-y-1">
+                        {peerReviewersList.slice(0, 3).map((r, i) => (
+                          <div key={i} className="text-[10px] text-[#333] flex items-center gap-1.5 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#8C6D3F] shrink-0" />
+                            <span className="font-semibold truncate">{[r.academicTitle, r.name].filter(Boolean).join(' ')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {exhibition.curatorNote && (
+                      <p className="text-[9px] text-[#777] italic line-clamp-2 border-t border-[#E8E2D6] pt-1">
+                        &quot;{exhibition.curatorNote}&quot;
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-0.5 pt-1">
+                    <span className="catalog-heading-th text-xs font-bold text-[#1A1918] block">
+                      คณะกรรมการผู้ทรงคุณวุฒิ &amp; คำนำภัณฑารักษ์
+                    </span>
+                    <p className="catalog-body-th text-[10px] text-[#777]">
+                      Peer Review Committee &amp; Curatorial Statement
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-[#FAF8F5] px-4 py-2.5 border-t border-[#EFEBE3] flex items-center justify-between text-xs text-[#8C6D3F] font-semibold">
+                  <span>🔍 คลิกเพื่อเปิดอ่านหน้านี้</span>
+                  <span className="group-hover:translate-x-1 transition-transform">→</span>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Artwork Thumbnail Cards (All Artworks in 3 Columns) */}
+            {artworks.map((art, idx) => {
+              const artist = art.artist;
+              const pageIdx = hasReviewers ? idx + 2 : idx + 1;
+              const pageNum = pageIdx + 1;
+
+              return (
+                <div
+                  key={art.id}
+                  onClick={() => setSelectedPageModalIndex(pageIdx)}
+                  className="bg-white border-2 border-[#DDD6C8] hover:border-[#8C6D3F] rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col justify-between"
+                >
+                  <div className="p-4 space-y-3">
+                    {/* Top Row: Page Badge & Hover hint */}
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-0.5 bg-[#FAF3E8] text-[#8C6D3F] border border-[#E0D5C1] rounded text-[10px] font-mono font-bold">
+                        หน้า #{pageNum}
+                      </span>
+                      <span className="text-[10px] text-[#8C6D3F] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ZoomIn className="w-3.5 h-3.5" />
+                        เปิดอ่านหน้าใหญ่
+                      </span>
+                    </div>
+
+                    {/* Artwork Image Container */}
+                    <div className="relative aspect-[210/160] bg-[#FAF8F5] rounded-xl overflow-hidden border border-[#EBE6DC] flex items-center justify-center p-2">
+                      <img
+                        src={art.imageUrl}
+                        alt={art.title}
+                        crossOrigin="anonymous"
+                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+
+                    {/* Artist & Artwork Info */}
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex items-center gap-2">
+                        {/* Flag */}
+                        <div className="relative w-6 h-3.5 rounded-[2px] overflow-hidden border border-[#DDD] shrink-0 bg-[#F5F5F5]">
+                          <img
+                            src={getFlagImageUrl(artist?.country)}
+                            alt={artist?.country || 'Flag'}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        {/* Artist Name */}
+                        <h4 className="catalog-heading-th text-xs font-bold text-[#1A1918] truncate">
+                          {artist?.name || 'Artist'}
+                        </h4>
+                      </div>
+
+                      {/* Artwork Title */}
+                      <h5 className="catalog-heading-th text-xs font-bold text-[#333] line-clamp-1">
+                        {art.title}
+                      </h5>
+
+                      <p className="catalog-body-th text-[10px] text-[#777] line-clamp-1">
+                        {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#FAF8F5] px-4 py-2.5 border-t border-[#EFEBE3] flex items-center justify-between text-xs text-[#8C6D3F] font-semibold">
+                    <span>🔍 คลิกเพื่อเปิดอ่านหน้าใหญ่</span>
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Large Single Page Reader Modal (แสดงภาพใหญ่หน้านั้นๆ) ───────────── */}
+      {selectedPageModalIndex !== null && (
+        <div className="no-print fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md overflow-hidden animate-fade-in text-white">
+          {/* Top Reader Navigation Bar */}
+          <div className="shrink-0 bg-[#1A1918]/90 border-b border-[#333] px-4 py-3 flex items-center justify-between gap-4 z-10 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSelectedPageModalIndex(null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition-colors"
+                title="ปิดหน้าอ่าน / กลับสู่ตาราง 3 คอลัมน์ (ESC)"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>กลับสู่ตาราง 3 คอลัมน์</span>
+              </button>
+
+              <span className="hidden sm:inline text-white/30">•</span>
+
+              <span className="text-xs font-mono font-bold px-2.5 py-1 bg-[#8C6D3F]/30 text-[#E5D2B8] rounded border border-[#8C6D3F]/40">
+                หน้า {selectedPageModalIndex + 1} / {totalPages}
+              </span>
+            </div>
+
+            {/* Previous / Next Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() =>
+                  setSelectedPageModalIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev))
+                }
+                disabled={selectedPageModalIndex === 0}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:pointer-events-none rounded-lg text-xs font-bold transition-all"
+                title="หน้าก่อนหน้า (Arrow Left ←)"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">หน้าก่อนหน้า</span>
+              </button>
+
+              <button
+                onClick={() =>
+                  setSelectedPageModalIndex((prev) =>
+                    prev !== null && prev < totalPages - 1 ? prev + 1 : prev
+                  )
+                }
+                disabled={selectedPageModalIndex >= totalPages - 1}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:pointer-events-none rounded-lg text-xs font-bold transition-all"
+                title="หน้าถัดไป (Arrow Right →)"
+              >
+                <span className="hidden sm:inline">หน้าถัดไป</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Close Button */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectedPageModalIndex(null)}
+                className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                title="ปิดหน้าอ่าน (ESC)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Main Scrollable Viewer Container */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex items-center justify-center relative">
+            {/* Side Floating Nav Arrow Buttons (Desktop) */}
+            {selectedPageModalIndex > 0 && (
+              <button
+                onClick={() => setSelectedPageModalIndex(selectedPageModalIndex - 1)}
+                className="hidden lg:flex fixed left-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/60 hover:bg-black/90 text-white rounded-full items-center justify-center border border-white/20 shadow-2xl transition-all hover:scale-110 active:scale-95 z-20"
+                title="หน้าก่อนหน้า (←)"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+
+            {selectedPageModalIndex < totalPages - 1 && (
+              <button
+                onClick={() => setSelectedPageModalIndex(selectedPageModalIndex + 1)}
+                className="hidden lg:flex fixed right-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/60 hover:bg-black/90 text-white rounded-full items-center justify-center border border-white/20 shadow-2xl transition-all hover:scale-110 active:scale-95 z-20"
+                title="หน้าถัดไป (→)"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+
+            {/* Active Large A4 Page Layout Container */}
+            <div className="w-full max-w-[210mm] shadow-2xl rounded-sm my-auto text-[#1E1D1B]">
+              {selectedPageModalIndex === 0 ? (
+                /* Cover Page in Reader */
+                <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
+                  <div>
+                    <div className="border-b border-[#E0E0E0] pb-3 mb-5">
+                      <span className="catalog-heading-th font-serif text-3xl font-bold tracking-[0.2em] text-[#000000] block leading-normal">
+                        ARTVARA
+                      </span>
+                      <span className="catalog-body-th text-[10px] uppercase tracking-widest text-[#666666] mt-1 block leading-normal">
+                        International Art Festival &amp; Curated Exhibition
+                      </span>
+                    </div>
+
+                    {exhibition.bannerUrl && (
+                      <div className="relative w-full h-[140mm] max-w-[180mm] mx-auto overflow-hidden mb-5 flex items-center justify-center">
+                        <img
+                          src={exhibition.bannerUrl}
+                          alt={exhibition.title}
+                          crossOrigin="anonymous"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-2.5 max-w-[170mm] mx-auto">
+                      <span className="catalog-body-th text-xs font-bold uppercase tracking-[0.2em] text-[#333333] block leading-normal">
+                        Official Exhibition Catalog (สูจิบัตร)
+                      </span>
+                      <h1 className="catalog-heading-th font-serif text-2xl sm:text-3xl font-bold text-[#000000] leading-snug">
+                        {exhibition.title}
+                      </h1>
+                      {curator?.name && (
+                        <p className="catalog-body-th text-xs text-[#444444] font-medium pt-1 leading-normal">
+                          Curated by: <span className="font-semibold text-[#000000]">{curator.name}</span>
+                        </p>
+                      )}
+                      {hasReviewers && (
+                        <p className="catalog-body-th text-[11px] text-[#555555] font-medium pt-0.5 leading-normal">
+                          Peer Review Committee:{' '}
+                          <span className="font-semibold text-[#000000]">
+                            {peerReviewersList.map((r) => [r.academicTitle, r.name].filter(Boolean).join(' ')).join(' • ')}
+                          </span>
+                        </p>
+                      )}
+                      <p className="catalog-body-th text-[11px] text-[#666666] leading-normal">
+                        {formatDateRange(exhibition.startDate, exhibition.endDate)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-[#E0E0E0] text-center">
+                    <p className="catalog-body-th text-[10px] text-[#666666] uppercase tracking-widest leading-relaxed">
+                      {coverFooter}
+                    </p>
+                  </div>
+                </section>
+              ) : hasReviewers && selectedPageModalIndex === 1 ? (
+                /* Peer Reviewers Page in Reader */
+                <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border">
+                  <div className="space-y-6">
+                    <div className="border-b border-[#E0E0E0] pb-3">
+                      <span className="catalog-heading-th font-serif text-2xl font-bold tracking-[0.15em] text-[#000000] block">
+                        ARTVARA
+                      </span>
+                      <span className="catalog-body-th text-[9px] uppercase tracking-widest text-[#666666] mt-0.5 block">
+                        Academic Peer Review Board &amp; Curatorial Statement
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <span className="catalog-heading-th text-xs font-bold uppercase tracking-[0.15em] text-[#000000] block">
+                          คณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Peer Review Committee)
+                        </span>
+                        <p className="catalog-body-th text-[10px] text-[#666666] mt-0.5">
+                          รายนามคณะกรรมการผู้ทรงคุณวุฒิในการพิจารณาและประเมินผลงานศิลปกรรมในนิทรรศการ
+                        </p>
+                      </div>
+
+                      <div className="space-y-2.5 pt-1">
+                        {peerReviewersList.map((reviewer, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2.5 bg-[#FAFAFA] border border-[#E8E8E8] rounded-lg flex items-center justify-between gap-4"
+                          >
+                            <div className="flex items-center gap-3">
+                              {reviewer.avatarUrl ? (
+                                <div className="relative w-11 h-12 rounded-md overflow-hidden border border-[#D5CEC0] shrink-0 bg-[#1A1918]">
+                                  <img
+                                    src={reviewer.avatarUrl}
+                                    alt={reviewer.name || 'Reviewer'}
+                                    crossOrigin="anonymous"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-11 h-12 rounded-md bg-[#EFEFEF] border border-[#DCDCDC] flex items-center justify-center catalog-heading-th text-sm font-bold text-[#444444] shrink-0">
+                                  {reviewer.name?.trim().charAt(0).toUpperCase() || 'R'}
+                                </div>
+                              )}
+
+                              <div>
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <span className="catalog-body-th text-[9px] font-bold uppercase tracking-wider text-[#000000] bg-[#EAEAEA] px-1.5 py-0.5 rounded">
+                                    {reviewer.role || (idx === 0 ? 'ประธานกรรมการ' : `กรรมการผู้ทรงคุณวุฒิ`)}
+                                  </span>
+                                  <h4 className="catalog-heading-th text-xs font-bold text-[#000000]">
+                                    {[reviewer.academicTitle, reviewer.name].filter(Boolean).join(' ')}
+                                  </h4>
+                                </div>
+                                {reviewer.institution && (
+                                  <p className="catalog-body-th text-[10px] text-[#555555]">
+                                    {reviewer.institution}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {reviewer.country && (
+                              <span className="catalog-body-th text-[10px] text-[#777777] shrink-0">
+                                {reviewer.country}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {exhibition.curatorNote && (
+                      <div className="space-y-2 pt-2 border-t border-[#E8E8E8]">
+                        <span className="catalog-heading-th text-xs font-bold uppercase tracking-[0.15em] text-[#000000] block">
+                          คำนำภัณฑารักษ์ (Curatorial Statement)
+                        </span>
+                        <p className="catalog-body-th text-[11px] text-[#333333] leading-relaxed italic whitespace-pre-line max-h-[75mm] overflow-hidden">
+                          &quot;{exhibition.curatorNote}&quot;
+                        </p>
+                        {curator?.name && (
+                          <p className="catalog-body-th text-[10px] font-bold text-[#000000] text-right pt-1">
+                            — {curator.name} (Curator)
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-[#E5E5E5] flex items-center justify-between text-[10px] text-[#777777]">
+                    <span>{plateFooter || 'Editorial & Academic Accreditation Board'}</span>
+                    <span className="font-mono text-[#555555] font-semibold">2</span>
+                  </div>
+                </section>
+              ) : (
+                /* Artwork Page in Reader */
+                (() => {
+                  const artIdx = hasReviewers ? selectedPageModalIndex - 2 : selectedPageModalIndex - 1;
+                  const art = artworks[artIdx];
+                  if (!art) return null;
+
+                  const artist = art.artist;
+                  const pageNum = selectedPageModalIndex + 1;
+                  const UNSPLASH_PLACEHOLDERS = [
+                    'unsplash.com/photo-1507003211169',
+                    'unsplash.com/photo-1534528741775',
+                  ];
+                  const rawAvatarUrl = artist?.avatarUrl?.trim() || '';
+                  const isRealAvatar =
+                    rawAvatarUrl.length > 0 &&
+                    !UNSPLASH_PLACEHOLDERS.some((p) => rawAvatarUrl.includes(p));
+                  const resolvedPhotoUrl = isRealAvatar ? rawAvatarUrl : (art.imageUrl || '');
+                  const hasRealPhoto = resolvedPhotoUrl.length > 0;
+                  const isAvatarFallback = hasRealPhoto && !isRealAvatar;
+
+                  return (
+                    <section
+                      key={art.id}
+                      className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border"
+                    >
+                      <div>
+                        <div className="relative w-full h-[175mm] max-h-[175mm] bg-white overflow-hidden mb-3 flex items-center justify-center">
+                          <img
+                            src={art.imageUrl}
+                            alt={art.title}
+                            crossOrigin="anonymous"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+
+                        <div className="relative z-10 flex flex-row items-start gap-5 pt-1">
+                          <div className="shrink-0 w-20 flex flex-col items-start">
+                            <div className="relative w-9 h-5 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-sm mb-2 bg-[#F5F5F5]">
+                              <img
+                                src={getFlagImageUrl(artist?.country)}
+                                alt={artist?.country || 'Flag'}
+                                crossOrigin="anonymous"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+
+                            {hasRealPhoto ? (
+                              <div className={`relative w-20 h-24 rounded-lg overflow-hidden shadow ${isAvatarFallback ? 'bg-[#1A1A1A]' : 'bg-[#1A1A1A]'}`}>
+                                <img
+                                  src={resolvedPhotoUrl}
+                                  alt={artist?.name || 'Artist'}
+                                  crossOrigin="anonymous"
+                                  className={`w-full h-full ${isAvatarFallback ? 'object-cover opacity-80' : 'object-cover'}`}
+                                />
+                                {isAvatarFallback && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-center py-0.5">
+                                    <span className="catalog-body-th text-[7px] text-white/80 font-medium leading-none">Artwork</span>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="w-20 h-24 bg-[#EFEFEF] border border-[#D0D0D0] rounded-lg flex flex-col items-center justify-center shadow-sm overflow-hidden">
+                                <span className="catalog-heading-th text-2xl font-bold text-[#444444] leading-none select-none">
+                                  {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
+                                </span>
+                                <span className="catalog-body-th text-[8px] text-[#999999] mt-1 font-medium leading-none">No Photo</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1 text-[#222222] min-w-0 space-y-2">
+                            <div className="space-y-0.5">
+                              <h3 className="catalog-heading-th text-sm font-bold text-[#000000] leading-snug">
+                                {artist?.name || 'Artist'}
+                              </h3>
+                              {artist?.email && (
+                                <p className="catalog-body-th text-[#666666] text-[10px] leading-normal">
+                                  {artist.email}
+                                </p>
+                              )}
+                              <p className="catalog-body-th text-[#666666] text-[10px] leading-normal">
+                                {artist?.country || 'International'}
+                              </p>
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <h4 className="catalog-heading-th text-xs sm:text-sm font-bold text-[#000000] leading-snug">
+                                {art.title}
+                              </h4>
+                              <p className="catalog-body-th text-[#444444] text-[10px] leading-normal font-medium">
+                                {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
+                              </p>
+                            </div>
+
+                            {(art.concept?.trim() || art.description?.trim()) && (
+                              <div className="catalog-body-th pt-0.5 pb-1 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] break-words">
+                                <span className="font-bold text-[#000000]">Concept : </span>
+                                <span>{art.concept?.trim() || art.description?.trim()}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer Graphic */}
+                      {footerGraphicType === 'custom_image' && customFooterImageUrl ? (
+                        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 flex items-end justify-center px-4 pb-2">
+                          <img src={customFooterImageUrl} alt="Footer Banner" className="max-h-full max-w-full object-contain" />
+                        </div>
+                      ) : footerGraphicType === 'wave_mono' ? (
+                        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
+                          <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id={`readerWaveMono-${art.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#444444" stopOpacity="0.3" />
+                                <stop offset="100%" stopColor="#111111" stopOpacity="0.15" />
+                              </linearGradient>
+                            </defs>
+                            <path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill={`url(#readerWaveMono-${art.id})`} />
+                          </svg>
+                        </div>
+                      ) : footerGraphicType === 'line_gold' ? (
+                        <div className="absolute bottom-10 left-8 right-8 border-b border-[#C5A880]/50 pointer-events-none z-0" />
+                      ) : footerGraphicType !== 'none' ? (
+                        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
+                          <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id={`readerWave1-${art.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#D0D0D0" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#B0B0B0" stopOpacity="0.2" />
+                              </linearGradient>
+                              <linearGradient id={`readerWave2-${art.id}`} x1="0%" y1="100%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#F5B28B" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#EFA478" stopOpacity="0.15" />
+                              </linearGradient>
+                            </defs>
+                            <path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill={`url(#readerWave1-${art.id})`} />
+                            <path d="M-30,120 C90,90 220,20 370,80 C490,140 570,60 630,70 L630,120 Z" fill={`url(#readerWave2-${art.id})`} />
+                          </svg>
+                        </div>
+                      ) : null}
+
+                      <div className="relative z-10 mt-3 pt-2 border-t border-[#E5E5E5] flex items-center justify-between text-[10px] text-[#777777]">
+                        <span>
+                          {plateFooter ? plateFooter : ''}
+                          {art.price ? (plateFooter ? ` • ${formatPrice(art.price)}` : formatPrice(art.price)) : ''}
+                        </span>
+                        <span className="font-mono text-[#555555] font-semibold">{pageNum}</span>
+                      </div>
+                    </section>
+                  );
+                })()
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4 - Pure K-Plate Monochromes) */}
-      <main className="w-full max-w-[210mm] mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16">
+      <main className={`w-full max-w-[210mm] mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16 ${activeViewMode === 'grid3' ? 'hidden print:block' : 'block'}`}>
         {/* Cover Page (A4, 210mm x 297mm, 15mm Padding, Pure K Black/Gray) */}
         <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
           <div>
