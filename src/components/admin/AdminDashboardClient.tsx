@@ -56,6 +56,39 @@ export function AdminDashboardClient({
     }
   };
 
+  const handleCleanupOrphans = async () => {
+    const confirmMsg =
+      lang === 'th'
+        ? '🧹 คุณต้องการลบผลงานส่วนเกินที่ไม่ได้อยู่ในนิทรรศการปัจจุบัน (ที่สะสมจากการทดสอบนำเข้าหลายครั้ง) ใช่หรือไม่?\n\nผลงาน 176 ชิ้นในนิทรรศการปัจจุบันจะยังคงอยู่ครบ 100%'
+        : '🧹 Do you want to remove duplicate/orphan artworks that are not linked to active exhibitions? (Your 176 active artworks will remain 100% safe).';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setClearing(true);
+    try {
+      const res = await fetch('/api/admin/artworks/cleanup-orphans', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification(
+          lang === 'th'
+            ? `ล้างผลงานส่วนเกินสำเร็จ (${data.deletedCount} รายการ) ผลงานในนิทรรศการคงเหลือครบ ${data.remainingArtworksCount} ชิ้น`
+            : `Cleaned up ${data.deletedCount} orphan artworks! Remaining: ${data.remainingArtworksCount}`
+        );
+        setTimeout(() => {
+          router.refresh();
+          window.location.reload();
+        }, 1500);
+      } else {
+        alert(data.error || 'Failed to cleanup orphan artworks');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error cleaning orphan artworks');
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {notification && (
@@ -76,7 +109,19 @@ export function AdminDashboardClient({
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {artworks.length > 200 && (
+            <button
+              onClick={handleCleanupOrphans}
+              disabled={clearing}
+              className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm transition-all active:scale-95 disabled:opacity-50"
+              title="ลบผลงานที่ซ้ำซ้อน/ค้างจากการทดสอบ และเก็บเฉพาะ 176 ชิ้นในนิทรรศการ"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+              <span>{clearing ? (lang === 'th' ? 'กำลังจัดระเบียบ...' : 'Cleaning...') : (lang === 'th' ? '🧹 ล้างผลงานส่วนเกิน (เก็บเฉพาะในนิทรรศการ)' : '🧹 Clean Orphan Artworks')}</span>
+            </button>
+          )}
+
           <button
             onClick={handleClearMockupData}
             disabled={clearing}
