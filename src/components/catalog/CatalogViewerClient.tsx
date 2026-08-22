@@ -1237,10 +1237,23 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         {artworks.map((art, idx) => {
           const artist = art.artist;
           const pageNum = hasReviewers ? idx + 3 : idx + 2;
-          const hasRealPhoto =
-            artist?.avatarUrl &&
-            !artist.avatarUrl.includes('unsplash.com/photo-1507003211169') &&
-            !artist.avatarUrl.includes('unsplash.com/photo-1534528741775');
+
+          // Resolve the best available photo for this artist:
+          // 1. avatarUrl in users table (real profile photo) — preferred
+          // 2. artwork imageUrl (the artwork itself) — fallback so catalog always shows an image
+          const UNSPLASH_PLACEHOLDERS = [
+            'unsplash.com/photo-1507003211169',
+            'unsplash.com/photo-1534528741775',
+          ];
+          const rawAvatarUrl = artist?.avatarUrl?.trim() || '';
+          const isRealAvatar =
+            rawAvatarUrl.length > 0 &&
+            !UNSPLASH_PLACEHOLDERS.some((p) => rawAvatarUrl.includes(p));
+
+          // Use artwork image as fallback portrait when no real profile photo
+          const resolvedPhotoUrl = isRealAvatar ? rawAvatarUrl : (art.imageUrl || '');
+          const hasRealPhoto = resolvedPhotoUrl.length > 0;
+          const isAvatarFallback = hasRealPhoto && !isRealAvatar;
 
           return (
             <section
@@ -1272,15 +1285,20 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                       />
                     </div>
 
-                    {/* Artist Photo / Avatar (Below Flag) */}
+                    {/* Artist Photo / Avatar (Below Flag) — detect real photo or use artwork thumbnail */}
                     {hasRealPhoto ? (
-                      <div className="relative w-20 h-24 bg-[#1A1A1A] rounded-lg overflow-hidden shadow">
+                      <div className={`relative w-20 h-24 rounded-lg overflow-hidden shadow ${isAvatarFallback ? 'bg-[#1A1A1A]' : 'bg-[#1A1A1A]'}`}>
                         <img
-                          src={artist!.avatarUrl!}
+                          src={resolvedPhotoUrl}
                           alt={artist?.name || 'Artist'}
                           crossOrigin="anonymous"
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full ${isAvatarFallback ? 'object-cover opacity-80' : 'object-cover'}`}
                         />
+                        {isAvatarFallback && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-center py-0.5">
+                            <span className="catalog-body-th text-[7px] text-white/80 font-medium leading-none">Artwork</span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="w-20 h-24 bg-[#EFEFEF] border border-[#D0D0D0] rounded-lg flex flex-col items-center justify-center shadow-sm overflow-hidden">
