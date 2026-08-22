@@ -1,11 +1,19 @@
-﻿export const runtime = 'edge';
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { inArray, notInArray, eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET() {
+  return executeCleanup();
+}
+
 export async function POST() {
+  return executeCleanup();
+}
+
+async function executeCleanup() {
   try {
     // 1. Fetch all artwork IDs currently linked to any exhibition
     const activeLinks = await db
@@ -15,25 +23,45 @@ export async function POST() {
     const activeArtworkIds = new Set(activeLinks.map((l: any) => l.artworkId));
 
     // 2. Fetch all artworks
-    const allArtworks = await db.select({ id: schema.artworks.id }).from(schema.artworks);
+    const allArtworks = await db.select().from(schema.artworks);
 
     const orphanArtworkIds: string[] = [];
+    const seenArtKeys = new Set<string>();
+    const keepArtworkIds = new Set<string>();
+
     for (const art of allArtworks) {
-      if (!activeArtworkIds.has(art.id)) {
+      const isLinked = activeArtworkIds.has(art.id);
+      const artKey = `${art.artistId}:::${(art.title || '').trim().toLowerCase()}`;
+
+      if (isLinked) {
+        if (!seenArtKeys.has(artKey)) {
+          seenArtKeys.add(artKey);
+          keepArtworkIds.add(art.id);
+        } else {
+          // Duplicate within active exhibition
+          orphanArtworkIds.push(art.id);
+        }
+      } else {
+        // Not linked to any exhibition -> delete
         orphanArtworkIds.push(art.id);
       }
     }
 
     let deletedCount = 0;
-    // Delete orphan artworks in batches
+    // Delete orphan artworks
     for (const orphanId of orphanArtworkIds) {
       await db.delete(schema.artworks).where(eq(schema.artworks.id, orphanId));
       deletedCount++;
     }
 
-    // 3. Get updated counts
+    // 3. Clean up exhibition links if any pointed to deleted artworks
+    for (const orphanId of orphanArtworkIds) {
+      await db.delete(schema.exhibitionArtworks).where(eq(schema.exhibitionArtworks.artworkId, orphanId));
+    }
+
+    // 4. Get updated counts
     const remainingArtworks = await db.select({ id: schema.artworks.id }).from(schema.artworks);
-    const activeUsers = await db.select({ id: schema.users.id }).from(schema.users);
+    const activeUsers = await db.select().from(schema.users);
 
     return NextResponse.json({
       success: true,

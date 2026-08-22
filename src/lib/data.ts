@@ -272,7 +272,16 @@ export async function getArtistProfile(artistId: string) {
         }
       }
 
-      const artworksWithExhibitions = rawArtworks.map((art: any) => ({
+      // Deduplicate artworks by title
+      const seenTitles = new Set<string>();
+      const uniqueArtworks = rawArtworks.filter((art: any) => {
+        const titleKey = (art.title || '').trim().toLowerCase();
+        if (seenTitles.has(titleKey)) return false;
+        seenTitles.add(titleKey);
+        return true;
+      });
+
+      const artworksWithExhibitions = uniqueArtworks.map((art: any) => ({
         ...art,
         artist,
         exhibitions: linksByArtworkId.get(art.id) || [],
@@ -336,13 +345,24 @@ export async function getAllArtistsWithStats() {
       }
     }
 
+    const linkedArtworkIdSet = new Set(allLinks.map((l: any) => l.artworkId));
+
+    // Deduplicate artworks per artist by title
     const artworksByArtistId = new Map<string, any[]>();
+    const seenArtKeys = new Set<string>();
+
     for (const art of allArtworks) {
       if (art && art.artistId) {
-        if (!artworksByArtistId.has(art.artistId)) {
-          artworksByArtistId.set(art.artistId, []);
+        const isLinked = linkedArtworkIdSet.has(art.id);
+        const artKey = `${art.artistId}:::${(art.title || '').trim().toLowerCase()}`;
+
+        if (!seenArtKeys.has(artKey) && (isLinked || linkedArtworkIdSet.size === 0)) {
+          seenArtKeys.add(artKey);
+          if (!artworksByArtistId.has(art.artistId)) {
+            artworksByArtistId.set(art.artistId, []);
+          }
+          artworksByArtistId.get(art.artistId)!.push(art);
         }
-        artworksByArtistId.get(art.artistId)!.push(art);
       }
     }
 
