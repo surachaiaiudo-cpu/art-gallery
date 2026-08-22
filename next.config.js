@@ -37,7 +37,9 @@ const nextConfig = {
     };
     return config;
   },
-  serverExternalPackages: ['@libsql/client'],
+  experimental: {
+    serverComponentsExternalPackages: ['@libsql/client'],
+  },
 };
 
 module.exports = nextConfig;
