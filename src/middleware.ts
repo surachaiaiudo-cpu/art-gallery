@@ -1,7 +1,8 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const config = {
-  matcher: ['/admin', '/admin/:path*'],
+  // Protect /admin and all sub-paths EXCEPT the login page and auth API itself
+  matcher: ['/admin', '/admin/((?!login|api).*)'],
 };
 
 export function middleware(req: NextRequest) {
@@ -9,6 +10,12 @@ export function middleware(req: NextRequest) {
 
   // If no secret is configured, allow access (backward compatible)
   if (!adminSecret) {
+    return NextResponse.next();
+  }
+
+  // Never redirect the login page or auth API (prevent infinite loop)
+  const pathname = req.nextUrl.pathname;
+  if (pathname.startsWith('/admin/login') || pathname.startsWith('/api/admin/auth')) {
     return NextResponse.next();
   }
 
@@ -20,6 +27,6 @@ export function middleware(req: NextRequest) {
 
   // Not authenticated: redirect to login page
   const loginUrl = new URL('/admin/login', req.url);
-  loginUrl.searchParams.set('from', req.nextUrl.pathname);
+  loginUrl.searchParams.set('from', pathname);
   return NextResponse.redirect(loginUrl);
 }
