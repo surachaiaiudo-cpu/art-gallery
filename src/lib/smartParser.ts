@@ -101,25 +101,115 @@ const MEDIUM_KEYWORDS = [
 ];
 
 /**
- * Split a single line into columns by Tab, Comma, or Pipe while preserving empty columns
+ * Robust CSV/TSV Table Tokenizer
+ * 1. Correctly parses multiline cells within double quotes (Alt+Enter in Excel / Google Sheets)
+ * 2. Auto-detects Tab (\t), Comma (,), or Pipe (|) delimiters
+ * 3. Preserves exact column positions and empty cells
+ * 4. Stitches unquoted orphan multiline concept lines back into the parent row
  */
-function splitColumns(line: string): string[] {
-  if (line.includes('\t')) {
-    return line.split('\t').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+export function parseTableRows(text: string): string[][] {
+  if (!text || !text.trim()) return [];
+
+  // Determine delimiter: Tab (\t) is standard when copying from Excel / Google Sheets
+  const tabCount = (text.match(/\t/g) || []).length;
+  const commaCount = (text.match(/,/g) || []).length;
+  const pipeCount = (text.match(/\|/g) || []).length;
+
+  let delimiter = '\t';
+  if (tabCount === 0 && pipeCount > commaCount) {
+    delimiter = '|';
+  } else if (tabCount === 0 && commaCount > 0) {
+    delimiter = ',';
   }
-  if (line.includes('|')) {
-    return line.split('|').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+
+  const rawRows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote ("")
+        currentCell += '"';
+        i++; // skip next char
+      } else {
+        // Toggle quote mode
+        inQuotes = !inQuotes;
+      }
+    } else if (char === delimiter && !inQuotes) {
+      // End of cell
+      currentRow.push(currentCell.trim().replace(/^["']|["']$/g, ''));
+      currentCell = '';
+    } else if ((char === '\r' || char === '\n') && !inQuotes) {
+      // End of row (only when NOT inside quotes!)
+      if (char === '\r' && nextChar === '\n') {
+        i++; // skip \n in \r\n
+      }
+      currentRow.push(currentCell.trim().replace(/^["']|["']$/g, ''));
+      currentCell = '';
+
+      if (currentRow.some((c) => c.length > 0)) {
+        rawRows.push(currentRow);
+      }
+      currentRow = [];
+    } else {
+      // Normal character (or newline inside quotes)
+      currentCell += char;
+    }
   }
-  // CSV comma splitter (respects quotes)
-  const regex = /(?:^|,)(?:"([^"]*)"|([^,]*))/g;
-  const result: string[] = [];
-  let match;
-  while ((match = regex.exec(line)) !== null) {
-    if (match.index === regex.lastIndex) regex.lastIndex++;
-    const val = (match[1] !== undefined ? match[1] : match[2] || '').trim();
-    result.push(val.replace(/^["']|["']$/g, ''));
+
+  // Push trailing cell and row
+  if (currentCell.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentCell.trim().replace(/^["']|["']$/g, ''));
+    if (currentRow.some((c) => c.length > 0)) {
+      rawRows.push(currentRow);
+    }
   }
-  return result.length > 0 ? result : [line.trim()];
+
+  // Pass 2: Handle unquoted multiline concept breaks (where user pasted unquoted text with newlines inside concept)
+  // If a row has only 1 column (and no URL/dimensions), append it to the previous row's concept!
+  const cleanedRows: string[][] = [];
+
+  for (let r = 0; r < rawRows.length; r++) {
+    const row = rawRows[r];
+
+    // If row has standard multiple columns (>= 3)
+    if (row.length >= 3) {
+      cleanedRows.push(row);
+    } else if (row.length === 1 && cleanedRows.length > 0 && row[0].trim().length > 0) {
+      const orphanText = row[0].trim();
+      const prevRow = cleanedRows[cleanedRows.length - 1];
+
+      // If orphanText is an Image URL that got bumped to a new line
+      if (/^https?:\/\//i.test(orphanText)) {
+        if (prevRow.length >= 8 && !prevRow[7]) {
+          prevRow[7] = orphanText;
+        } else if (prevRow.length === 7) {
+          prevRow.push(orphanText);
+        } else {
+          cleanedRows.push(row);
+        }
+      } else {
+        // It is a continuation of the previous row's concept!
+        // Index 6 is Concept in 8-column layout (0:Title, 1:Artist, 2:Country, 3:Medium, 4:Dim, 5:Year, 6:Concept, 7:Image)
+        if (prevRow.length >= 7) {
+          prevRow[6] = prevRow[6] ? `${prevRow[6]}\n${orphanText}` : orphanText;
+        } else if (prevRow.length > 0) {
+          prevRow[prevRow.length - 1] = `${prevRow[prevRow.length - 1]}\n${orphanText}`;
+        } else {
+          cleanedRows.push(row);
+        }
+      }
+    } else if (row.some((c) => c.length > 0)) {
+      cleanedRows.push(row);
+    }
+  }
+
+  return cleanedRows;
 }
 
 /**
@@ -175,10 +265,10 @@ function detectDimensions(str: string): string {
 export function parseTabularText(fullText: string): DetectedArtworkFields[] {
   if (!fullText || !fullText.trim()) return [];
 
-  const rawLines = fullText.trim().split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (rawLines.length === 0) return [];
+  const allRows = parseTableRows(fullText);
+  if (allRows.length === 0) return [];
 
-  const firstLineCols = splitColumns(rawLines[0]).map((c) => c.toLowerCase());
+  const firstLineCols = allRows[0].map((c) => c.toLowerCase());
 
   // Check if first line contains header keywords
   const isHeaderRow = firstLineCols.some((col) =>
@@ -223,9 +313,8 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
   const startIdx = isHeaderRow ? 1 : 0;
   const results: DetectedArtworkFields[] = [];
 
-  for (let i = startIdx; i < rawLines.length; i++) {
-    const line = rawLines[i];
-    const cols = splitColumns(line);
+  for (let i = startIdx; i < allRows.length; i++) {
+    const cols = allRows[i];
 
     // If headers were found and mapped
     if (isHeaderRow && Object.keys(headerMap).length >= 2) {
@@ -273,7 +362,7 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
         let concept = (cols[6] || '').trim();
         let imageUrl = (cols[7] || '').trim();
 
-        // Check if country was placed in column 2 or if col 2 is medium
+        // Check if country was placed in column 2
         const detectedCountry = detectCountry(artistCountry);
         if (detectedCountry) {
           artistCountry = detectedCountry;
@@ -298,7 +387,8 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
           });
         }
       } else {
-        // Fallback to smart heuristic single line parser
+        // Fallback for single non-standard row
+        const line = cols.join('\t');
         const detected = smartDetectArtwork(line);
         if (detected.title || detected.artistName || detected.imageUrl) {
           results.push(detected);
@@ -316,9 +406,8 @@ export function parseTabularText(fullText: string): DetectedArtworkFields[] {
  * Leaves missing fields as empty strings ("")
  */
 export function smartDetectArtwork(rawText: string): DetectedArtworkFields {
-  const rawCols = splitColumns(rawText);
-  // Keep clean values while preserving non-empty elements
-  const cols = rawCols.filter((c) => c.length > 0);
+  const parsedRows = parseTableRows(rawText);
+  const cols = (parsedRows[0] || []).filter((c) => c.length > 0);
 
   let title = '';
   let artistName = '';
