@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 import { getAllArtworks } from '@/lib/data';
-import { getCountryFlagEmoji } from '@/components/ui/CountryFlag';
+import { getCountryFlagEmoji } from '@/lib/countryUtils';
 
 export const dynamic = 'force-dynamic';
 

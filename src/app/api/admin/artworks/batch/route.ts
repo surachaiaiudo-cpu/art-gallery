@@ -1,7 +1,7 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
-import { getCountryFlagEmoji } from '@/components/ui/CountryFlag';
+import { getCountryFlagEmoji } from '@/lib/countryUtils';
 
 export const dynamic = 'force-dynamic';
 

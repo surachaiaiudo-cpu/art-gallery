@@ -2,7 +2,7 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq, or, isNull } from 'drizzle-orm';
-import { getCountryFlagEmoji } from '@/components/ui/CountryFlag';
+import { getCountryFlagEmoji } from '@/lib/countryUtils';
 import { getAllArtistsWithStats } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
