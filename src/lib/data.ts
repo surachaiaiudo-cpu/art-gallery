@@ -1,5 +1,5 @@
 import { db, schema } from '@/db';
-import { eq, desc, asc, or } from 'drizzle-orm';
+import { eq, desc, asc, or, and } from 'drizzle-orm';
 import { Exhibition, Artwork, User, Inquiry, WallPosition } from '@/types/exhibition';
 
 export async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition | null> {
@@ -30,12 +30,25 @@ export async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition |
     if (rawExhibitions && rawExhibitions.length > 0) {
       const exh = rawExhibitions[0];
 
-      // Fetch curator (1 query)
-      const curator = await db
-        .select()
-        .from(schema.users)
-        .where(eq(schema.users.role, 'curator'))
-        .limit(1);
+      // Fetch the specific curator linked to this exhibition via curatorId FK
+      // Fallback: if curatorId is null, pick the first curator in the system
+      let curatorRow: User | null = null;
+      if ((exh as any).curatorId) {
+        const curatorRes = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, (exh as any).curatorId))
+          .limit(1);
+        curatorRow = curatorRes[0] ? (curatorRes[0] as User) : null;
+      }
+      if (!curatorRow) {
+        const fallbackCurator = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.role, 'curator'))
+          .limit(1);
+        curatorRow = fallbackCurator[0] ? (fallbackCurator[0] as User) : null;
+      }
 
       // Fetch artworks associated with this exhibition (1 query)
       const rawLinks = await db
@@ -79,7 +92,7 @@ export async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition |
       return {
         ...exh,
         artworks,
-        curator: curator[0] ? (curator[0] as User) : null,
+        curator: curatorRow,
         artists: Array.from(artistMap.values()),
       };
     }
@@ -476,8 +489,10 @@ export async function updateArtworkWallPosition(
       .update(schema.exhibitionArtworks)
       .set({ wallPosition: JSON.stringify(wallPosition) })
       .where(
-        eq(schema.exhibitionArtworks.exhibitionId, exhibitionId) &&
-        eq(schema.exhibitionArtworks.artworkId, artworkId)
+        and(
+          eq(schema.exhibitionArtworks.exhibitionId, exhibitionId),
+          eq(schema.exhibitionArtworks.artworkId, artworkId)
+        )
       );
     return true;
   } catch (error) {
