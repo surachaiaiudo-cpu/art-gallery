@@ -35,7 +35,33 @@ export async function POST(req: NextRequest) {
 
     const importedArtworks: Array<{ id: string; title: string }> = [];
 
-    // 2. Process each artwork row
+    // 2. Resolve Exhibition ID & current Max Display Order
+    let targetExhibitionId: string | undefined = exhibitionId;
+    let maxOrder = 0;
+    if (exhibitionId) {
+      const existingExh = await db
+        .select({ id: schema.exhibitions.id })
+        .from(schema.exhibitions)
+        .where(eq(schema.exhibitions.id, exhibitionId));
+      if (existingExh.length > 0) {
+        targetExhibitionId = existingExh[0].id;
+      }
+
+      if (targetExhibitionId) {
+        const existingArtworks = await db
+          .select({ displayOrder: schema.exhibitionArtworks.displayOrder })
+          .from(schema.exhibitionArtworks)
+          .where(eq(schema.exhibitionArtworks.exhibitionId, targetExhibitionId));
+
+        for (const row of existingArtworks) {
+          if (row.displayOrder && row.displayOrder > maxOrder) {
+            maxOrder = row.displayOrder;
+          }
+        }
+      }
+    }
+
+    // 3. Process each artwork row
     for (let i = 0; i < items.length; i++) {
       const row = items[i];
       if (!row.title && !row.artistName && !row.imageUrl && !row.concept) continue;
@@ -87,13 +113,13 @@ export async function POST(req: NextRequest) {
         status: 'available',
       });
 
-      // If exhibitionId provided, link to exhibition with auto-incremented wall index
-      if (exhibitionId) {
+      // If exhibitionId provided, link to exhibition with exact sequential display order
+      if (targetExhibitionId) {
         const wallIdx = i % 4; // distribute across 4 walls
         await db.insert(schema.exhibitionArtworks).values({
-          exhibitionId,
+          exhibitionId: targetExhibitionId,
           artworkId: newArtId,
-          displayOrder: i + 1,
+          displayOrder: maxOrder + i + 1,
           wallPosition: JSON.stringify({
             x: 0,
             y: 2.0,
