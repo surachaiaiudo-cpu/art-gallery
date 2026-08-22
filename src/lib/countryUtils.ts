@@ -1,4 +1,4 @@
-﻿export const COUNTRY_CODE_MAP: Record<string, string> = {
+export const COUNTRY_CODE_MAP: Record<string, string> = {
   // Asia
   thailand: 'th',
   thai: 'th',
@@ -92,6 +92,10 @@
   อิหร่าน: 'ir',
   iraq: 'iq',
   อิรัก: 'iq',
+  kurdistan: 'krd',
+  kurdish: 'krd',
+  เคอร์ดิสถาน: 'krd',
+  เคิร์ด: 'krd',
   qatar: 'qa',
   กาตาร์: 'qa',
   kuwait: 'kw',
@@ -412,10 +416,39 @@ export function getCountryFlagEmoji(countryName?: string | null): string {
 }
 
 /**
- * Returns Flag Image URL (e.g. https://flagcdn.com/w80/th.png)
+ * Custom High-Resolution Flag Image URLs for Autonomous / Cultural Regions
+ */
+export const CUSTOM_FLAG_URLS: Record<string, string> = {
+  krd: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
+  kurdistan: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
+  kurdish: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
+  'เคอร์ดิสถาน': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
+  'เคิร์ด': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_Kurdistan.svg/160px-Flag_of_Kurdistan.svg.png',
+  tibet: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Flag_of_Tibet.svg/160px-Flag_of_Tibet.svg.png',
+  'ทิเบต': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Flag_of_Tibet.svg/160px-Flag_of_Tibet.svg.png',
+  'ธิเบต': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Flag_of_Tibet.svg/160px-Flag_of_Tibet.svg.png',
+};
+
+/**
+ * Returns Flag Image URL (e.g. https://flagcdn.com/w80/th.png or Custom Regional Flag URL)
  */
 export function getFlagImageUrl(countryName?: string | null): string {
+  if (!countryName) return '';
+  const clean = countryName.trim().toLowerCase();
+
+  // 1. Check custom direct regional flag URLs first (e.g. Kurdistan, Tibet)
+  for (const [key, url] of Object.entries(CUSTOM_FLAG_URLS)) {
+    if (clean === key || clean.includes(key)) {
+      return url;
+    }
+  }
+
   const code = getCountryCode(countryName);
   if (!code) return '';
+
+  if (CUSTOM_FLAG_URLS[code]) {
+    return CUSTOM_FLAG_URLS[code];
+  }
+
   return `https://flagcdn.com/w80/${code}.png`;
 }
