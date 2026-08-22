@@ -1,7 +1,7 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and, or, asc } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ export async function POST(
 ) {
   try {
     const body = await req.json();
-    const { artworkId } = body;
+    const { artworkId, displayOrder = 0, wallPosition } = body;
 
     if (!artworkId) {
       return NextResponse.json({ error: 'Artwork ID is required' }, { status: 400 });
@@ -54,25 +54,53 @@ export async function POST(
     await db.insert(schema.exhibitionArtworks).values({
       exhibitionId: targetExhibitionId,
       artworkId,
-      displayOrder: 99,
-      wallPosition: JSON.stringify({
-        x: 0,
-        y: 2.0,
-        z: -6.85,
-        rotationY: 0,
-        wallIndex: 0,
-        scale: 1,
-      }),
+      displayOrder,
+      wallPosition: wallPosition ? JSON.stringify(wallPosition) : null,
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error linking artwork to exhibition:', error);
+    console.error('Error adding artwork to exhibition:', error);
     return NextResponse.json({ error: 'Failed to add artwork to exhibition' }, { status: 500 });
   }
 }
 
-// DELETE: Remove one or multiple artworks from exhibition
+// PUT: Batch update artwork order/positions in exhibition
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await req.json();
+    const { artworks } = body;
+
+    if (!Array.isArray(artworks)) {
+      return NextResponse.json({ error: 'Artworks array is required' }, { status: 400 });
+    }
+
+    for (const item of artworks) {
+      await db
+        .update(schema.exhibitionArtworks)
+        .set({
+          displayOrder: item.displayOrder,
+          ...(item.wallPosition ? { wallPosition: JSON.stringify(item.wallPosition) } : {}),
+        })
+        .where(
+          and(
+            eq(schema.exhibitionArtworks.exhibitionId, params.id),
+            eq(schema.exhibitionArtworks.artworkId, item.artworkId)
+          )
+        );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error updating exhibition artworks:', error);
+    return NextResponse.json({ error: 'Failed to update exhibition artworks' }, { status: 500 });
+  }
+}
+
+// DELETE: Remove artwork(s) from exhibition (Supports single 'artworkId' or batch 'artworkIds')
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -145,7 +173,45 @@ export async function DELETE(
         );
     }
 
-    return NextResponse.json({ success: true, count: idsToDelete.length });
+    // Automatically re-sequence remaining artworks in this exhibition: 1, 2, 3, ... N
+    const remainingLinks = await db
+      .select({
+        artworkId: schema.exhibitionArtworks.artworkId,
+        displayOrder: schema.exhibitionArtworks.displayOrder,
+      })
+      .from(schema.exhibitionArtworks)
+      .where(
+        or(
+          eq(schema.exhibitionArtworks.exhibitionId, targetExhibitionId),
+          eq(schema.exhibitionArtworks.exhibitionId, params.id)
+        )
+      )
+      .orderBy(asc(schema.exhibitionArtworks.displayOrder));
+
+    for (let i = 0; i < remainingLinks.length; i++) {
+      const link = remainingLinks[i];
+      const newOrder = i + 1;
+      if (link.displayOrder !== newOrder) {
+        await db
+          .update(schema.exhibitionArtworks)
+          .set({ displayOrder: newOrder })
+          .where(
+            and(
+              or(
+                eq(schema.exhibitionArtworks.exhibitionId, targetExhibitionId),
+                eq(schema.exhibitionArtworks.exhibitionId, params.id)
+              ),
+              eq(schema.exhibitionArtworks.artworkId, link.artworkId)
+            )
+          );
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      count: idsToDelete.length,
+      remainingCount: remainingLinks.length,
+    });
   } catch (error: any) {
     console.error('Error removing artwork(s) from exhibition:', error);
     return NextResponse.json(

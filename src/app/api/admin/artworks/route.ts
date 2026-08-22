@@ -1,7 +1,7 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
-import { eq } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import { getAllArtworks } from '@/lib/data';
 import { getCountryFlagEmoji } from '@/lib/countryUtils';
 import { findMatchingArtist } from '@/lib/artistMatcher';
@@ -231,8 +231,47 @@ export async function DELETE(req: NextRequest) {
       await deleteFromImageKit(existing[0].imageUrl, imageKitPrivateKey);
     }
 
-    // 2. Delete artwork from D1 database
+    // 2. Identify linked exhibitions before deletion
+    const linkedExhibitions = await db
+      .select({ exhibitionId: schema.exhibitionArtworks.exhibitionId })
+      .from(schema.exhibitionArtworks)
+      .where(eq(schema.exhibitionArtworks.artworkId, id));
+
+    const exhIdsToResequence: string[] = Array.from(
+      new Set(linkedExhibitions.map((l: any) => String(l.exhibitionId)).filter(Boolean))
+    );
+
+    // 3. Delete artwork from D1 database (cascades or delete links)
+    await db.delete(schema.exhibitionArtworks).where(eq(schema.exhibitionArtworks.artworkId, id));
     await db.delete(schema.artworks).where(eq(schema.artworks.id, id));
+
+    // 4. Automatically re-sequence remaining artworks in affected exhibitions: 1, 2, 3, ... N
+    for (const exhId of exhIdsToResequence) {
+      const remainingLinks = await db
+        .select({
+          artworkId: schema.exhibitionArtworks.artworkId,
+          displayOrder: schema.exhibitionArtworks.displayOrder,
+        })
+        .from(schema.exhibitionArtworks)
+        .where(eq(schema.exhibitionArtworks.exhibitionId, exhId))
+        .orderBy(asc(schema.exhibitionArtworks.displayOrder));
+
+      for (let i = 0; i < remainingLinks.length; i++) {
+        const link = remainingLinks[i];
+        const newOrder = i + 1;
+        if (link.displayOrder !== newOrder) {
+          await db
+            .update(schema.exhibitionArtworks)
+            .set({ displayOrder: newOrder })
+            .where(
+              and(
+                eq(schema.exhibitionArtworks.exhibitionId, exhId),
+                eq(schema.exhibitionArtworks.artworkId, link.artworkId)
+              )
+            );
+        }
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

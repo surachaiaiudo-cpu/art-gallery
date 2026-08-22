@@ -362,13 +362,20 @@ export function AdminExhibitionArtworksClient({
       return;
     }
 
+    // Immediately re-sequence client-side state
+    setArtworksList((prev) =>
+      prev
+        .filter((a) => a.id !== artId)
+        .map((item, idx) => ({ ...item, displayOrder: idx + 1 }))
+    );
+
     try {
       const res = await fetch(`/api/admin/exhibitions/${exhibition.id}/artworks?artworkId=${artId}`, {
         method: 'DELETE',
       });
 
       if (res.ok) {
-        showNotification('success', lang === 'th' ? 'นำผลงานออกจากนิทรรศการสำเร็จ' : 'Artwork removed');
+        showNotification('success', lang === 'th' ? 'นำผลงานออกและไล่เรียงลำดับใหม่สำเร็จ' : 'Artwork removed & re-sequenced');
         setSelectedArtworkIds((prev) => prev.filter((id) => id !== artId));
         await refreshExhibition();
       }
@@ -391,13 +398,22 @@ export function AdminExhibitionArtworksClient({
       return;
     }
 
+    const removedIds = [...selectedArtworkIds];
+
+    // Immediately re-sequence client-side state
+    setArtworksList((prev) =>
+      prev
+        .filter((a) => !removedIds.includes(a.id))
+        .map((item, idx) => ({ ...item, displayOrder: idx + 1 }))
+    );
+
     setIsBulkDeleting(true);
     try {
-      const idsParam = encodeURIComponent(selectedArtworkIds.join(','));
+      const idsParam = encodeURIComponent(removedIds.join(','));
       const res = await fetch(`/api/admin/exhibitions/${exhibition.id}/artworks?artworkIds=${idsParam}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artworkIds: selectedArtworkIds }),
+        body: JSON.stringify({ artworkIds: removedIds }),
       });
 
       if (!res.ok) {
@@ -408,8 +424,8 @@ export function AdminExhibitionArtworksClient({
       showNotification(
         'success',
         lang === 'th'
-          ? `นำผลงาน ${count} รายการออกจากนิทรรศการเรียบร้อยแล้ว`
-          : `Successfully removed ${count} artworks from exhibition`
+          ? `นำผลงาน ${count} รายการออกและไล่เรียงลำดับใหม่เรียบร้อยแล้ว`
+          : `Successfully removed ${count} artworks and re-sequenced order!`
       );
       setSelectedArtworkIds([]);
       await refreshExhibition();
