@@ -9,7 +9,6 @@ import { Footer } from '@/components/layout/Footer';
 import {
   ArrowLeft,
   BookOpen,
-  Download,
   Printer,
   CheckCircle2,
   Edit3,
@@ -20,16 +19,11 @@ import {
   Plus,
   Trash2,
   Camera,
-  ShieldCheck,
-  FileText,
-  Loader2,
   Upload,
   LayoutGrid,
   Layers,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Maximize2,
   ZoomIn,
 } from 'lucide-react';
 import { formatDateRange, formatPrice } from '@/lib/utils';
@@ -39,16 +33,8 @@ interface CatalogViewerClientProps {
   exhibition: Exhibition;
 }
 
-export type PDFStandard = 'standard' | 'pdfx';
-
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const searchParams = useSearchParams();
-  const [isStandardModalOpen, setIsStandardModalOpen] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [pdfStandardType, setPdfStandardType] = useState<PDFStandard>('standard');
-  const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0 });
-  const [downloaded, setDownloaded] = useState(false);
-
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeerReviewModalOpen, setIsPeerReviewModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -104,146 +90,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
     };
     reader.readAsDataURL(file);
   };
-
-  // Direct File Download — html2canvas + jsPDF
-  // Captures the LIVE rendered pages from the DOM → 100% correct Thai text, fonts, colors, layout
-  const handleDirectDownloadPDF = async (standard: PDFStandard = 'standard') => {
-    try {
-      setIsStandardModalOpen(false);
-      setIsGeneratingPdf(true);
-      setPdfStandardType(standard);
-      setDownloaded(false);
-
-      const cleanSlug = exhibition.slug || 'exhibition';
-      const isPdfX = standard === 'pdfx';
-      const fileName = isPdfX
-        ? `${cleanSlug}-catalog-PDFX-1a-2001.pdf`
-        : `${cleanSlug}-catalog-Standard.pdf`;
-
-      // Dynamically import html2canvas and jsPDF (client-side only)
-      const [html2canvas, { jsPDF }] = await Promise.all([
-        import('html2canvas').then(m => m.default),
-        import('jspdf'),
-      ]);
-
-      // A4 in pt: 595.28 x 841.89 pt (72 DPI)
-      const A4_W = 595.28;
-      const A4_H = 841.89;
-
-      // Ensure main container is visible in DOM for html2canvas measurement
-      const mainEl = document.querySelector('main');
-      const prevMainDisplay = mainEl ? mainEl.style.display : '';
-      if (mainEl) {
-        mainEl.style.display = 'block';
-      }
-
-      // Get all A4 page sections from the DOM
-      const pages = Array.from(
-        document.querySelectorAll<HTMLElement>('.catalog-a4-page')
-      );
-
-      if (pages.length === 0) {
-        if (mainEl) mainEl.style.display = prevMainDisplay;
-        throw new Error('No catalog pages found in DOM');
-      }
-
-      setPdfProgress({ current: 0, total: pages.length });
-
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'pt',
-        format: 'a4',
-        compress: true,
-      });
-
-      // Add PDF/X metadata if needed
-      if (isPdfX) {
-        doc.setProperties({
-          title: `${exhibition.title} - Official Exhibition Catalog`,
-          author: exhibition.curator?.name || 'ARTVARA Curatorial Team',
-          subject: 'PDF/X-1a:2001 ISO 15930-1 Prepress Commercial Print-Ready Catalog',
-          keywords: 'ARTVARA, Exhibition Catalog, Poh-Chang, ISO 15930-1',
-          creator: 'ARTVARA Catalog Generator',
-        });
-      }
-
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i];
-
-        // Temporarily force the page to be fully visible (even if scrolled out of view)
-        const prevVisibility = page.style.visibility;
-        page.style.visibility = 'visible';
-
-        const canvas = await html2canvas(page, {
-          scale: 2.5,          // 2.5× → ~212 DPI, sharp and crisp on print
-          useCORS: true,        // Allow cross-origin images (artwork photos, flags, etc.)
-          allowTaint: false,
-          backgroundColor: '#FFFFFF',
-          logging: false,
-          imageTimeout: 15000,
-          windowWidth: page.scrollWidth,
-          windowHeight: page.scrollHeight,
-          onclone: (clonedDoc) => {
-            // In the clone, hide the floating download button and any tooltips
-            clonedDoc.querySelectorAll('.no-print').forEach((el) => {
-              (el as HTMLElement).style.display = 'none';
-            });
-          },
-        });
-
-        page.style.visibility = prevVisibility;
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-        if (i > 0) doc.addPage();
-
-        doc.addImage(
-          imgData,
-          'JPEG',
-          0,
-          0,
-          A4_W,
-          A4_H,
-          undefined,
-          'FAST'
-        );
-
-        setPdfProgress({ current: i + 1, total: pages.length });
-      }
-
-      doc.save(fileName);
-
-      setDownloaded(true);
-      setTimeout(() => setDownloaded(false), 5000);
-    } catch (err) {
-      console.error('Error generating PDF via html2canvas:', err);
-      // Fallback: open browser print dialog
-      handleSaveVectorPDF100Percent();
-    } finally {
-      const mainEl = document.querySelector('main');
-      if (mainEl && activeViewMode === 'grid3') {
-        mainEl.style.display = '';
-      }
-      setIsGeneratingPdf(false);
-      setPdfProgress({ current: 0, total: 0 });
-    }
-  };
-
-  // Auto-trigger direct download if navigated with ?export parameter
-  useEffect(() => {
-    const exportParam = searchParams.get('export');
-    if (exportParam === 'pdfx' || exportParam === 'pdfx1a') {
-      const timer = setTimeout(() => {
-        handleDirectDownloadPDF('pdfx');
-      }, 700);
-      return () => clearTimeout(timer);
-    } else if (exportParam === 'standard' || exportParam === 'pdf') {
-      const timer = setTimeout(() => {
-        handleDirectDownloadPDF('standard');
-      }, 700);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams]);
 
   const handleSaveFooterText = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -436,163 +282,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         }
       `}</style>
 
-      {/* Generating PDF Direct Download Progress Toast Overlay */}
-      {isGeneratingPdf && (
-        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl p-8 max-w-md w-full text-center space-y-4">
-            <div className="relative w-16 h-16 mx-auto flex items-center justify-center bg-[#8C6D3F]/15 rounded-full text-[#8C6D3F]">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-mono font-bold tracking-widest px-2.5 py-0.5 rounded-full bg-[#1A1918] text-[#E5D2B8] inline-block mb-1">
-                {pdfStandardType === 'pdfx' ? 'มาตรฐาน PDF/X-1a:2001 (ISO Prepress)' : 'มาตรฐาน Standard E-Catalog'}
-              </span>
-              <h3 className="font-serif text-lg font-bold text-[#1A1918] mt-1">
-                {pdfStandardType === 'pdfx'
-                  ? 'กำลังสร้างไฟล์ PDF สำหรับแท่นพิมพ์ (Prepress 300+ DPI)...'
-                  : 'กำลังสร้างไฟล์ PDF ขนาด A4 เต็มหน้า...'}
-              </h3>
-              <p className="text-xs text-[#6E685C] mt-1">
-                กำลังเรนเดอร์หน้า {pdfProgress.current} จาก {pdfProgress.total} หน้า
-              </p>
-            </div>
-            <div className="w-full bg-[#EAE4D8] h-2.5 rounded-full overflow-hidden">
-              <div
-                className="bg-[#8C6D3F] h-full transition-all duration-300"
-                style={{
-                  width: `${pdfProgress.total > 0 ? (pdfProgress.current / pdfProgress.total) * 100 : 10}%`,
-                }}
-              />
-            </div>
-            <p className="text-[11px] text-[#8C8477]">
-              ไฟล์ .pdf จะดาวน์โหลดลงเครื่องของคุณโดยตรงทันทีเมื่อสร้างเสร็จ
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 2 Print Standards Direct Download Modal (Standard vs PDF/X) */}
-      {isStandardModalOpen && (
-        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B]">
-            <button
-              onClick={() => setIsStandardModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="border-b border-[#E3DED4] pb-4 mb-6">
-              <span className="text-[10px] uppercase tracking-widest text-[#8C6D3F] font-bold block mb-1">
-                Direct PDF Download
-              </span>
-              <h3 className="font-serif text-xl font-bold text-[#1A1918]">
-                เลือกระดับมาตรฐานการดาวน์โหลด PDF
-              </h3>
-              <p className="text-xs text-[#7A7468] mt-0.5">
-                เลือกรูปแบบเพื่อดาวน์โหลดไฟล์ .pdf ลงเครื่องของคุณโดยตรงทันที
-              </p>
-            </div>
-
-            {/* 3 Download & Save Options Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Option 1: Standard Direct Download */}
-              <div
-                onClick={() => handleDirectDownloadPDF('standard')}
-                className="p-4 sm:p-5 rounded-2xl border-2 border-[#D5CEC0] bg-white hover:border-[#8C6D3F] hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between group space-y-4"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-neutral-100 text-neutral-800 border border-neutral-200">
-                      แบบที่ 1 : Standard
-                    </span>
-                    <FileText className="w-5 h-5 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
-                  </div>
-                  <h4 className="font-serif text-sm sm:text-base font-bold text-[#1A1918]">
-                    Standard E-Catalog
-                  </h4>
-                  <p className="text-[11px] text-[#6E685C] leading-relaxed">
-                    มาตรฐาน A4 ดิจิทัลทั่วไป ดาวน์โหลดไฟล์ .pdf สำเร็จรูปตรงลงเครื่องทันที เหมาะสำหรับ iPad และมือถือ
-                  </p>
-                </div>
-
-                <div className="pt-2.5 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-semibold flex items-center justify-between">
-                  <span>📥 โหลดไฟล์ Standard (.pdf)</span>
-                  <span>→</span>
-                </div>
-              </div>
-
-              {/* Option 2: PDF/X Direct Download */}
-              <div
-                onClick={() => handleDirectDownloadPDF('pdfx')}
-                className="p-4 sm:p-5 rounded-2xl border-2 border-[#C5A880] bg-gradient-to-b from-[#FAF6EE] to-white hover:border-[#8C6D3F] hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group space-y-4"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-[#1A1918] text-[#E5D2B8]">
-                      แบบที่ 2 : PDF/X
-                    </span>
-                    <ShieldCheck className="w-5 h-5 text-amber-700 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <h4 className="font-serif text-sm sm:text-base font-bold text-[#1A1918] flex items-center gap-1">
-                    <span>PDF/X (PDF/X-1a)</span>
-                    <span className="text-[9px] text-amber-700 bg-amber-100 px-1 rounded font-mono font-bold">ISO</span>
-                  </h4>
-                  <p className="text-[11px] text-[#6E685C] leading-relaxed">
-                    มาตรฐานแท่นพิมพ์สากล (ISO 15930-1) ความละเอียดสูงสุด 300+ DPI ดาวน์โหลดไฟล์ .pdf ตรงลงเครื่อง
-                  </p>
-                </div>
-
-                <div className="pt-2.5 border-t border-[#F0ECE4] text-[11px] text-amber-900 font-bold flex items-center justify-between">
-                  <span>📥 โหลดไฟล์ PDF/X (.pdf)</span>
-                  <span>→</span>
-                </div>
-              </div>
-
-              {/* Option 3: Method 2 - Native Save as PDF (Direct Browser Engine) */}
-              <div
-                onClick={() => {
-                  setIsStandardModalOpen(false);
-                  handleSaveVectorPDF100Percent();
-                }}
-                className="p-4 sm:p-5 rounded-2xl border-2 border-[#8C6D3F] bg-gradient-to-b from-[#FAF6EE] to-white hover:border-[#6B5028] hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group space-y-4 ring-2 ring-[#8C6D3F]/30"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-[#8C6D3F] text-white">
-                      แบบที่ 3 : บันทึกผ่านเบราว์เซอร์
-                    </span>
-                    <Printer className="w-5 h-5 text-[#8C6D3F] group-hover:scale-110 transition-transform" />
-                  </div>
-                  <h4 className="font-serif text-sm sm:text-base font-bold text-[#1A1918] flex items-center gap-1">
-                    <span>Native Save as PDF</span>
-                    <span className="text-[9px] text-emerald-700 bg-emerald-100 px-1 rounded font-mono font-bold">100%</span>
-                  </h4>
-                  <p className="text-[11px] text-[#6E685C] leading-relaxed">
-                    เปิดหน้าต่างพิมพ์ของเบราว์เซอร์เพื่อบันทึกเป็น PDF ตรงตามหน้าเว็บ 100% ตัวอักษรเป็น Vector แท้ ไม่แตก
-                  </p>
-                </div>
-
-                <div className="pt-2.5 border-t border-[#F0ECE4] text-[11px] text-[#8C6D3F] font-bold flex items-center justify-between">
-                  <span>🖨️ สั่งบันทึกเป็น PDF (Save as PDF)</span>
-                  <span>→</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-[#E8E2D6] flex items-center justify-between text-xs text-[#7A7468]">
-              <span>💡 เลือกรูปแบบที่ต้องการเพื่อดาวน์โหลดหรือบันทึกไฟล์ PDF ขนาด A4</span>
-              <button
-                onClick={() => setIsStandardModalOpen(false)}
-                className="px-4 py-1.5 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
-              >
-                ปิดหน้าต่าง
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Navigation Toolbar (Hidden in Print) */}
       <div className="no-print">
         <Navbar exhibition={exhibition} />
@@ -681,29 +370,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <span>🖨️ บันทึกผ่านเบราว์เซอร์ (Save as PDF)</span>
               </button>
 
-              {/* MAIN DOWNLOAD BUTTON: Opens the 3-Option Selection Modal */}
-              <button
-                onClick={() => setIsStandardModalOpen(true)}
-                disabled={isGeneratingPdf}
-                className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md transition-all active:scale-95 disabled:opacity-50"
-                title="เลือกระดับมาตรฐานการดาวน์โหลดสูจิบัตร (Standard / PDF/X / บันทึกผ่านเบราว์เซอร์)"
-              >
-                {downloaded ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                ) : isGeneratingPdf ? (
-                  <Loader2 className="w-4 h-4 text-[#C5A880] animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 text-[#C5A880]" />
-                )}
-                <span>
-                  {downloaded
-                    ? 'ดาวน์โหลดไฟล์สำเร็จแล้ว!'
-                    : isGeneratingPdf
-                    ? 'กำลังสร้างและดาวน์โหลด PDF...'
-                    : 'ดาวน์โหลดสูจิบัตร PDF'}
-                </span>
-              </button>
-            </div>
+                          </div>
           </div>
         </div>
       </div>
@@ -2072,28 +1739,15 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         })}
       </main>
 
-      {/* Floating Action Button for 100% Quick Access on any device/scroll */}
+      {/* Floating Action Button — 1-Click Vector PDF Save (Native Browser Print Engine) */}
       <div className="no-print fixed bottom-6 right-6 z-40">
         <button
-          onClick={() => setIsStandardModalOpen(true)}
-          disabled={isGeneratingPdf}
-          className="flex items-center gap-2.5 px-6 py-3.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-full font-bold text-sm shadow-2xl transition-all hover:scale-105 active:scale-95 ring-4 ring-white/50 disabled:opacity-50"
-          title="เลือกระดับมาตรฐานและดาวน์โหลดสูจิบัตร PDF"
+          onClick={handleSaveVectorPDF100Percent}
+          className="flex items-center gap-2.5 px-6 py-3.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-full font-bold text-sm shadow-2xl transition-all hover:scale-105 active:scale-95 ring-4 ring-white/50"
+          title="บันทึกสูจิบัตร A4 เป็น Vector PDF ผ่านเบราว์เซอร์ — ตัวอักษรคม 100%"
         >
-          {downloaded ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-          ) : isGeneratingPdf ? (
-            <Loader2 className="w-5 h-5 text-[#C5A880] animate-spin" />
-          ) : (
-            <Download className="w-5 h-5 text-[#C5A880]" />
-          )}
-          <span>
-            {downloaded
-              ? 'ดาวน์โหลดไฟล์สำเร็จแล้ว!'
-              : isGeneratingPdf
-              ? 'กำลังสร้างและดาวน์โหลด PDF...'
-              : '📥 ดาวน์โหลดสูจิบัตร PDF'}
-          </span>
+          <Printer className="w-5 h-5 text-[#FFFDF9]" />
+          <span>🖨️ บันทึก PDF (Vector 100%)</span>
         </button>
       </div>
 
