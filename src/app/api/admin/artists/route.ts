@@ -55,8 +55,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, email, country, flagEmoji, bio, avatarUrl, socialLinks } = body;
 
-    if (!name || !email) {
-      return NextResponse.json({ error: 'Artist Name and Email are required' }, { status: 400 });
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: 'Artist Name is required' }, { status: 400 });
+    }
+
+    let cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      const slug = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '') || `artist${Date.now()}`;
+      cleanEmail = `${slug}@artvara.gallery`;
     }
 
     const newId = `artist-${Date.now()}`;
@@ -78,7 +84,7 @@ export async function POST(req: NextRequest) {
     await db.insert(schema.users).values({
       id: newId,
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       role: 'artist',
       country: country ? country.trim() : 'Thailand',
       flagEmoji: flag,
@@ -126,11 +132,16 @@ export async function PUT(req: NextRequest) {
       await deleteFromImageKit(existing[0].avatarUrl, imageKitPrivateKey);
     }
 
+    let finalEmail = email !== undefined ? email.trim().toLowerCase() : existing[0].email;
+    if (!finalEmail || !finalEmail.includes('@')) {
+      finalEmail = existing[0].email || `${(name || existing[0].name).toLowerCase().replace(/[^a-z0-9]/g, '')}@artvara.gallery`;
+    }
+
     await db
       .update(schema.users)
       .set({
         name: name !== undefined ? name.trim() : existing[0].name,
-        email: email !== undefined ? email.trim().toLowerCase() : existing[0].email,
+        email: finalEmail,
         country: country !== undefined ? country.trim() : existing[0].country,
         flagEmoji: flagEmoji !== undefined ? flagEmoji : existing[0].flagEmoji,
         bio: bio !== undefined ? bio.trim() : existing[0].bio,

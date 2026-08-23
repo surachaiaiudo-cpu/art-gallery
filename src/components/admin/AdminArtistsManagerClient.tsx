@@ -396,7 +396,7 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanE = cleanEmail(formData.email);
+    let cleanE = cleanEmail(formData.email);
     const cleanN = cleanText(formData.name);
 
     if (!cleanN) {
@@ -404,14 +404,25 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
       return;
     }
 
+    // Auto-heal or auto-fallback email if missing or malformed (e.g. "dach.nhomall.com" or empty)
     if (!cleanE || !cleanE.includes('@') || !cleanE.includes('.')) {
-      showNotification(
-        'error',
-        lang === 'th'
-          ? 'กรุณากรอกอีเมลติดต่อที่ถูกต้อง (เช่น name@example.com)'
-          : 'Please enter a valid email address (e.g. name@example.com)'
-      );
-      return;
+      if (cleanE && cleanE.includes('.')) {
+        // e.g. "dach.nhomall.com" -> "dach.n@nhomall.com" or "dach@homall.com"
+        const lastDot = cleanE.lastIndexOf('.');
+        const beforeDot = cleanE.substring(0, lastDot);
+        const domainExt = cleanE.substring(lastDot);
+        const secondLastDot = beforeDot.lastIndexOf('.');
+        if (secondLastDot !== -1) {
+          const userPart = beforeDot.substring(0, secondLastDot);
+          const domainName = beforeDot.substring(secondLastDot + 1);
+          cleanE = `${userPart}@${domainName}${domainExt}`;
+        } else {
+          cleanE = `${beforeDot}@artvara.gallery`;
+        }
+      } else {
+        const slug = cleanN.toLowerCase().replace(/[^a-z0-9]/g, '') || `artist${Date.now()}`;
+        cleanE = `${slug}@artvara.gallery`;
+      }
     }
 
     setLoading(true);
@@ -440,7 +451,8 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
           }),
         });
 
-        if (!res.ok) throw new Error('Failed to update artist');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update artist');
         showNotification('success', lang === 'th' ? 'บันทึกข้อมูลศิลปินสำเร็จ' : 'Artist updated successfully');
         setEditingArtist(null);
       } else {
@@ -450,7 +462,8 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
           body: JSON.stringify(payload),
         });
 
-        if (!res.ok) throw new Error('Failed to create artist');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create artist');
         showNotification('success', lang === 'th' ? 'เพิ่มศิลปินใหม่เรียบร้อยแล้ว' : 'Artist created successfully');
         setIsCreateModalOpen(false);
       }
@@ -1330,16 +1343,20 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
-                    {lang === 'th' ? 'อีเมลติดต่อ' : 'Email'} <span className="text-rose-600">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A]">
+                      {lang === 'th' ? 'อีเมลติดต่อ' : 'Email'}
+                    </label>
+                    <span className="text-[10px] text-[#8C8477]">
+                      {lang === 'th' ? '(เว้นว่างได้ ระบบสร้างให้อัตโนมัติ)' : '(Optional)'}
+                    </span>
+                  </div>
                   <input
                     type="text"
                     inputMode="email"
                     autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
-                    required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: cleanEmail(e.target.value) })}
                     onPaste={(e) => {
@@ -1350,8 +1367,19 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
                       }
                     }}
                     placeholder="artist@artvara.gallery"
-                    className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-mono text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
+                    className={`w-full px-3.5 py-2 bg-white border rounded-lg text-xs font-mono text-[#1A1918] focus:outline-none focus:ring-2 ${
+                      formData.email && (!formData.email.includes('@') || !formData.email.includes('.'))
+                        ? 'border-amber-400 focus:ring-amber-500 bg-amber-50/30'
+                        : 'border-[#D5CFC3] focus:ring-[#8C6D3F]'
+                    }`}
                   />
+                  {formData.email && (!formData.email.includes('@') || !formData.email.includes('.')) && (
+                    <span className="text-[10px] text-amber-700 mt-1 block">
+                      {lang === 'th'
+                        ? '💡 แนะนำใส่ @ (เช่น dach.n@hotmail.com) หรือกดบันทึกได้เลย ระบบจะจัดรูปแบบให้อัตโนมัติ'
+                        : '💡 Note: Missing @ symbol, system will auto-format upon save.'}
+                    </span>
+                  )}
                 </div>
               </div>
 
