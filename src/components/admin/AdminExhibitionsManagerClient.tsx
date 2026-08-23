@@ -149,6 +149,7 @@ export function AdminExhibitionsManagerClient({
           name: '',
           academicTitle: '',
           institution: '',
+          currentPosition: '',
           country: 'Thailand',
           role: formData.peerReviewers.length === 0 ? 'ประธานกรรมการผู้ทรงคุณวุฒิ' : 'กรรมการผู้ทรงคุณวุฒิ',
         },
@@ -855,6 +856,21 @@ export function AdminExhibitionsManagerClient({
                                   className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs text-[#1A1918] focus:outline-none"
                                 />
                               </div>
+                            </div>
+
+                            {/* Current Position / Work */}
+                            <div>
+                              <label className="block text-[10px] font-semibold text-[#5A554A] mb-0.5 flex items-center gap-1">
+                                <span className="text-[#8C6D3F]">📌</span>
+                                {lang === 'th' ? 'การทำงาน / ตำแหน่งงานในปัจจุบัน' : 'Current Position / Work'}
+                              </label>
+                              <input
+                                type="text"
+                                value={reviewer.currentPosition || ''}
+                                onChange={(e) => handleUpdateReviewer(idx, 'currentPosition', e.target.value)}
+                                placeholder={lang === 'th' ? 'เช่น อาจารย์ประจำคณะจิตรกรรมฯ / ผู้อำนวยการหอศิลป์' : 'e.g. Associate Professor, Faculty of Painting / Gallery Director'}
+                                className="w-full px-2.5 py-1.5 bg-[#FAF8F5] border border-[#DDD6C8] rounded-lg text-xs text-[#1A1918] focus:outline-none focus:ring-1 focus:ring-[#8C6D3F]"
+                              />
                             </div>
                           </div>
                         </div>

@@ -46,6 +46,7 @@ export interface PeerReviewer {
   name: string;
   academicTitle?: string;
   institution?: string;
+  currentPosition?: string;  // การทำงาน / ตำแหน่งงานในปัจจุบัน
   country?: string;
   avatarUrl?: string;
   role?: string;

@@ -134,6 +134,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         name: '',
         academicTitle: '',
         institution: '',
+        currentPosition: '',
         country: 'Thailand',
         role: peerReviewersList.length === 0 ? 'ประธานกรรมการผู้ทรงคุณวุฒิ' : 'กรรมการผู้ทรงคุณวุฒิ',
       },
@@ -560,6 +561,21 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                                 className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD6C8] rounded-xl text-xs text-[#1A1918] focus:outline-none"
                               />
                             </div>
+                          </div>
+
+                          {/* Current Position / Work */}
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#5A554A] mb-1 flex items-center gap-1">
+                              <span className="text-[#8C6D3F]">📌</span>
+                              การทำงาน / ตำแหน่งงานในปัจจุบัน (Current Position)
+                            </label>
+                            <input
+                              type="text"
+                              value={reviewer.currentPosition || ''}
+                              onChange={(e) => handleUpdateReviewer(idx, 'currentPosition', e.target.value)}
+                              placeholder="เช่น อาจารย์ประจำคณะจิตรกรรมฯ มหาวิทยาลัยศิลปากร / ผู้อำนวยการหอศิลป์"
+                              className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#DDD6C8] rounded-xl text-xs text-[#1A1918] focus:outline-none focus:ring-1 focus:ring-[#8C6D3F]"
+                            />
                           </div>
                         </div>
                       </div>
@@ -1214,6 +1230,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                                     {[reviewer.academicTitle, reviewer.name].filter(Boolean).join(' ')}
                                   </h4>
                                 </div>
+                                {reviewer.currentPosition && (
+                                  <p className="catalog-body-th text-[10px] text-[#1A1918] font-semibold">
+                                    {reviewer.currentPosition}
+                                  </p>
+                                )}
                                 {reviewer.institution && (
                                   <p className="catalog-body-th text-[10px] text-[#555555]">
                                     {reviewer.institution}
@@ -1529,6 +1550,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                               {[reviewer.academicTitle, reviewer.name].filter(Boolean).join(' ')}
                             </h4>
                           </div>
+                          {reviewer.currentPosition && (
+                            <p className="catalog-body-th text-[10px] text-[#1A1918] font-semibold">
+                              {reviewer.currentPosition}
+                            </p>
+                          )}
                           {reviewer.institution && (
                             <p className="catalog-body-th text-[10px] text-[#555555]">
                               {reviewer.institution}
