@@ -62,7 +62,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   // Selected page index for full-screen large reader modal (null = closed)
   const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
 
-  // Keyboard navigation for large page reader modal
+  // Keyboard navigation & Ctrl+P for large page reader modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (selectedPageModalIndex === null) return;
@@ -72,6 +72,9 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         setSelectedPageModalIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
       } else if (e.key === 'ArrowRight') {
         setSelectedPageModalIndex((prev) => (prev !== null && prev < totalPages - 1 ? prev + 1 : prev));
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        handlePrintSinglePage(selectedPageModalIndex);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -181,6 +184,37 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
     }
   };
 
+  // Print Single Page (100% WYSIWYG Vector PDF Export for currently viewed page)
+  const handlePrintSinglePage = (pageIndex: number) => {
+    if (typeof document !== 'undefined') {
+      const originalTitle = document.title;
+      const cleanSlug = exhibition.slug || 'catalog';
+      const pageNum = pageIndex + 1;
+      document.title = `${cleanSlug}-Page-${pageNum}-Official-A4-Vector`;
+
+      // Mark single page for print
+      const pages = document.querySelectorAll<HTMLElement>('main .catalog-a4-page');
+      pages.forEach((page, idx) => {
+        if (idx === pageIndex) {
+          page.classList.add('print-this-page-only');
+        } else {
+          page.classList.add('print-hide-this-page');
+        }
+      });
+
+      window.print();
+
+      setTimeout(() => {
+        document.title = originalTitle;
+        pages.forEach((page) => {
+          page.classList.remove('print-this-page-only', 'print-hide-this-page');
+        });
+      }, 1500);
+    } else {
+      window.print();
+    }
+  };
+
   // 100% WYSIWYG Pure Vector PDF Export (Direct Browser Engine)
   const handleSaveVectorPDF100Percent = () => {
     if (typeof document !== 'undefined') {
@@ -249,6 +283,9 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             print-color-adjust: exact !important;
           }
           .no-print, header, footer, nav {
+            display: none !important;
+          }
+          .print-hide-this-page {
             display: none !important;
           }
           main {
@@ -1054,7 +1091,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </span>
             </div>
 
-            {/* Previous / Next Controls */}
+            {/* Center: Previous / Next Controls */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() =>
@@ -1083,8 +1120,17 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </button>
             </div>
 
-            {/* Close Button */}
+            {/* Right: Print Single Page Button & Close */}
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePrintSinglePage(selectedPageModalIndex)}
+                className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-lg text-xs font-bold shadow-md transition-all active:scale-95 ring-1 ring-white/20"
+                title={`พิมพ์เฉพาะหน้านี้ (หน้า ${selectedPageModalIndex + 1}) ออกเป็นไฟล์ PDF Vector คมชัด 100% หรือส่งออกเครื่องพิมพ์ (Ctrl+P)`}
+              >
+                <Printer className="w-4 h-4 text-[#FFFDF9]" />
+                <span>🖨️ พิมพ์หน้านี้ (หน้า {selectedPageModalIndex + 1})</span>
+              </button>
+
               <button
                 onClick={() => setSelectedPageModalIndex(null)}
                 className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
@@ -1430,6 +1476,18 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 })()
               )}
             </div>
+          </div>
+
+          {/* Floating Print Single Page Action Button inside Reader Modal */}
+          <div className="fixed bottom-6 right-6 z-30 flex items-center gap-2">
+            <button
+              onClick={() => handlePrintSinglePage(selectedPageModalIndex)}
+              className="flex items-center gap-2 px-5 py-3 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-full font-bold text-xs sm:text-sm shadow-2xl transition-all hover:scale-105 active:scale-95 ring-4 ring-white/20"
+              title={`พิมพ์เฉพาะหน้านี้ (หน้า ${selectedPageModalIndex + 1}) ออกเป็น PDF Vector`}
+            >
+              <Printer className="w-4 h-4 text-[#FFFDF9]" />
+              <span>🖨️ พิมพ์หน้านี้ (หน้า {selectedPageModalIndex + 1})</span>
+            </button>
           </div>
         </div>
       )}
