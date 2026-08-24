@@ -100,17 +100,6 @@ export async function POST(req: NextRequest) {
       cleanSlug = `${cleanSlug}-${Date.now().toString(36)}`;
     }
 
-    // Auto-link first curator if available
-    let curatorId: string | null = null;
-    const curators = await db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.role, 'curator'))
-      .limit(1);
-    if (curators.length > 0) {
-      curatorId = curators[0].id;
-    }
-
     const themeConfig = JSON.stringify({
       roomSize: roomSize || 'medium',
       enable3D: enable3D !== undefined ? Boolean(enable3D) : true,
@@ -127,7 +116,6 @@ export async function POST(req: NextRequest) {
       id: newId,
       title: title.trim(),
       slug: cleanSlug,
-      curatorId,
       curatorNote: curatorNote || '',
       bannerUrl: bannerUrl || '',
       catalogPdfUrl: `/api/exhibitions/${cleanSlug}/catalog`,

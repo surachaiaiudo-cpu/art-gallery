@@ -18,7 +18,6 @@ export const exhibitions = sqliteTable('exhibitions', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   slug: text('slug').notNull().unique(),
-  curatorId: text('curator_id').references(() => users.id, { onDelete: 'set null' }),
   curatorNote: text('curator_note'),
   bannerUrl: text('banner_url'),
   catalogPdfUrl: text('catalog_pdf_url'),
