@@ -40,15 +40,18 @@ export function DownloadCatalogPDFButton({
 
   if (variant === 'navbar') {
     return (
-      <button
-        onClick={handleNavigateToCatalog}
-        className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium tracking-wider uppercase bg-[#F2EFE9] hover:bg-[#E5DFD3] text-[#2C2925] border border-[#D0CABE] transition-all shadow-sm active:scale-95 ${className}`}
-        title="ดาวน์โหลดสูจิบัตร A4 (Standard / PDF/X-1a:2001)"
-      >
-        <Download className="w-3.5 h-3.5 text-[#8C6D3F]" />
-        <span className="hidden xs:inline">ดาวน์โหลดสูจิบัตร PDF</span>
-        <span className="xs:hidden">PDF</span>
-      </button>
+      <div className="relative group">
+        <button
+          onClick={handleNavigateToCatalog}
+          className={`p-2 rounded-full text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] transition-colors flex items-center justify-center ${className}`}
+          aria-label="ดาวน์โหลดสูจิบัตร PDF"
+        >
+          <Download className="w-4 h-4 text-[#8C6D3F]" />
+        </button>
+        <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+          ดาวน์โหลดสูจิบัตร (PDF)
+        </span>
+      </div>
     );
   }
 
