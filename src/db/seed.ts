@@ -37,6 +37,7 @@ async function seed() {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       slug TEXT UNIQUE NOT NULL,
+      curator_id TEXT REFERENCES users(id),
       curator_note TEXT,
       banner_url TEXT,
       catalog_pdf_url TEXT,
@@ -209,6 +210,7 @@ async function seed() {
       id: 'exh-01',
       title: 'The Golden Age of Ayutthaya: A Curated Collection (ยุคทองแห่งกรุงศรีอยุธยา)',
       slug: 'the-golden-age-of-ayutthaya',
+      curatorId: 'curator-1',
       curatorNote: `อยุธยา ราชธานีอันยิ่งใหญ่ของสยามประเทศระหว่างปี พ.ศ. 1893 ถึง 2310 คือประจักษ์พยานแห่งความรุ่งเรืองทางศิลปวัฒนธรรม ความศรัทธา และเส้นทางการค้าทางทะเลระดับนานาชาติ
 
 ในนิทรรศการ 'The Golden Age of Ayutthaya' หอศิลป์ ARTVARA ได้รวบรวมผลงานของศิลปินชั้นครูทั้งไทยและต่างประเทศ เพื่อถ่ายทอดจิตวิญญาณแห่งมหาเจดีย์ แม่น้ำเจ้าพระยา และความสงบนิ่งของพุทธสถาปัตยกรรมผ่านภาพจิตรกรรมสีน้ำมัน ทองคำเปลว และแสงเงา Chiaroscuro อันทรงคุณค่า`,
@@ -217,12 +219,13 @@ async function seed() {
       startDate: '2026-08-01',
       endDate: '2026-10-31',
       status: 'active' as const,
-      themeConfig: JSON.stringify({ wallTexture: 'wood-warm', wallColor: '#2B1E16', floorColor: '#E6E0D4', spotlightIntensity: 1.8 }),
+      themeConfig: JSON.stringify({ wallTexture: 'wood-warm', wallColor: '#2B1E16', floorColor: '#E6E0D4', spotlightIntensity: 1.8, enable3D: true }),
     },
     {
       id: 'exh-02',
       title: 'Siam Contemporary: Horizons of Light & Form (สยามร่วมสมัย: ขอบฟ้าแห่งแสงและรูปทรง)',
       slug: 'siam-contemporary-horizons',
+      curatorId: 'curator-2',
       curatorNote: `การสำรวจมิติใหม่ของศิลปะร่วมสมัยในเอเชียตะวันออกเฉียงใต้ ที่ผสมผสานความเรียบง่ายแบบเซน (Zen Minimalism) เข้ากับรูปทรงนามธรรมและมวลสารทางวัฒนธรรมดั้งเดิม
 
 นำเสนอบทสนทนาระหว่างศิลปินไทย ญี่ปุ่น และยุโรป ที่ร่วมกันตีความความเงียบสงบ แสงธรรมชาติ และการเปลี่ยนแปลงของสัจธรรมชีวิตผ่านสื่อผสมและงานประติมากรรมสมัยใหม่`,
@@ -231,12 +234,13 @@ async function seed() {
       startDate: '2026-11-01',
       endDate: '2027-01-31',
       status: 'active' as const,
-      themeConfig: JSON.stringify({ wallTexture: 'gallery-white', wallColor: '#1F1E1B', floorColor: '#DDD7CC', spotlightIntensity: 2.0 }),
+      themeConfig: JSON.stringify({ wallTexture: 'gallery-white', wallColor: '#1F1E1B', floorColor: '#DDD7CC', spotlightIntensity: 2.0, enable3D: true }),
     },
     {
       id: 'exh-03',
       title: 'Monsoon Whispers: Riverine Chronicles (เสียงกระซิบแห่งสายฝนและสายนที)',
       slug: 'monsoon-whispers-southeast-asia',
+      curatorId: 'curator-1',
       curatorNote: `วิถีชีวิตริมสายน้ำเจ้าพระยาและแม่น้ำโขง ภายใต้การโอบกอดของฤดูมรสุมและแสงสะท้อนแห่งธรรมชาติ
 
 นิทรรศการนี้รวบรวมผลงานภาพเขียนสีน้ำและอะคริลิกที่บันทึกความทรงจำของสายน้ำ ชุมชนริมน้ำ และพรรณไม้โบราณที่เชื่อมโยงอดีตกับปัจจุบันไว้อย่างนุ่มนวล`,
@@ -245,7 +249,7 @@ async function seed() {
       startDate: '2026-05-01',
       endDate: '2026-07-31',
       status: 'archived' as const,
-      themeConfig: JSON.stringify({ wallTexture: 'warm-stone', wallColor: '#26221D', floorColor: '#E2DBD0', spotlightIntensity: 1.6 }),
+      themeConfig: JSON.stringify({ wallTexture: 'warm-stone', wallColor: '#26221D', floorColor: '#E2DBD0', spotlightIntensity: 1.6, enable3D: true }),
     },
   ];
 

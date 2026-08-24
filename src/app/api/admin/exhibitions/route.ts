@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq, desc } from 'drizzle-orm';
@@ -137,6 +136,19 @@ export async function PUT(req: NextRequest) {
       updatedTheme = existing[0].themeConfig ? JSON.parse(existing[0].themeConfig) : {};
     } catch {}
 
+    if (body.themeConfig) {
+      try {
+        const parsedIncoming = typeof body.themeConfig === 'string' ? JSON.parse(body.themeConfig) : body.themeConfig;
+        updatedTheme = { ...updatedTheme, ...parsedIncoming };
+      } catch {}
+    }
+
+    if (body.roomShapes && Array.isArray(body.roomShapes)) {
+      updatedTheme.roomShapes = body.roomShapes;
+    }
+    if (body.lightPreset) {
+      updatedTheme.lightPreset = body.lightPreset;
+    }
     if (roomSize) {
       updatedTheme.roomSize = roomSize;
     }

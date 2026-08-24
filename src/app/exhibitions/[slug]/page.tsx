@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { getExhibitionBySlug } from '@/lib/data';
@@ -6,6 +5,8 @@ import { ExhibitionViewSwitcher } from '@/components/exhibition/ExhibitionViewSw
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function generateMetadata({
   params,

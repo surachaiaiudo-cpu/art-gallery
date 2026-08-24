@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 import React from 'react';
 import { getAllExhibitions } from '@/lib/data';
 import { HomeClient } from '@/components/home/HomeClient';

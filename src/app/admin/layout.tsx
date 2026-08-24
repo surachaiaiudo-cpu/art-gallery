@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, Palette, Eye, Inbox, FileText, ArrowLeft, Layers, Sparkles, Users, Award } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { LayoutDashboard, Palette, Eye, Inbox, FileText, ArrowLeft, Layers, Sparkles, Users, Award, Box } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function AdminLayout({
@@ -11,9 +12,11 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { lang, setLang, t } = useLanguage();
+  const pathname = usePathname();
+  const is3DStudio = pathname === '/admin/3d-studio';
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#F3EFE9] text-[#1E1D1B]">
+    <div className="h-screen w-full flex flex-col md:flex-row bg-[#F3EFE9] text-[#1E1D1B] overflow-hidden">
       {/* Sidebar */}
       <aside className="w-full md:w-64 bg-[#1A1918] text-[#D8D2C6] p-6 flex flex-col justify-between shrink-0">
         <div>
@@ -71,7 +74,15 @@ export default function AdminLayout({
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
             >
               <Sparkles className="w-4 h-4 text-[#C5A880]" />
-              <span>{lang === 'th' ? 'จัดการนิทรรศการ & ผัง 3D' : 'Exhibitions & 3D'}</span>
+              <span>{lang === 'th' ? 'จัดการนิทรรศการ' : 'Exhibitions'}</span>
+            </Link>
+
+            <Link
+              href="/admin/3d-studio"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-amber-400 bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 transition-colors font-bold shadow-sm"
+            >
+              <Box className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span>{lang === 'th' ? 'สตูดิโอ 3D Gallery' : '3D Gallery Studio'}</span>
             </Link>
 
             <Link
@@ -121,7 +132,7 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-6 sm:p-10 overflow-y-auto">
+      <main className={`flex-1 overflow-hidden ${is3DStudio ? 'p-0 h-full flex flex-col' : 'p-6 sm:p-10 overflow-y-auto'}`}>
         {children}
       </main>
     </div>

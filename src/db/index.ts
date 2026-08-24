@@ -1,4 +1,6 @@
-import { drizzle } from 'drizzle-orm/d1';
+import { drizzle as drizzleD1 } from 'drizzle-orm/d1';
+import { drizzle as drizzleLibsql } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
 import * as schema from './schema';
 
 export function getD1Binding() {
@@ -25,14 +27,33 @@ export function hasD1Binding(): boolean {
   return getD1Binding() !== null;
 }
 
+let localLibsqlDb: any = null;
+
 export function getDb() {
   const binding = getD1Binding();
-  if (!binding) return null;
-  try {
-    return drizzle(binding, { schema });
-  } catch {
-    return null;
+  if (binding) {
+    try {
+      return drizzleD1(binding, { schema });
+    } catch {}
   }
+
+  // Fallback to local SQLite when running locally
+  if (typeof process !== 'undefined' && process.cwd) {
+    if (!localLibsqlDb) {
+      try {
+        const dbPath = process.cwd() + '/art_gallery.sqlite';
+        const client = createClient({
+          url: `file:${dbPath}`,
+        });
+        localLibsqlDb = drizzleLibsql(client, { schema });
+      } catch (err) {
+        console.warn('Local SQLite init error:', err);
+      }
+    }
+    return localLibsqlDb;
+  }
+
+  return null;
 }
 
 // Safe Dynamic Proxy
