@@ -308,154 +308,191 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
           </div>
         </div>
 
-        {/* Center: Mode Switcher */}
+        {/* Center: Mode Switcher with Bubble Tooltips */}
         <div className="flex items-center bg-[#EAE6DE] p-0.5 rounded-xl border border-[#D5CFC4] text-xs font-semibold shadow-inner">
-          <button
-            onClick={() => setProjectionMode('elevation')}
-            className={`px-3 py-1 rounded-lg transition-all flex items-center space-x-1.5 ${
-              projectionMode === 'elevation'
-                ? 'bg-[#1E1D1B] text-[#FAF8F5] shadow-md font-bold'
-                : 'text-[#68635B] hover:text-[#1E1D1B]'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>รูปด้านผนัง (Elevation)</span>
-          </button>
+          <div className="relative group">
+            <button
+              onClick={() => setProjectionMode('elevation')}
+              className={`px-3 py-1 rounded-lg transition-all flex items-center space-x-1.5 ${
+                projectionMode === 'elevation'
+                  ? 'bg-[#1E1D1B] text-[#FAF8F5] shadow-md font-bold'
+                  : 'text-[#68635B] hover:text-[#1E1D1B]'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>รูปด้านผนัง (Elevation)</span>
+            </button>
+            <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              จัดวางและสลับลำดับภาพบนผนังแต่ละด้าน
+            </span>
+          </div>
 
-          <button
-            onClick={() => setProjectionMode('floorplan')}
-            className={`px-3 py-1 rounded-lg transition-all flex items-center space-x-1.5 ${
-              projectionMode === 'floorplan'
-                ? 'bg-[#1E1D1B] text-[#FAF8F5] shadow-md font-bold'
-                : 'text-[#68635B] hover:text-[#1E1D1B]'
-            }`}
-          >
-            <Compass className="w-3.5 h-3.5" />
-            <span>แปลนห้อง (Floor Plan)</span>
-          </button>
+          <div className="relative group">
+            <button
+              onClick={() => setProjectionMode('floorplan')}
+              className={`px-3 py-1 rounded-lg transition-all flex items-center space-x-1.5 ${
+                projectionMode === 'floorplan'
+                  ? 'bg-[#1E1D1B] text-[#FAF8F5] shadow-md font-bold'
+                  : 'text-[#68635B] hover:text-[#1E1D1B]'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>แปลนห้อง (Floor Plan)</span>
+            </button>
+            <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              มุมมองผังพื้น 2D Blueprint แบบสถาปัตยกรรม
+            </span>
+          </div>
         </div>
 
-        {/* Right: Actions */}
+        {/* Right: Actions with Bubble Tooltips */}
         <div className="flex items-center space-x-2">
           {selectedExhibition && (
-            <Link
-              href={`/exhibitions/${selectedExhibition.slug}?mode=3d`}
-              target="_blank"
-              className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F5F2EC] text-[#1E1D1B] border border-[#DDD7CC] text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-sm"
-              title="เปิดชมนิทรรศการ 3D ในหน้าใหม่"
-            >
-              <Eye className="w-3.5 h-3.5 text-[#8C6D3F]" />
-              <span className="hidden md:inline">เปิดดู 3D จริง</span>
-            </Link>
+            <div className="relative group">
+              <Link
+                href={`/exhibitions/${selectedExhibition.slug}?mode=3d`}
+                target="_blank"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F5F2EC] text-[#1E1D1B] border border-[#DDD7CC] text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-sm"
+              >
+                <Eye className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                <span className="hidden md:inline">เปิดดู 3D จริง</span>
+              </Link>
+              <span className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                เปิดห้องจัดแสดง 3D จริงในแท็บใหม่
+              </span>
+            </div>
           )}
 
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-3.5 py-1.5 rounded-xl bg-[#8C6D3F] hover:bg-[#785C32] text-white text-xs font-bold flex items-center space-x-1.5 shadow-md transition-all disabled:opacity-50"
-          >
-            {saveSuccess ? (
-              <>
-                <Check className="w-3.5 h-3.5" />
-                <span>บันทึกแล้ว!</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSaving ? 'กำลังบันทึก...' : 'บันทึกผัง 3D'}</span>
-              </>
-            )}
-          </button>
+          <div className="relative group">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-3.5 py-1.5 rounded-xl bg-[#8C6D3F] hover:bg-[#785C32] text-white text-xs font-bold flex items-center space-x-1.5 shadow-md transition-all disabled:opacity-50"
+            >
+              {saveSuccess ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>บันทึกแล้ว!</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSaving ? 'กำลังบันทึก...' : 'บันทึกผัง 3D'}</span>
+                </>
+              )}
+            </button>
+            <span className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              บันทึกการจัดผังและตำแหน่งภาพลงฐานข้อมูล
+            </span>
+          </div>
         </div>
       </header>
 
       {/* 2. SUB-BAR: REDESIGNED CLEAN MENU (Height 48px, Zero Scrollbars) */}
       <div className="h-12 bg-[#F0ECE1] border-b border-[#E0DBD0] px-5 flex items-center justify-between shrink-0 shadow-sm">
-        {/* Left: Rooms & Shape */}
+        {/* Left: Rooms & Shape with Bubble Tooltips */}
         <div className="flex items-center space-x-2">
           {/* Room Selector Dropdown */}
-          <div className="flex items-center space-x-1.5 text-xs bg-white px-2.5 py-1 rounded-xl border border-[#DDD7CC] shadow-sm">
-            <Building className="w-3.5 h-3.5 text-[#8C6D3F]" />
-            <span className="text-[#68635B] font-bold text-[11px]">ห้อง:</span>
-            <select
-              value={selectedRoomIndex}
-              onChange={(e) => {
-                setSelectedRoomIndex(Number(e.target.value));
-                setSelectedWallIndex(0);
-                setSelectedSlotIndex(null);
-              }}
-              className="bg-transparent text-[#1E1D1B] font-bold focus:outline-none cursor-pointer text-xs"
-            >
-              {roomConfigs.map((r, i) => (
-                <option key={i} value={i}>
-                  ห้อง #{i + 1} ({shapeLabels[r.shape] || r.shape}) • {r.slots.filter(s => s.artwork).length} ภาพ
-                </option>
-              ))}
-            </select>
+          <div className="relative group">
+            <div className="flex items-center space-x-1.5 text-xs bg-white px-2.5 py-1 rounded-xl border border-[#DDD7CC] shadow-sm">
+              <Building className="w-3.5 h-3.5 text-[#8C6D3F]" />
+              <span className="text-[#68635B] font-bold text-[11px]">ห้อง:</span>
+              <select
+                value={selectedRoomIndex}
+                onChange={(e) => {
+                  setSelectedRoomIndex(Number(e.target.value));
+                  setSelectedWallIndex(0);
+                  setSelectedSlotIndex(null);
+                }}
+                className="bg-transparent text-[#1E1D1B] font-bold focus:outline-none cursor-pointer text-xs"
+              >
+                {roomConfigs.map((r, i) => (
+                  <option key={i} value={i}>
+                    ห้อง #{i + 1} ({shapeLabels[r.shape] || r.shape}) • {r.slots.filter(s => s.artwork).length} ภาพ
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="pointer-events-none absolute -bottom-8 left-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              เลือกห้องจัดแสดงที่ต้องการจัดการ
+            </span>
           </div>
 
           <div className="h-4 w-px bg-[#DDD7CC] mx-1" />
 
           {/* Shape Dropdown */}
-          <div className="flex items-center space-x-1.5 text-xs">
-            <span className="text-[#68635B] font-medium text-[11px]">รูปทรง:</span>
-            <select
-              value={currentRoom?.shape}
-              onChange={(e) => {
-                const updated = [...roomShapes];
-                updated[selectedRoomIndex] = e.target.value as RoomShape;
-                setRoomShapes(updated);
-                setSelectedWallIndex(0);
-                setSelectedSlotIndex(null);
-              }}
-              className="bg-white text-[#8C6D3F] font-bold px-2 py-0.5 rounded-lg border border-[#D5CFC4] focus:outline-none cursor-pointer shadow-sm text-xs"
-            >
-              <option value="SQUARE">ทรงจัตุรัส (Square 22x22m)</option>
-              <option value="RECTANGLE">ทรงผืนผ้า (Rectangle 30x16m)</option>
-              <option value="L_SHAPE">ทรงตัว L (L-Shape Gallery)</option>
-              <option value="CIRCULAR">ทรงกลม (Rotunda R=12m)</option>
-            </select>
+          <div className="relative group">
+            <div className="flex items-center space-x-1.5 text-xs">
+              <span className="text-[#68635B] font-medium text-[11px]">รูปทรง:</span>
+              <select
+                value={currentRoom?.shape}
+                onChange={(e) => {
+                  const updated = [...roomShapes];
+                  updated[selectedRoomIndex] = e.target.value as RoomShape;
+                  setRoomShapes(updated);
+                  setSelectedWallIndex(0);
+                  setSelectedSlotIndex(null);
+                }}
+                className="bg-white text-[#8C6D3F] font-bold px-2 py-0.5 rounded-lg border border-[#D5CFC4] focus:outline-none cursor-pointer shadow-sm text-xs"
+              >
+                <option value="SQUARE">ทรงจัตุรัส (Square 22x22m)</option>
+                <option value="RECTANGLE">ทรงผืนผ้า (Rectangle 30x16m)</option>
+                <option value="L_SHAPE">ทรงตัว L (L-Shape Gallery)</option>
+                <option value="CIRCULAR">ทรงกลม (Rotunda R=12m)</option>
+              </select>
+            </div>
+            <span className="pointer-events-none absolute -bottom-8 left-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              เลือกสถาปัตยกรรมรูปทรงของห้องนี้
+            </span>
           </div>
 
           <div className="h-4 w-px bg-[#DDD7CC] mx-1" />
 
           {/* Light Preset Dropdown */}
-          <div className="flex items-center space-x-1.5 text-xs">
-            <Sun className="w-3.5 h-3.5 text-[#8C6D3F]" />
-            <select
-              value={lightPreset}
-              onChange={(e) => setLightPreset(e.target.value as LightPreset)}
-              className="bg-white text-[#1E1D1B] font-medium px-2 py-0.5 rounded-lg border border-[#D5CFC4] focus:outline-none cursor-pointer shadow-sm text-xs"
-              title="กำหนดระบบแสงไฟบรรยากาศประจำนิทรรศการ"
-            >
-              <option value="warm">💡 แสงอบอุ่น (Warm Museum)</option>
-              <option value="daylight">☀️ แสงธรรมชาติ (Daylight)</option>
-              <option value="dramatic">🎭 แสงดุดัน (Dramatic)</option>
-              <option value="cool">❄️ แสงโทนเย็น (Cool Minimal)</option>
-            </select>
+          <div className="relative group">
+            <div className="flex items-center space-x-1.5 text-xs">
+              <Sun className="w-3.5 h-3.5 text-[#8C6D3F]" />
+              <select
+                value={lightPreset}
+                onChange={(e) => setLightPreset(e.target.value as LightPreset)}
+                className="bg-white text-[#1E1D1B] font-medium px-2 py-0.5 rounded-lg border border-[#D5CFC4] focus:outline-none cursor-pointer shadow-sm text-xs"
+              >
+                <option value="warm">💡 Warm Museum</option>
+                <option value="daylight">☀️ Daylight</option>
+                <option value="dramatic">🎭 Dramatic</option>
+                <option value="cool">❄️ Cool Minimal</option>
+              </select>
+            </div>
+            <span className="pointer-events-none absolute -bottom-8 left-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              ปรับระบบแสงไฟบรรยากาศประจำนิทรรศการ
+            </span>
           </div>
         </div>
 
         {/* Right: Wall Tabs (Zero scrollbar, Clean compact buttons) */}
         {projectionMode === 'elevation' && (
           <div className="flex items-center space-x-1 bg-white/80 p-0.5 rounded-xl border border-[#DDD7CC] text-xs shadow-inner">
-            <span className="text-[#8C6D3F] text-[10px] px-2 font-mono font-bold whitespace-nowrap">เลือกส่วนผนัง:</span>
+            <span className="text-[#8C6D3F] text-[10px] px-2 font-mono font-bold whitespace-nowrap">ผนัง:</span>
             {wallGroups.map((w, wIdx) => (
-              <button
-                key={w.name}
-                onClick={() => {
-                  setSelectedWallIndex(wIdx);
-                  setSelectedSlotIndex(null);
-                }}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-all text-xs whitespace-nowrap ${
-                  safeWallIndex === wIdx
-                    ? 'bg-[#8C6D3F] text-white shadow-sm font-bold'
-                    : 'text-[#68635B] hover:text-[#1E1D1B] hover:bg-[#F4F1EA]'
-                }`}
-              >
-                <span>{w.shortName}</span>
-                <span className="ml-1 opacity-80 font-mono text-[10px]">({w.slots.length})</span>
-              </button>
+              <div key={w.name} className="relative group">
+                <button
+                  onClick={() => {
+                    setSelectedWallIndex(wIdx);
+                    setSelectedSlotIndex(null);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-all text-xs whitespace-nowrap ${
+                    safeWallIndex === wIdx
+                      ? 'bg-[#8C6D3F] text-white shadow-sm font-bold'
+                      : 'text-[#68635B] hover:text-[#1E1D1B] hover:bg-[#F4F1EA]'
+                  }`}
+                >
+                  <span>{w.shortName}</span>
+                  <span className="ml-1 opacity-80 font-mono text-[10px]">({w.slots.length})</span>
+                </button>
+                <span className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                  {w.name} ({w.slots.length} ผลงาน)
+                </span>
+              </div>
             ))}
           </div>
         )}

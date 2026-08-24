@@ -942,156 +942,184 @@ export function Modern3DGalleryEngine({
 
       {/* Top Header Bar Controls (Role-aware: Clean Visitor View vs Full Curator View) */}
       <header className="absolute top-3 sm:top-4 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-6 pointer-events-none gap-2">
-        <div className="flex items-center space-x-1.5 sm:space-x-3 pointer-events-auto">
+        <div className="flex items-center space-x-1.5 sm:space-x-2.5 pointer-events-auto">
           {onSwitchTo2D && (
-            <button
-              onClick={onSwitchTo2D}
-              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-white/95 hover:bg-white text-xs font-semibold text-slate-800 border border-slate-200 shadow-md flex items-center space-x-1 sm:space-x-2 transition-all active:scale-95"
-            >
-              <ChevronLeft className="w-4 h-4 text-amber-600 shrink-0" />
-              <span className="hidden sm:inline">กลับสู่มุมมอง 2D</span>
-              <span className="sm:hidden font-bold">2D</span>
-            </button>
+            <div className="relative group">
+              <button
+                onClick={onSwitchTo2D}
+                className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-white/95 hover:bg-white text-xs font-semibold text-slate-800 border border-slate-200 shadow-md flex items-center space-x-1 sm:space-x-1.5 transition-all active:scale-95"
+              >
+                <ChevronLeft className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="font-bold">2D</span>
+              </button>
+              <span className="pointer-events-none absolute -bottom-8 left-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                กลับสู่มุมมองรายการภาพ 2D
+              </span>
+            </div>
           )}
 
-          {/* Multi-Room Switcher or Single-Room Badge */}
+          {/* Multi-Room Switcher or Single-Room Badge with Bubble Tooltip */}
           {roomConfigs.length > 1 ? (
-            <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
-              <span className="text-amber-800 font-medium hidden sm:inline">ห้อง:</span>
-              <select
-                value={currentRoomIndex}
-                onChange={(e) => {
-                  const idx = Number(e.target.value);
-                  setCurrentRoomIndex(idx);
-                  setFocusedArtwork(null);
-                  setFocusedSlot(null);
-                  setWarpTarget({ x: 0, z: 4.5 });
-                }}
-                className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer text-xs"
-              >
-                {roomConfigs.map((r, i) => (
-                  <option key={i} value={i}>
-                    ห้อง #{i + 1} ({shapeTitles[r.shape] || r.shape})
-                  </option>
-                ))}
-              </select>
+            <div className="relative group">
+              <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl border border-slate-200 shadow-sm text-xs">
+                <span className="text-amber-800 font-medium hidden sm:inline">ห้อง:</span>
+                <select
+                  value={currentRoomIndex}
+                  onChange={(e) => {
+                    const idx = Number(e.target.value);
+                    setCurrentRoomIndex(idx);
+                    setFocusedArtwork(null);
+                    setFocusedSlot(null);
+                    setWarpTarget({ x: 0, z: 4.5 });
+                  }}
+                  className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer text-xs"
+                >
+                  {roomConfigs.map((r, i) => (
+                    <option key={i} value={i}>
+                      #{i + 1} {shapeTitles[r.shape] || r.shape}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                สลับห้องจัดแสดงในนิทรรศการ
+              </span>
             </div>
           ) : (
-            <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border border-slate-200 shadow-sm text-xs font-semibold text-slate-800">
+            <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl border border-slate-200 shadow-sm text-xs font-semibold text-slate-800">
               <Building className="w-3.5 h-3.5 text-amber-600 mr-1" />
               <span>ห้อง #{currentRoomIndex + 1}</span>
             </div>
           )}
 
-          {/* Ambient Museum Soundscape Audio Player (For all viewers) */}
-          <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
-            <button
-              onClick={handleToggleAudio}
-              className="flex items-center space-x-1 text-amber-900 font-semibold focus:outline-none hover:text-amber-700"
-              title={isAudioPlaying ? 'ปิดเสียงบรรยากาศ' : 'เปิดเสียงบรรยากาศ'}
-            >
-              {isAudioPlaying ? (
-                <>
-                  <Volume2 className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                  <span className="text-amber-800 hidden md:inline">เสียงบรรยากาศ</span>
-                </>
-              ) : (
-                <>
-                  <VolumeX className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="text-slate-500 hidden md:inline">เปิดเสียง</span>
-                </>
-              )}
-            </button>
-            {isAudioPlaying && (
-              <select
-                value={audioPreset}
-                onChange={(e) => {
-                  const preset = e.target.value as 'museum' | 'river' | 'piano';
-                  setAudioPreset(preset);
-                  museumAudio.startSoundscape(preset);
-                }}
-                className="bg-transparent font-medium text-slate-800 focus:outline-none cursor-pointer text-xs ml-0.5"
+          {/* Ambient Museum Soundscape Audio Player with Bubble Tooltip */}
+          <div className="relative group">
+            <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md px-2 sm:px-3 py-1.5 sm:py-2 rounded-2xl border border-slate-200 shadow-sm text-xs">
+              <button
+                onClick={handleToggleAudio}
+                className="flex items-center space-x-1 text-amber-900 font-semibold focus:outline-none hover:text-amber-700"
               >
-                <option value="museum">🏛️ หอศิลป์</option>
-                <option value="river">🌿 สายน้ำ</option>
-                <option value="piano">🎹 เปียโน</option>
-              </select>
-            )}
+                {isAudioPlaying ? (
+                  <>
+                    <Volume2 className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                    <span className="text-amber-800 hidden md:inline">ดนตรี</span>
+                  </>
+                ) : (
+                  <>
+                    <VolumeX className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="text-slate-500 hidden md:inline">เปิดเสียง</span>
+                  </>
+                )}
+              </button>
+              {isAudioPlaying && (
+                <select
+                  value={audioPreset}
+                  onChange={(e) => {
+                    const preset = e.target.value as 'museum' | 'river' | 'piano';
+                    setAudioPreset(preset);
+                    museumAudio.startSoundscape(preset);
+                  }}
+                  className="bg-transparent font-medium text-slate-800 focus:outline-none cursor-pointer text-xs ml-0.5"
+                >
+                  <option value="museum">🏛️ หอศิลป์</option>
+                  <option value="river">🌿 สายน้ำ</option>
+                  <option value="piano">🎹 เปียโน</option>
+                </select>
+              )}
+            </div>
+            <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              {isAudioPlaying ? 'เลือกแนวเพลงบรรยากาศ' : 'เปิดเสียงบรรยากาศหอศิลป์เสมือนจริง'}
+            </span>
           </div>
 
-          {/* Curator Mode Exclusive Controls (Shape & Lighting Preset) */}
+          {/* Curator Mode Exclusive Controls */}
           {isCuratorMode && (
             <>
-              {/* Light Atmosphere Preset Switcher for Curator */}
-              <div className="hidden lg:flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
-                <Sun className="w-3.5 h-3.5 text-amber-600" />
-                <select
-                  value={activeLightPreset}
-                  onChange={(e) => setUserLightPreset(e.target.value as LightPreset)}
-                  className="bg-transparent font-medium text-slate-800 focus:outline-none cursor-pointer text-xs"
-                  title="กำหนดระบบแสงไฟบรรยากาศในห้องจัดแสดง"
-                >
-                  <option value="warm">💡 แสงอบอุ่น (Warm Museum)</option>
-                  <option value="daylight">☀️ แสงธรรมชาติ (Daylight)</option>
-                  <option value="dramatic">🎭 แสงดุดัน (Dramatic)</option>
-                  <option value="cool">❄️ แสงโทนเย็น (Cool Minimal)</option>
-                </select>
+              <div className="relative group hidden lg:block">
+                <div className="flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
+                  <Sun className="w-3.5 h-3.5 text-amber-600" />
+                  <select
+                    value={activeLightPreset}
+                    onChange={(e) => setUserLightPreset(e.target.value as LightPreset)}
+                    className="bg-transparent font-medium text-slate-800 focus:outline-none cursor-pointer text-xs"
+                  >
+                    <option value="warm">💡 Warm</option>
+                    <option value="daylight">☀️ Daylight</option>
+                    <option value="dramatic">🎭 Dramatic</option>
+                    <option value="cool">❄️ Cool</option>
+                  </select>
+                </div>
+                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                  ปรับระบบแสงไฟบรรยากาศในห้อง
+                </span>
               </div>
 
-              {/* Shape Switcher */}
-              <div className="hidden lg:flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
-                <Shapes className="w-3.5 h-3.5 text-amber-600" />
-                <select
-                  value={currentRoomConfig.shape}
-                  onChange={(e) => handleChangeCurrentRoomShape(e.target.value as RoomShape)}
-                  className="bg-transparent font-bold text-amber-900 focus:outline-none cursor-pointer"
-                >
-                  <option value="SQUARE">ทรงจัตุรัส (Square)</option>
-                  <option value="RECTANGLE">ทรงผืนผ้า (Rectangle)</option>
-                  <option value="L_SHAPE">ทรงตัว L (L-Shape)</option>
-                  <option value="CIRCULAR">ทรงกลม (Rotunda)</option>
-                </select>
+              <div className="relative group hidden lg:block">
+                <div className="flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
+                  <Shapes className="w-3.5 h-3.5 text-amber-600" />
+                  <select
+                    value={currentRoomConfig.shape}
+                    onChange={(e) => handleChangeCurrentRoomShape(e.target.value as RoomShape)}
+                    className="bg-transparent font-bold text-amber-900 focus:outline-none cursor-pointer text-xs"
+                  >
+                    <option value="SQUARE">จัตุรัส</option>
+                    <option value="RECTANGLE">ผืนผ้า</option>
+                    <option value="L_SHAPE">ตัว L</option>
+                    <option value="CIRCULAR">ทรงกลม</option>
+                  </select>
+                </div>
+                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                  เปลี่ยนสถาปัตยกรรมรูปทรงห้อง
+                </span>
               </div>
             </>
           )}
         </div>
 
-        {/* Right Header Buttons */}
+        {/* Right Header Buttons with Bubble Tooltips */}
         <div className="flex items-center space-x-1 sm:space-x-2 pointer-events-auto">
-          <button
-            onClick={() => setIsGuidedTour(!isGuidedTour)}
-            className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl text-xs font-semibold flex items-center space-x-1 sm:space-x-1.5 shadow-sm border transition-all ${
-              isGuidedTour
-                ? 'bg-amber-600 text-white border-amber-600 animate-pulse'
-                : 'bg-white/95 hover:bg-white text-amber-900 border-slate-200'
-            }`}
-          >
-            {isGuidedTour ? (
-              <>
-                <Pause className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">หยุด Tour</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 text-amber-600" />
-                <span className="hidden sm:inline">Guided Tour</span>
-                <span className="sm:hidden font-bold">Tour</span>
-              </>
-            )}
-          </button>
+          <div className="relative group">
+            <button
+              onClick={() => setIsGuidedTour(!isGuidedTour)}
+              className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl text-xs font-semibold flex items-center space-x-1 sm:space-x-1.5 shadow-sm border transition-all ${
+                isGuidedTour
+                  ? 'bg-amber-600 text-white border-amber-600 animate-pulse'
+                  : 'bg-white/95 hover:bg-white text-amber-900 border-slate-200'
+              }`}
+            >
+              {isGuidedTour ? (
+                <>
+                  <Pause className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">หยุด</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="hidden sm:inline">Tour</span>
+                </>
+              )}
+            </button>
+            <span className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              {isGuidedTour ? 'หยุดการนำชมอัตโนมัติ' : 'เริ่มโหมดนำชมอัตโนมัติ (Guided Tour)'}
+            </span>
+          </div>
 
-          <button
-            onClick={() => {
-              setFocusedArtwork(null);
-              setFocusedSlot(null);
-              setWarpTarget({ x: 0, z: 4.5 });
-            }}
-            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-white/95 hover:bg-white text-slate-800 border border-slate-200 text-xs font-medium flex items-center space-x-1 sm:space-x-1.5 shadow-sm transition-all"
-            title="รีเซ็ตตำแหน่งกล้องสู่ภาพรวมห้อง"
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-            <span className="hidden sm:inline">ภาพรวม</span>
-          </button>
+          <div className="relative group">
+            <button
+              onClick={() => {
+                setFocusedArtwork(null);
+                setFocusedSlot(null);
+                setWarpTarget({ x: 0, z: 4.5 });
+              }}
+              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-white/95 hover:bg-white text-slate-800 border border-slate-200 text-xs font-medium flex items-center space-x-1 sm:space-x-1.5 shadow-sm transition-all"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+              <span className="hidden sm:inline">ภาพรวม</span>
+            </button>
+            <span className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              รีเซ็ตตำแหน่งกล้องสู่จุดศูนย์กลางห้อง
+            </span>
+          </div>
         </div>
       </header>
 

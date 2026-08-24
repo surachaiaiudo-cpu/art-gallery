@@ -33,54 +33,78 @@ export function Navbar({
             </span>
           </Link>
 
-          {/* Explicit Exit to Lobby Button */}
-          <Link
-            href="/"
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-[#EAE5DA] hover:bg-[#DDD6C8] text-[#2C2924] border border-[#D5CEC0] transition-colors shadow-sm active:scale-95 shrink-0"
-            title={t.actions.returnToLobby}
-          >
-            <Home className="w-3.5 h-3.5 text-[#8C6D3F]" />
-            <span className="hidden md:inline">{t.actions.returnToLobby}</span>
-          </Link>
+          {/* Explicit Exit to Lobby Button with Bubble Tooltip */}
+          <div className="relative group">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-[#EAE5DA] hover:bg-[#DDD6C8] text-[#2C2924] border border-[#D5CEC0] transition-all shadow-sm active:scale-95 shrink-0"
+            >
+              <Home className="w-3.5 h-3.5 text-[#8C6D3F]" />
+              <span className="hidden md:inline">{t.actions.returnToLobby}</span>
+            </Link>
+            <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              {t.actions.returnToLobby}
+            </span>
+          </div>
         </div>
 
-        {/* Center: 2D / Carousel / 3D View Switcher */}
+        {/* Center: 2D / Carousel / 3D View Switcher with Bubble Tooltips */}
         {onModeChange && (
           <div className="flex items-center bg-[#EBE8E0] p-0.5 sm:p-1 rounded-full border border-[#DDD8CD] shadow-inner shrink-0">
-            <button
-              onClick={() => onModeChange('2d')}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider transition-all duration-200 ${
-                currentMode === '2d'
-                  ? 'bg-[#1A1918] text-white shadow-sm'
-                  : 'text-[#6B655B] hover:text-[#1A1918]'
-              }`}
-            >
-              <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden xs:inline">{t.modes.grid}</span>
-            </button>
-            <button
-              onClick={() => onModeChange('carousel')}
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider transition-all duration-200 ${
-                currentMode === 'carousel'
-                  ? 'bg-[#1A1918] text-white shadow-sm'
-                  : 'text-[#6B655B] hover:text-[#1A1918]'
-              }`}
-            >
-              <GalleryHorizontal className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{t.modes.carousel}</span>
-            </button>
-            {is3DEnabled(exhibition) && (
+            {/* 2D Grid Mode */}
+            <div className="relative group">
               <button
-                onClick={() => onModeChange('3d')}
+                onClick={() => onModeChange('2d')}
                 className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider transition-all duration-200 ${
-                  currentMode === '3d'
+                  currentMode === '2d'
                     ? 'bg-[#1A1918] text-white shadow-sm'
                     : 'text-[#6B655B] hover:text-[#1A1918]'
                 }`}
               >
-                <Box className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A880]" />
-                <span>{t.modes.room3d}</span>
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">{t.modes.grid}</span>
               </button>
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                {lang === 'th' ? 'มุมมองแคตตาล็อก 2D' : '2D Grid Mode'}
+              </span>
+            </div>
+
+            {/* Carousel Mode */}
+            <div className="relative group">
+              <button
+                onClick={() => onModeChange('carousel')}
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider transition-all duration-200 ${
+                  currentMode === 'carousel'
+                    ? 'bg-[#1A1918] text-white shadow-sm'
+                    : 'text-[#6B655B] hover:text-[#1A1918]'
+                }`}
+              >
+                <GalleryHorizontal className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{t.modes.carousel}</span>
+              </button>
+              <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                {lang === 'th' ? 'มุมมองสไลด์ผลงาน' : 'Carousel Slideshow'}
+              </span>
+            </div>
+
+            {/* 3D Virtual Room Mode */}
+            {is3DEnabled(exhibition) && (
+              <div className="relative group">
+                <button
+                  onClick={() => onModeChange('3d')}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider transition-all duration-200 ${
+                    currentMode === '3d'
+                      ? 'bg-[#1A1918] text-white shadow-sm'
+                      : 'text-[#6B655B] hover:text-[#1A1918]'
+                  }`}
+                >
+                  <Box className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <span>{t.modes.room3d}</span>
+                </button>
+                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                  {lang === 'th' ? 'เดินชมห้องเสมือนจริง 3D' : '3D Virtual Room'}
+                </span>
+              </div>
             )}
           </div>
         )}
@@ -111,39 +135,54 @@ export function Navbar({
             </button>
           </div>
 
-          {/* Artists Directory Link */}
-          <Link
-            href="/artists"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold tracking-wide text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-md transition-colors"
-          >
-            <span>👨‍🎨</span>
-            <span className="hidden sm:inline">{lang === 'th' ? 'ทำเนียบศิลปิน' : 'Artists'}</span>
-          </Link>
+          {/* Artists Directory Link with Bubble Tooltip */}
+          <div className="relative group">
+            <Link
+              href="/artists"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold tracking-wide text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-full transition-colors"
+            >
+              <span>👨‍🎨</span>
+              <span className="hidden sm:inline">{lang === 'th' ? 'ทำเนียบศิลปิน' : 'Artists'}</span>
+            </Link>
+            <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              {lang === 'th' ? 'ทำเนียบศิลปินทั้งหมด' : 'Artists Directory'}
+            </span>
+          </div>
 
-          {/* Read Catalog Online */}
+          {/* Read Catalog Online with Bubble Tooltip */}
           {exhibition?.slug && (
             <>
-              <Link
-                href={`/catalog/${exhibition.slug}`}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium tracking-wide text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-md transition-colors"
-              >
-                <BookOpen className="w-3.5 h-3.5 text-[#8C6D3F]" />
-                <span>{t.actions.readCatalog}</span>
-              </Link>
+              <div className="relative group hidden md:block">
+                <Link
+                  href={`/catalog/${exhibition.slug}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium tracking-wide text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-full transition-colors"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                  <span>{t.actions.readCatalog}</span>
+                </Link>
+                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+                  {lang === 'th' ? 'อ่านสูจิบัตรดิจิทัลออนไลน์' : 'Read Digital E-Catalog'}
+                </span>
+              </div>
 
-              {/* PDF Download Button (A4 Print-Ready with 1.5 cm Margins & White Background) */}
+              {/* PDF Download Button */}
               <DownloadCatalogPDFButton exhibition={exhibition} variant="navbar" />
             </>
           )}
 
-          {/* Curator Admin Portal Link (Only for admins) */}
-          <Link
-            href="/admin"
-            className="p-2 text-[#7A746A] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-full transition-colors"
-            title="Curator Admin Portal"
-          >
-            <Shield className="w-4 h-4" />
-          </Link>
+          {/* Curator Admin Portal Link with Bubble Tooltip */}
+          <div className="relative group">
+            <Link
+              href="/admin"
+              className="p-2 text-[#7A746A] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-full transition-colors flex items-center justify-center"
+              aria-label="Curator Admin Portal"
+            >
+              <Shield className="w-4 h-4" />
+            </Link>
+            <span className="pointer-events-none absolute -bottom-8 right-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              {lang === 'th' ? 'ระบบผู้ดูแลนิทรรศการ (Admin Portal)' : 'Curator Admin Portal'}
+            </span>
+          </div>
         </div>
       </div>
     </header>
