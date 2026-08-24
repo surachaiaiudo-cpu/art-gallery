@@ -44,6 +44,17 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
   const [selectedCountry, setSelectedCountry] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'country-asc' | 'country-desc' | 'artworks-desc' | 'default'>('name-asc');
 
+  // Read URL query country on mount
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const c = params.get('country');
+      if (c) {
+        setSelectedCountry(c);
+      }
+    }
+  }, []);
+
   const countries = useMemo(() => {
     const set = new Set<string>();
     artists.forEach((a) => {
@@ -51,6 +62,11 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'th'));
   }, [artists]);
+
+  const countryArtistsList = useMemo(() => {
+    if (selectedCountry === 'all') return artists;
+    return artists.filter((a) => (a.country || 'Thailand').trim() === selectedCountry);
+  }, [artists, selectedCountry]);
 
   const filteredArtists = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -185,18 +201,43 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Country Filter */}
+            {/* Level 1: Country Dropdown */}
             <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#DDD6C8] px-3 py-2 rounded-xl text-xs">
               <Globe className="w-3.5 h-3.5 text-[#8C6D3F] shrink-0" />
               <select
                 value={selectedCountry}
                 onChange={(e) => setSelectedCountry(e.target.value)}
-                className="bg-transparent text-xs text-[#1A1918] focus:outline-none cursor-pointer font-medium max-w-[130px] sm:max-w-none"
+                className="bg-transparent text-xs text-[#1A1918] focus:outline-none cursor-pointer font-bold max-w-[130px] sm:max-w-none"
               >
-                <option value="all">{lang === 'th' ? 'ทุกสัญชาติ (All Countries)' : 'All Countries'}</option>
+                <option value="all">{lang === 'th' ? '🌐 ทุกประเทศ (All Countries)' : '🌐 All Countries'}</option>
                 {countries.map((c) => (
                   <option key={c} value={c}>
                     {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Level 2: Specific Artist Jump Dropdown */}
+            <div className="flex items-center gap-1.5 bg-[#FAF8F5] border border-[#DDD6C8] px-3 py-2 rounded-xl text-xs">
+              <span className="text-xs">👨‍🎨</span>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    window.location.href = `/artists/${e.target.value}`;
+                  }
+                }}
+                className="bg-transparent text-xs text-[#8B1B1B] focus:outline-none cursor-pointer font-semibold max-w-[150px] sm:max-w-none"
+                defaultValue=""
+              >
+                <option value="" disabled>
+                  {selectedCountry === 'all'
+                    ? (lang === 'th' ? '🎯 ไปที่ประวัติศิลปิน...' : '🎯 Jump to Artist...')
+                    : (lang === 'th' ? `🎯 ศิลปินใน ${selectedCountry}...` : `🎯 Artists in ${selectedCountry}...`)}
+                </option>
+                {countryArtistsList.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.artworkCount || 0} ผลงาน)
                   </option>
                 ))}
               </select>
@@ -208,21 +249,16 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
               <select
                 value={sortBy}
                 onChange={(e: any) => setSortBy(e.target.value)}
-                className="bg-transparent text-xs text-[#1A1918] focus:outline-none cursor-pointer font-medium max-w-[160px] sm:max-w-none"
+                className="bg-transparent text-xs text-[#1A1918] focus:outline-none cursor-pointer font-medium max-w-[140px] sm:max-w-none"
               >
-                <option value="name-asc">{lang === 'th' ? '🔤 ชื่อศิลปิน (A → Z / ก → ฮ)' : '🔤 Name (A → Z)'}</option>
-                <option value="name-desc">{lang === 'th' ? '🔤 ชื่อศิลปิน (Z → A / ฮ → ก)' : '🔤 Name (Z → A)'}</option>
-                <option value="country-asc">{lang === 'th' ? '🌐 เรียงตามประเทศ (Country A → Z)' : '🌐 Country (A → Z)'}</option>
-                <option value="country-desc">{lang === 'th' ? '🌐 เรียงตามประเทศ (Country Z → A)' : '🌐 Country (Z → A)'}</option>
-                <option value="artworks-desc">{lang === 'th' ? '🎨 จำนวนผลงาน (มาก → น้อย)' : '🎨 Most Artworks'}</option>
-                <option value="default">{lang === 'th' ? '🕒 ลำดับเดิม (Default)' : '🕒 Default'}</option>
+                <option value="name-asc">{lang === 'th' ? '🔤 ชื่อศิลปิน (A → Z)' : '🔤 Name (A → Z)'}</option>
+                <option value="name-desc">{lang === 'th' ? '🔤 ชื่อศิลปิน (Z → A)' : '🔤 Name (Z → A)'}</option>
+                <option value="country-asc">{lang === 'th' ? '🌐 ประเทศ (A → Z)' : '🌐 Country (A → Z)'}</option>
+                <option value="country-desc">{lang === 'th' ? '🌐 ประเทศ (Z → A)' : '🌐 Country (Z → A)'}</option>
+                <option value="artworks-desc">{lang === 'th' ? '🎨 จำนวนผลงาน' : '🎨 Artworks'}</option>
+                <option value="default">{lang === 'th' ? '🕒 ลำดับเดิม' : '🕒 Default'}</option>
               </select>
             </div>
-
-            {/* Total Count Badge */}
-            <span className="text-xs text-[#7A7468] font-medium hidden sm:inline px-1">
-              {lang === 'th' ? `ศิลปิน ${filteredArtists.length} ท่าน` : `${filteredArtists.length} Artists`}
-            </span>
 
             {/* View Mode Toggle Buttons */}
             <div className="flex items-center bg-[#ECE6DC] p-1 rounded-xl border border-[#DDD6C8] text-xs font-semibold">
@@ -250,6 +286,46 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Level 1 Country Quick Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            onClick={() => setSelectedCountry('all')}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              selectedCountry === 'all'
+                ? 'bg-[#8B1B1B] text-white shadow-sm font-bold'
+                : 'bg-white hover:bg-[#F2ECE0] text-[#5C5548] border border-[#DDD6C8]'
+            }`}
+          >
+            <span>🌐</span>
+            <span>{lang === 'th' ? 'ทุกประเทศ' : 'All'}</span>
+            <span className="text-[10px] opacity-80 font-mono">({artists.length})</span>
+          </button>
+
+          {countries.map((c) => {
+            const isSelected = selectedCountry === c;
+            const count = artists.filter((a) => (a.country || 'Thailand').trim() === c).length;
+            return (
+              <button
+                key={c}
+                onClick={() => setSelectedCountry(c)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-[#8B1B1B] text-white shadow-sm font-bold'
+                    : 'bg-white hover:bg-[#F2ECE0] text-[#5C5548] border border-[#DDD6C8]'
+                }`}
+              >
+                <CountryFlag country={c} size="badge" shape="circle" />
+                <span>{c}</span>
+                <span className={`text-[10px] font-mono px-1 rounded-full ${
+                  isSelected ? 'bg-white/20 text-white' : 'bg-[#EAE5DA] text-[#6E685C]'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Counter Info */}
