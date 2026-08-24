@@ -69,9 +69,10 @@ function RoomStructureMesh({
   const wallMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#F5F4EF',
+        color: '#FAF8F3',
         roughness: 0.85,
         metalness: 0.02,
+        side: THREE.DoubleSide,
         aoMap: wallAOTex || undefined,
         aoMapIntensity: 0.8,
         bumpMap: wallBumpTex || undefined,
@@ -83,9 +84,10 @@ function RoomStructureMesh({
   const floorMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#E5E1D8',
+        color: '#D8D2C5',
         roughness: 0.35,
         metalness: 0.05,
+        side: THREE.DoubleSide,
         map: terrazzoTex || undefined,
       }),
     [terrazzoTex]
@@ -94,8 +96,8 @@ function RoomStructureMesh({
   const baseboardMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#D1CCC0',
-        roughness: 0.5,
+        color: '#3E2F20',
+        roughness: 0.4,
         metalness: 0.1,
       }),
     []
@@ -772,13 +774,14 @@ export function Modern3DGalleryEngine({
         camera={{ position: [0, 1.8, 8], fov: 60 }}
         gl={{
           antialias: true,
-          alpha: true,
+          alpha: false,
           outputColorSpace: THREE.SRGBColorSpace,
           toneMapping: THREE.ACESFilmicToneMapping,
         }}
         shadows
         className="w-full h-full"
       >
+        <color attach="background" args={['#161514']} />
         <Suspense fallback={null}>
           <LightingRig
             preset={activeLightPreset}
@@ -788,31 +791,29 @@ export function Modern3DGalleryEngine({
             isInspectActive={!!focusedArtwork}
           />
 
-          {/* Render All Connected Multi-Rooms with exact morphing keys */}
-          {roomConfigs.map((config) => (
-            <group key={`room-${config.roomIndex}-${config.shape}`}>
-              <RoomStructureMesh
-                config={config}
-                terrazzoTex={terrazzoTex}
-                wallAOTex={wallAOTex}
-                wallBumpTex={wallBumpTex}
-              />
+          {/* Render Active Room with exact morphing and zero lag */}
+          <group key={`room-${currentRoomConfig.roomIndex}-${currentRoomConfig.shape}`}>
+            <RoomStructureMesh
+              config={currentRoomConfig}
+              terrazzoTex={terrazzoTex}
+              wallAOTex={wallAOTex}
+              wallBumpTex={wallBumpTex}
+            />
 
-              {/* Render Artworks in this Room */}
-              {config.slots.map((slot) => {
-                if (!slot.artwork) return null;
-                return (
-                  <Artwork3DFrame
-                    key={`art-slot-${slot.slotIndex}-${config.shape}`}
-                    slot={slot}
-                    artwork={slot.artwork}
-                    isFocused={focusedArtwork?.id === slot.artwork.id}
-                    onInspect={handleInspectArtwork}
-                  />
-                );
-              })}
-            </group>
-          ))}
+            {/* Render Artworks in Active Room (Max 20 per room) */}
+            {currentRoomConfig.slots.map((slot) => {
+              if (!slot.artwork) return null;
+              return (
+                <Artwork3DFrame
+                  key={`art-slot-${slot.slotIndex}-${currentRoomConfig.shape}`}
+                  slot={slot}
+                  artwork={slot.artwork}
+                  isFocused={focusedArtwork?.id === slot.artwork.id}
+                  onInspect={handleInspectArtwork}
+                />
+              );
+            })}
+          </group>
 
           {/* Interactive Camera Rig Controller */}
           <CameraController

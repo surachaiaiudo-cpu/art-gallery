@@ -279,25 +279,22 @@ export function Artwork3DFrame({
         </Text>
       </group>
 
-      {/* 7. Dedicated 35° Track Spotlight directly focused onto this artwork */}
+      {/* 7. Dedicated 35° Track Light Fixture Body */}
       <group position={[0, frameHeight / 2 + 1.2, 1.8]}>
-        {/* Track Light Fixture Body */}
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.08, 0.08, 0.2, 16]} />
           <meshStandardMaterial color="#1A1A1A" roughness={0.3} metalness={0.8} />
         </mesh>
 
-        <spotLight
-          ref={spotLightRef}
-          position={[0, 0, 0]}
-          intensity={hovered || isFocused ? 7.5 : 4.8}
-          angle={0.65}
-          penumbra={0.75}
-          color="#FFF7EC"
-          distance={10}
-          castShadow
-          shadow-bias={-0.0001}
-        />
+        {/* Only enable dynamic point light when focused or hovered to stay within WebGL uniform limits */}
+        {(hovered || isFocused) && (
+          <pointLight
+            position={[0, 0, 0]}
+            intensity={isFocused ? 12.0 : 6.0}
+            color="#FFF7EC"
+            distance={6}
+          />
+        )}
       </group>
 
       {/* 8. Hover Floating Prompt */}
