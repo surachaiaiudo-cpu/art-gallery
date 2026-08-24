@@ -2,7 +2,7 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq, desc } from 'drizzle-orm';
-import { getAllExhibitions } from '@/lib/data';
+import { getAllExhibitions, invalidateDataCache } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
       themeConfig,
     });
 
+    invalidateDataCache();
     return NextResponse.json({ success: true, id: newId, slug: cleanSlug });
   } catch (error) {
     console.error('Error creating exhibition:', error);
@@ -209,6 +210,7 @@ export async function PUT(req: NextRequest) {
       })
       .where(eq(schema.exhibitions.id, id));
 
+    invalidateDataCache();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating exhibition:', error);
@@ -240,6 +242,7 @@ export async function DELETE(req: NextRequest) {
     // Delete exhibition (CASCADE will automatically delete exhibition_artworks links)
     await db.delete(schema.exhibitions).where(eq(schema.exhibitions.id, id));
 
+    invalidateDataCache();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting exhibition:', error);

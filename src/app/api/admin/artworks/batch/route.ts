@@ -4,6 +4,7 @@ import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 import { getCountryFlagEmoji } from '@/lib/countryUtils';
 import { findMatchingArtist } from '@/lib/artistMatcher';
+import { invalidateDataCache } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -250,6 +251,8 @@ export async function POST(req: NextRequest) {
         }
       }
     }
+
+    invalidateDataCache();
 
     return NextResponse.json({
       success: true,

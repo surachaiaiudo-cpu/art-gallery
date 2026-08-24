@@ -2,56 +2,50 @@ import { db, schema } from '@/db';
 import { eq, desc, asc, or, and } from 'drizzle-orm';
 import { Exhibition, Artwork, User, Inquiry, WallPosition } from '@/types/exhibition';
 
-export async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition | null> {
-  try {
-    const slug = decodeURIComponent(rawSlug || '').trim();
-    const cleanSlug = slug.replace(/-+$/, '');
+// In-Memory Cache with 10s TTL to prevent Worker CPU limit exhaustion
+const cache = new Map<string, { data: any; expiry: number }>();
+const CACHE_TTL = 10000; // 10 seconds
 
-    let rawExhibitions = await db
+function getCached<T>(key: string): T | null {
+  const item = cache.get(key);
+  if (item && Date.now() < item.expiry) {
+    return item.data as T;
+  }
+  return null;
+}
+
+function setCached<T>(key: string, data: T, ttl = CACHE_TTL) {
+  cache.set(key, { data, expiry: Date.now() + ttl });
+}
+
+export function invalidateDataCache() {
+  cache.clear();
+}
+
+export async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition | null> {
+  const slug = decodeURIComponent(rawSlug || '').trim();
+  const cleanSlug = slug.replace(/-+$/, '');
+  const cacheKey = `exh_slug_${slug}`;
+
+  const cached = getCached<Exhibition>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const rawExhibitions = await db
       .select()
       .from(schema.exhibitions)
       .where(or(eq(schema.exhibitions.slug, slug), eq(schema.exhibitions.slug, cleanSlug), eq(schema.exhibitions.id, slug)))
       .limit(1);
 
     if (!rawExhibitions || rawExhibitions.length === 0) {
-      const allExhs = await db.select().from(schema.exhibitions);
-      const found = allExhs.find(
-        (e: any) =>
-          e.slug === slug ||
-          e.slug === cleanSlug ||
-          e.slug.startsWith(cleanSlug) ||
-          cleanSlug.startsWith(e.slug)
-      );
-      if (found) {
-        rawExhibitions = [found];
-      }
+      return null;
     }
 
-    if (rawExhibitions && rawExhibitions.length > 0) {
-      const exh = rawExhibitions[0];
+    const exh = rawExhibitions[0];
 
-      // Fetch the specific curator linked to this exhibition via curatorId FK
-      // Fallback: if curatorId is null, pick the first curator in the system
-      let curatorRow: User | null = null;
-      if ((exh as any).curatorId) {
-        const curatorRes = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.id, (exh as any).curatorId))
-          .limit(1);
-        curatorRow = curatorRes[0] ? (curatorRes[0] as User) : null;
-      }
-      if (!curatorRow) {
-        const fallbackCurator = await db
-          .select()
-          .from(schema.users)
-          .where(eq(schema.users.role, 'curator'))
-          .limit(1);
-        curatorRow = fallbackCurator[0] ? (fallbackCurator[0] as User) : null;
-      }
-
-      // Fetch artworks associated with this exhibition (1 query)
-      const rawLinks = await db
+    // Parallel concurrent fetch for artworks and curator
+    const [rawLinks, curators] = await Promise.all([
+      db
         .select({
           link: schema.exhibitionArtworks,
           art: schema.artworks,
@@ -61,46 +55,54 @@ export async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition |
         .innerJoin(schema.artworks, eq(schema.exhibitionArtworks.artworkId, schema.artworks.id))
         .leftJoin(schema.users, eq(schema.artworks.artistId, schema.users.id))
         .where(eq(schema.exhibitionArtworks.exhibitionId, exh.id))
-        .orderBy(asc(schema.exhibitionArtworks.displayOrder));
+        .orderBy(asc(schema.exhibitionArtworks.displayOrder)),
+      db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.role, 'curator'))
+        .limit(1),
+    ]);
 
-      const artworks: Artwork[] = rawLinks.map((item: any) => {
-        let wallPos: WallPosition | null = null;
-        if (item.link.wallPosition) {
-          try {
-            wallPos = JSON.parse(item.link.wallPosition);
-          } catch {
-            wallPos = null;
-          }
-        }
+    const mainCurator = curators[0] ? (curators[0] as User) : null;
 
-        return {
-          ...item.art,
-          displayOrder: item.link.displayOrder ?? 0,
-          wallPosition: wallPos,
-          artist: item.artist ? (item.artist as User) : null,
-        };
-      });
-
-      // Unique participating artists
-      const artistMap = new Map<string, User>();
-      for (const art of artworks) {
-        if (art.artist) {
-          artistMap.set(art.artist.id, art.artist);
+    const artworks: Artwork[] = (rawLinks || []).map((item: any) => {
+      let wallPos: WallPosition | null = null;
+      if (item.link.wallPosition) {
+        try {
+          wallPos = JSON.parse(item.link.wallPosition);
+        } catch {
+          wallPos = null;
         }
       }
 
       return {
-        ...exh,
-        artworks,
-        curator: curatorRow,
-        artists: Array.from(artistMap.values()),
+        ...item.art,
+        displayOrder: item.link.displayOrder ?? 0,
+        wallPosition: wallPos,
+        artist: item.artist ? (item.artist as User) : null,
       };
+    });
+
+    const artistMap = new Map<string, User>();
+    for (const art of artworks) {
+      if (art.artist) {
+        artistMap.set(art.artist.id, art.artist);
+      }
     }
+
+    const result: Exhibition = {
+      ...exh,
+      artworks,
+      curator: mainCurator,
+      artists: Array.from(artistMap.values()),
+    };
+
+    setCached(cacheKey, result);
+    return result;
   } catch (error) {
     console.error('Error fetching exhibition by slug from DB:', error);
+    return null;
   }
-
-  return null;
 }
 
 export async function getExhibitionById(id: string): Promise<Exhibition | null> {
@@ -121,39 +123,42 @@ export async function getExhibitionById(id: string): Promise<Exhibition | null> 
   return null;
 }
 
-// BATCH-OPTIMIZED: Fetch all exhibitions with all artworks and artists in only 3 DB queries
+// BATCH-OPTIMIZED: Fetch all exhibitions with all artworks and artists concurrently with caching
 export async function getAllExhibitions(): Promise<Exhibition[]> {
+  const cacheKey = 'all_exhibitions';
+  const cached = getCached<Exhibition[]>(cacheKey);
+  if (cached) return cached;
+
   try {
-    const list = await db
-      .select()
-      .from(schema.exhibitions)
-      .orderBy(desc(schema.exhibitions.createdAt));
+    const [list, curators, allLinks] = await Promise.all([
+      db
+        .select()
+        .from(schema.exhibitions)
+        .orderBy(desc(schema.exhibitions.createdAt)),
+      db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.role, 'curator'))
+        .limit(1),
+      db
+        .select({
+          link: schema.exhibitionArtworks,
+          art: schema.artworks,
+          artist: schema.users,
+        })
+        .from(schema.exhibitionArtworks)
+        .innerJoin(schema.artworks, eq(schema.exhibitionArtworks.artworkId, schema.artworks.id))
+        .leftJoin(schema.users, eq(schema.artworks.artistId, schema.users.id))
+        .orderBy(asc(schema.exhibitionArtworks.displayOrder)),
+    ]);
 
     if (!list || list.length === 0) return [];
 
-    // Query 2: All curators
-    const curators = await db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.role, 'curator'))
-      .limit(1);
     const mainCurator = curators[0] ? (curators[0] as User) : null;
-
-    // Query 3: All exhibition artwork links with joined artwork and artist
-    const allLinks = await db
-      .select({
-        link: schema.exhibitionArtworks,
-        art: schema.artworks,
-        artist: schema.users,
-      })
-      .from(schema.exhibitionArtworks)
-      .innerJoin(schema.artworks, eq(schema.exhibitionArtworks.artworkId, schema.artworks.id))
-      .leftJoin(schema.users, eq(schema.artworks.artistId, schema.users.id))
-      .orderBy(asc(schema.exhibitionArtworks.displayOrder));
 
     // Group artworks by exhibitionId in memory
     const exhibitionArtworksMap = new Map<string, Artwork[]>();
-    for (const item of allLinks) {
+    for (const item of allLinks || []) {
       const exhId = item.link.exhibitionId;
       if (!exhibitionArtworksMap.has(exhId)) {
         exhibitionArtworksMap.set(exhId, []);
@@ -193,6 +198,7 @@ export async function getAllExhibitions(): Promise<Exhibition[]> {
       };
     });
 
+    setCached(cacheKey, result);
     return result;
   } catch (error) {
     console.error('Error fetching exhibitions from DB:', error);
@@ -207,6 +213,10 @@ export async function getPublicExhibitions(): Promise<Exhibition[]> {
 }
 
 export async function getAllArtworks(): Promise<Artwork[]> {
+  const cacheKey = 'all_artworks';
+  const cached = getCached<Artwork[]>(cacheKey);
+  if (cached) return cached;
+
   try {
     const raw = await db
       .select({
@@ -218,16 +228,18 @@ export async function getAllArtworks(): Promise<Artwork[]> {
       .orderBy(desc(schema.artworks.createdAt));
 
     if (raw && raw.length > 0) {
-      return raw.map((r: any) => ({
+      const res = raw.map((r: any) => ({
         ...r.art,
-        artist: r.artist ? (r.artist as User) : null,
+        artist: r.artist as User,
       }));
+      setCached(cacheKey, res);
+      return res;
     }
+    return [];
   } catch (error) {
-    console.error('Error fetching all artworks from DB:', error);
+    console.error('Error fetching artworks from DB:', error);
+    return [];
   }
-
-  return [];
 }
 
 export async function getAllArtists(): Promise<User[]> {
