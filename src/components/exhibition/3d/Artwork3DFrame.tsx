@@ -327,20 +327,37 @@ export function Artwork3DFrame({
         </mesh>
       </group>
 
-      {/* 7. Dedicated 35° Track Light Fixture Body */}
-      <group position={[0, frameHeight / 2 + 1.2, 1.8]}>
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.08, 0.08, 0.2, 16]} />
-          <meshStandardMaterial color="#1A1A1A" roughness={0.3} metalness={0.8} />
+      {/* 7. Realistic Gallery Suspension System (Stainless Steel Hanging Wires & Wall Brackets) */}
+      <group position={[0, frameHeight / 2 + 0.03, 0.015]}>
+        {/* Left Brass Mounting Clip */}
+        <mesh position={[-frameWidth * 0.32, 0.03, 0]} castShadow>
+          <boxGeometry args={[0.04, 0.06, 0.03]} />
+          <meshStandardMaterial color="#8C6D3F" roughness={0.3} metalness={0.7} />
+        </mesh>
+        {/* Left Stainless Steel Suspension Cable */}
+        <mesh position={[-frameWidth * 0.32, 1.8, 0]}>
+          <cylinderGeometry args={[0.003, 0.003, 3.6, 8]} />
+          <meshStandardMaterial color="#A8A29E" roughness={0.2} metalness={0.9} />
         </mesh>
 
-        {/* Only enable dynamic point light when focused or hovered to stay within WebGL uniform limits */}
+        {/* Right Brass Mounting Clip */}
+        <mesh position={[frameWidth * 0.32, 0.03, 0]} castShadow>
+          <boxGeometry args={[0.04, 0.06, 0.03]} />
+          <meshStandardMaterial color="#8C6D3F" roughness={0.3} metalness={0.7} />
+        </mesh>
+        {/* Right Stainless Steel Suspension Cable */}
+        <mesh position={[frameWidth * 0.32, 1.8, 0]}>
+          <cylinderGeometry args={[0.003, 0.003, 3.6, 8]} />
+          <meshStandardMaterial color="#A8A29E" roughness={0.2} metalness={0.9} />
+        </mesh>
+
+        {/* Dynamic Focus / Hover Spotlight (Seamless without floating cylinder body) */}
         {(hovered || isFocused) && (
           <pointLight
-            position={[0, 0, 0]}
-            intensity={isFocused ? 12.0 : 6.0}
+            position={[0, 0.8, 1.2]}
+            intensity={isFocused ? 8.0 : 4.0}
             color="#FFF7EC"
-            distance={6}
+            distance={5}
           />
         )}
       </group>
