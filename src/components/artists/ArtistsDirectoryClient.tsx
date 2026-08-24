@@ -288,11 +288,11 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
           </div>
         </div>
 
-        {/* Clean, Modern Country Quick Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+        {/* Clean, Modern Country Quick Filter Pills (Flex Wrap - No Scrollbar) */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setSelectedCountry('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
               selectedCountry === 'all'
                 ? 'bg-[#8B1B1B] text-white shadow-sm font-bold'
                 : 'bg-white hover:bg-[#F2ECE0] text-[#5C5548] border border-[#DDD6C8]'
@@ -314,7 +314,7 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
               <button
                 key={c}
                 onClick={() => setSelectedCountry(c)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
                   isSelected
                     ? 'bg-[#8B1B1B] text-white shadow-sm font-bold'
                     : 'bg-white hover:bg-[#F2ECE0] text-[#5C5548] border border-[#DDD6C8]'

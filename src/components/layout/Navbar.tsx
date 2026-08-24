@@ -178,27 +178,27 @@ export function Navbar({
 
             {/* Level 1: Country List Dropdown */}
             {isArtistsMenuOpen && (
-              <div className="absolute top-full right-0 mt-1 w-60 bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-[#E5E0D6] py-2 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute top-full right-0 mt-1 w-56 bg-white/98 backdrop-blur-xl rounded-xl shadow-xl border border-[#E5E0D6] py-1.5 z-50 animate-in fade-in zoom-in-95">
                 {/* Top: View All Artists */}
                 <Link
                   href="/artists"
                   onClick={() => setIsArtistsMenuOpen(false)}
-                  className="flex items-center justify-between px-4 py-2 hover:bg-[#F6F3EC] text-xs font-bold text-[#8B1B1B] border-b border-[#F0ECE1] transition-colors"
+                  className="flex items-center justify-between px-3 py-2 hover:bg-[#F6F3EC] text-xs font-bold text-[#8B1B1B] border-b border-[#F0ECE1] transition-colors"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5">
                     <span>🌟</span>
-                    <span>{lang === 'th' ? 'สารบัญศิลปินทั้งหมด' : 'All Artists Directory'}</span>
+                    <span>{lang === 'th' ? 'สารบัญศิลปินทั้งหมด' : 'All Artists'}</span>
                   </span>
                   <ArrowRight className="w-3 h-3 text-[#8B1B1B]" />
                 </Link>
 
                 {/* Sub-header */}
-                <div className="px-4 py-1.5 text-[10px] font-mono uppercase tracking-wider text-[#8C8477] font-bold">
-                  {lang === 'th' ? 'แยกตามประเทศ (By Country)' : 'By Country'}
+                <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-[#8C8477] font-bold">
+                  {lang === 'th' ? 'แยกตามประเทศ' : 'By Country'}
                 </div>
 
                 {/* Country List */}
-                <div className="max-h-[300px] overflow-y-auto">
+                <div className="max-h-[280px] overflow-y-auto divide-y divide-[#FAF8F5]">
                   {groupedArtists.length > 0 ? (
                     groupedArtists.map((group) => {
                       const isSelected = hoveredCountry === group.country;
@@ -211,15 +211,15 @@ export function Navbar({
                           <Link
                             href={`/artists?country=${encodeURIComponent(group.country)}`}
                             onClick={() => setIsArtistsMenuOpen(false)}
-                            className={`flex items-center justify-between px-4 py-2 text-xs transition-colors ${
+                            className={`flex items-center justify-between px-3 py-1.5 text-xs transition-colors ${
                               isSelected ? 'bg-[#8B1B1B] text-white font-bold' : 'text-[#33302C] hover:bg-[#FAF8F5]'
                             }`}
                           >
-                            <div className="flex items-center gap-2">
-                              <CountryFlag country={group.country} size="badge" shape="circle" />
-                              <span className="truncate max-w-[120px]">{group.country}</span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CountryFlag country={group.country} size="xs" shape="rounded" />
+                              <span className="truncate text-xs">{group.country}</span>
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 shrink-0 ml-1">
                               <span
                                 className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
                                   isSelected ? 'bg-white/25 text-white' : 'bg-[#EAE5DA] text-[#6E685C]'
@@ -233,19 +233,19 @@ export function Navbar({
 
                           {/* Level 2: Submenu Flyout (Artists within this country) */}
                           {isSelected && group.artists.length > 0 && (
-                            <div className="absolute top-0 right-full mr-1.5 w-64 bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-[#E5E0D6] py-2 z-50 animate-in fade-in slide-in-from-right-2 max-h-[360px] overflow-y-auto hidden md:block">
-                              <div className="px-3.5 py-1.5 text-[11px] font-bold text-[#8B1B1B] border-b border-[#F0ECE1] flex items-center gap-2">
-                                <CountryFlag country={group.country} size="badge" shape="circle" />
-                                <span>{group.country} ({group.count} ท่าน)</span>
+                            <div className="absolute top-0 right-full mr-1 w-60 bg-white/98 backdrop-blur-xl rounded-xl shadow-xl border border-[#E5E0D6] py-1.5 z-50 animate-in fade-in slide-in-from-right-1 max-h-[320px] overflow-y-auto hidden md:block">
+                              <div className="px-3 py-1.5 text-[11px] font-bold text-[#8B1B1B] border-b border-[#F0ECE1] flex items-center gap-1.5">
+                                <CountryFlag country={group.country} size="xs" shape="rounded" />
+                                <span className="truncate">{group.country} ({group.count} ท่าน)</span>
                               </div>
                               {group.artists.map((artist) => (
                                 <Link
                                   key={artist.id}
                                   href={`/artists/${artist.id}`}
                                   onClick={() => setIsArtistsMenuOpen(false)}
-                                  className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-[#FAF6F0] text-xs transition-colors border-b border-[#FAF6F0] last:border-0"
+                                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-[#FAF6F0] text-xs transition-colors border-b border-[#FAF6F0] last:border-0"
                                 >
-                                  <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-[#DDD6C8] bg-white">
+                                  <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-[#DDD6C8] bg-white">
                                     <img
                                       src={artist.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200'}
                                       alt={artist.name}
@@ -254,7 +254,7 @@ export function Navbar({
                                   </div>
                                   <div className="flex flex-col min-w-0">
                                     <span className="font-semibold text-[#1A1918] truncate text-xs">{artist.name}</span>
-                                    <span className="text-[10px] text-[#8C6D3F] truncate">{artist.artworkCount || 0} ผลงาน</span>
+                                    <span className="text-[9px] text-[#8C6D3F] truncate">{artist.artworkCount || 0} ผลงาน</span>
                                   </div>
                                 </Link>
                               ))}
@@ -264,7 +264,7 @@ export function Navbar({
                       );
                     })
                   ) : (
-                    <div className="px-4 py-2 text-xs text-neutral-400">กำลังโหลด...</div>
+                    <div className="px-3 py-2 text-xs text-neutral-400">กำลังโหลด...</div>
                   )}
                 </div>
               </div>
