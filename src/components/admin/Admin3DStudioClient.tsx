@@ -74,6 +74,13 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
   const [lightPreset, setLightPreset] = useState<LightPreset>(
     initialThemeConfig.lightPreset || 'warm'
   );
+  const shapeLabels: Record<string, string> = {
+    SQUARE: 'จัตุรัส',
+    RECTANGLE: 'ผืนผ้า',
+    L_SHAPE: 'ตัว L',
+    CIRCULAR: 'ทรงกลม',
+  };
+
   const [artworksList, setArtworksList] = useState<Artwork[]>(
     selectedExhibition?.artworks || []
   );
@@ -366,25 +373,25 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
       <div className="h-12 bg-[#F0ECE1] border-b border-[#E0DBD0] px-5 flex items-center justify-between shrink-0 shadow-sm">
         {/* Left: Rooms & Shape */}
         <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1">
-            {roomConfigs.map((r, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  setSelectedRoomIndex(i);
-                  setSelectedWallIndex(0);
-                  setSelectedSlotIndex(null);
-                }}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
-                  selectedRoomIndex === i
-                    ? 'bg-[#1E1D1B] text-[#FAF8F5] shadow-sm'
-                    : 'bg-white text-[#57534E] border border-[#DDD7CC] hover:bg-[#FAF8F5]'
-                }`}
-              >
-                <Building className="w-3.5 h-3.5 text-[#8C6D3F]" />
-                <span>ห้อง #{i + 1}</span>
-              </button>
-            ))}
+          {/* Room Selector Dropdown */}
+          <div className="flex items-center space-x-1.5 text-xs bg-white px-2.5 py-1 rounded-xl border border-[#DDD7CC] shadow-sm">
+            <Building className="w-3.5 h-3.5 text-[#8C6D3F]" />
+            <span className="text-[#68635B] font-bold text-[11px]">ห้อง:</span>
+            <select
+              value={selectedRoomIndex}
+              onChange={(e) => {
+                setSelectedRoomIndex(Number(e.target.value));
+                setSelectedWallIndex(0);
+                setSelectedSlotIndex(null);
+              }}
+              className="bg-transparent text-[#1E1D1B] font-bold focus:outline-none cursor-pointer text-xs"
+            >
+              {roomConfigs.map((r, i) => (
+                <option key={i} value={i}>
+                  ห้อง #{i + 1} ({shapeLabels[r.shape] || r.shape}) • {r.slots.filter(s => s.artwork).length} ภาพ
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="h-4 w-px bg-[#DDD7CC] mx-1" />

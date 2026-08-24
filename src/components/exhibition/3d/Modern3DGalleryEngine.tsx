@@ -127,7 +127,7 @@ function RoomStructureMesh({
   if (config.shape === 'CIRCULAR') {
     const radius = 12;
     return (
-      <group position={[0, 0, cz]}>
+      <group position={[0, 0, 0]}>
         {/* Floor */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[radius, 64]} />
@@ -188,7 +188,7 @@ function RoomStructureMesh({
   // 2. L-SHAPE GALLERY (6 Wall Segments + L-Floor)
   if (config.shape === 'L_SHAPE') {
     return (
-      <group position={[0, 0, cz]}>
+      <group position={[0, 0, 0]}>
         {/* L-Floor Segment 1 (Main Wing: 14x20m, centered at x=-5, z=0) */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-5, 0, 0]} receiveShadow>
           <planeGeometry args={[14, 20]} />
@@ -298,7 +298,7 @@ function RoomStructureMesh({
   if (config.shape === 'RECTANGLE') {
     const w = 30, d = 16;
     return (
-      <group position={[0, 0, cz]}>
+      <group position={[0, 0, 0]}>
         {/* Floor */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[w, d]} />
@@ -384,7 +384,7 @@ function RoomStructureMesh({
   // 4. SQUARE PAVILION (22 x 22m - Default)
   const w = 22, d = 22;
   return (
-    <group position={[0, 0, cz]}>
+    <group position={[0, 0, 0]}>
       {/* Floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[w, d]} />
