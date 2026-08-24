@@ -1,9 +1,10 @@
 export const runtime = 'edge';
-export const dynamic = 'force-dynamic';
-
-import React from 'react';
+import { getAllExhibitions } from '@/lib/data';
 import { BatchImportManager } from '@/components/admin/BatchImportManager';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminImportPage() {
-  return <BatchImportManager />;
+  const exhibitions = await getAllExhibitions();
+  return <BatchImportManager exhibitions={exhibitions} />;
 }
