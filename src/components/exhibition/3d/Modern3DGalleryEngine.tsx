@@ -495,7 +495,7 @@ function CameraController({
   onClearWarp,
 }: CameraControllerProps) {
   const { camera } = useThree();
-  const targetCamPos = useRef(new THREE.Vector3(0, 1.8, 8));
+  const targetCamPos = useRef(new THREE.Vector3(0, 1.8, 4.5));
   const targetLookAt = useRef(new THREE.Vector3(0, 1.8, 0));
 
   // Handle Warp Trigger from Minimap or Room Switcher
@@ -855,7 +855,7 @@ export function Modern3DGalleryEngine({
     <div className="relative w-full h-[calc(100vh-64px)] overflow-hidden bg-[#F4F3EE] select-none text-slate-800">
       {/* 3D WebGL Canvas */}
       <Canvas
-        camera={{ position: [0, 1.8, 8], fov: 60 }}
+        camera={{ position: [0, 1.8, 4.5], fov: 60 }}
         gl={{
           antialias: true,
           alpha: false,
@@ -954,7 +954,7 @@ export function Modern3DGalleryEngine({
                   setCurrentRoomIndex(idx);
                   setFocusedArtwork(null);
                   setFocusedSlot(null);
-                  setWarpTarget({ x: 0, z: 8 });
+                  setWarpTarget({ x: 0, z: 4.5 });
                 }}
                 className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer"
               >
