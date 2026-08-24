@@ -713,11 +713,20 @@ export function BatchImportManager({
 
         if (res.ok) {
           const resultData = await res.json();
-          addLog('success', `🎉 นำเข้าข้อมูลลงฐานข้อมูลสำเร็จทั้งหมด ${resultData.count || payloadItems.length} รายการ!`);
+          const actualDbCount = typeof resultData.count === 'number' ? resultData.count : payloadItems.length;
+          successCount = actualDbCount;
+          failedCount = selectedRows.length - actualDbCount;
+          addLog('success', `🎉 บันทึกลงฐานข้อมูลสำเร็จสมบูรณ์ ${actualDbCount} รายการ!`);
+
+          if (Array.isArray(resultData.failedItems) && resultData.failedItems.length > 0) {
+            resultData.failedItems.forEach((f: any) => {
+              addLog('warn', `  ⚠️ แถวที่ ${f.index} ("${f.title}") บันทึกลงฐานข้อมูลไม่สำเร็จ: ${f.reason}`);
+            });
+          }
           if (onSuccess) onSuccess();
         } else {
-          const errData = await res.json();
-          throw new Error(errData.error || 'Database batch insertion failed');
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.details || errData.error || 'Database batch insertion failed');
         }
       } catch (dbErr: any) {
         addLog('error', `❌ ข้อผิดพลาดในการบันทึกลงฐานข้อมูล: ${dbErr.message}`);

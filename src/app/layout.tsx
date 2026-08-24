@@ -28,6 +28,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'POH-CHANG',
   },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
   icons: {
     icon: '/icons/icon-192x192.png',
     apple: '/icons/apple-touch-icon.png',

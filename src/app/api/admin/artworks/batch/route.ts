@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
     const newArtworksToInsert: any[] = [];
     const newLinksToInsert: any[] = [];
     const importedArtworks: Array<{ id: string; title: string }> = [];
+    const failedArtworks: Array<{ index: number; title: string; reason: string }> = [];
 
     const now = Date.now();
 
@@ -102,11 +103,12 @@ export async function POST(req: NextRequest) {
           });
         }
       } else {
-        artistId = `artist-${now}-${i}-${Math.random().toString(36).substring(2, 6)}`;
+        const randSuffix = Math.random().toString(36).substring(2, 7);
+        artistId = `artist-${now}-${i}-${randSuffix}`;
 
         let candidateEmail = (row.artistEmail || '').trim();
         if (!candidateEmail || existingEmails.has(candidateEmail.toLowerCase())) {
-          candidateEmail = `${artistName.toLowerCase().replace(/[^a-z0-9]+/g, '.') || 'artist'}.${now}.${i}@artvara-artists.com`;
+          candidateEmail = `artist.${now}.${i}.${randSuffix}@pohchang.gallery`;
         }
         existingEmails.add(candidateEmail.toLowerCase());
 
@@ -126,9 +128,9 @@ export async function POST(req: NextRequest) {
         candidateArtists.push(newArtistObj);
       }
 
-      const newArtId = `art-${now}-${i}`;
+      const newArtId = `art-${now}-${i}-${Math.random().toString(36).substring(2, 6)}`;
       const cleanPublicId = `artvara/batch-${newArtId}`;
-      const yearCreated = row.yearCreated ? parseInt(String(row.yearCreated), 10) || null : 2026;
+      const yearCreated = row.yearCreated ? parseInt(String(row.yearCreated), 10) || 2026 : 2026;
       const medium = (row.medium || '').trim() || 'Mixed Media';
       const dimensions = (row.dimensions || '').trim() || '100 x 100 cm.';
       const concept = (row.concept || '').trim() || null;
@@ -148,6 +150,7 @@ export async function POST(req: NextRequest) {
         imageUrl,
         price,
         status: 'available',
+        origIndex: i + 1,
       });
 
       if (targetExhibitionId) {
@@ -166,47 +169,93 @@ export async function POST(req: NextRequest) {
           }),
         });
       }
-
-      importedArtworks.push({ id: newArtId, title });
     }
 
-    // 4. INSERTS & UPDATES (Guaranteed to stay within D1 99-variable limit)
-    // 4.1 Insert Artists
+    // 4. INSERTS & UPDATES (Guaranteed to stay within D1 limit)
+    // 4.1 Insert Artists (with individual fallback)
+    const validArtistIds = new Set<string>(candidateArtists.map((a: any) => a.id));
+
     for (const artist of newArtistsToInsert) {
-      await db.insert(schema.users).values(artist);
+      try {
+        await db.insert(schema.users).values(artist);
+        validArtistIds.add(artist.id);
+      } catch (err: any) {
+        console.warn('Error inserting artist:', artist.name, err);
+        // If insert failed due to duplicate email or other reason, look up existing user
+        try {
+          const found = await db.select().from(schema.users).where(eq(schema.users.name, artist.name)).limit(1);
+          if (found && found.length > 0) {
+            validArtistIds.add(found[0].id);
+          }
+        } catch {}
+      }
+    }
+
+    // Fallback artist ID if any artist is missing
+    let fallbackArtistId = allUsers.find((u: any) => u.role === 'artist')?.id || allUsers[0]?.id;
+    if (!fallbackArtistId) {
+      try {
+        const fallbackId = `artist-main-${now}`;
+        await db.insert(schema.users).values({
+          id: fallbackId,
+          name: 'ศิลปินวิทยาลัยเพาะช่าง',
+          email: `main.artist.${now}@pohchang.gallery`,
+          role: 'artist',
+          country: 'Thailand',
+        });
+        fallbackArtistId = fallbackId;
+        validArtistIds.add(fallbackId);
+      } catch {}
     }
 
     // 4.2 Update Existing Artists (if new avatar/bio provided)
     for (const updateObj of artistsToUpdate) {
-      const updateData: any = {};
-      if (updateObj.avatarUrl) updateData.avatarUrl = updateObj.avatarUrl;
-      if (updateObj.bio) updateData.bio = updateObj.bio;
-      if (Object.keys(updateData).length > 0) {
-        await db.update(schema.users).set(updateData).where(eq(schema.users.id, updateObj.id));
-      }
+      try {
+        const updateData: any = {};
+        if (updateObj.avatarUrl) updateData.avatarUrl = updateObj.avatarUrl;
+        if (updateObj.bio) updateData.bio = updateObj.bio;
+        if (Object.keys(updateData).length > 0) {
+          await db.update(schema.users).set(updateData).where(eq(schema.users.id, updateObj.id));
+        }
+      } catch {}
     }
 
     // 4.3 Insert Artworks
     for (const art of newArtworksToInsert) {
+      const targetArtistId = validArtistIds.has(art.artistId) ? art.artistId : fallbackArtistId;
+      const { origIndex, ...artData } = art;
+      artData.artistId = targetArtistId;
+
       try {
-        await db.insert(schema.artworks).values(art);
-      } catch (artErr) {
-        console.warn('Error inserting artwork row:', art.title, artErr);
+        await db.insert(schema.artworks).values(artData);
+        importedArtworks.push({ id: artData.id, title: artData.title });
+      } catch (artErr: any) {
+        console.error('Error inserting artwork row:', artData.title, artErr);
+        failedArtworks.push({
+          index: origIndex,
+          title: artData.title,
+          reason: artErr?.message || String(artErr),
+        });
       }
     }
 
-    // 4.4 Insert Exhibition Links
+    // 4.4 Insert Exhibition Links for successfully inserted artworks
+    const successfullyInsertedArtIds = new Set(importedArtworks.map((a) => a.id));
     for (const link of newLinksToInsert) {
-      try {
-        await db.insert(schema.exhibitionArtworks).values(link);
-      } catch (linkErr) {
-        console.warn('Error linking artwork to exhibition:', link, linkErr);
+      if (successfullyInsertedArtIds.has(link.artworkId)) {
+        try {
+          await db.insert(schema.exhibitionArtworks).values(link);
+        } catch (linkErr) {
+          console.warn('Error linking artwork to exhibition:', link, linkErr);
+        }
       }
     }
 
     return NextResponse.json({
       success: true,
       count: importedArtworks.length,
+      failedCount: failedArtworks.length,
+      failedItems: failedArtworks,
       importedArtworks,
       newArtistsCount: newArtistsToInsert.length,
     });
