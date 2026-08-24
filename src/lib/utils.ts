@@ -52,29 +52,40 @@ export function formatDimensionsInCm(dimStr?: string | null, lang: string = 'th'
 }
 
 /**
- * Parses real-world physical artwork dimensions (e.g., "120 x 180 cm.", "100 x 150 cm.", "80 x 110 cm.")
- * and converts to real 3D meter units for Three.js.
+ * Parses real-world physical artwork dimensions (e.g., "120 x 180 cm.", "100 x 80 cm.", "80 x 120 cm.", "1.5 x 2.0 m")
+ * and converts to real 3D meter units for Three.js without distorting portrait/landscape aspect ratio.
  */
 export function parseArtworkDimensions(dimStr?: string | null): { widthMeters: number; heightMeters: number } {
   if (!dimStr) {
-    return { widthMeters: 1.8, heightMeters: 1.2 };
+    return { widthMeters: 1.5, heightMeters: 1.2 };
   }
 
-  const matches = dimStr.match(/(\d+(?:\.\d+)?)\s*(?:x|×|X)\s*(\d+(?:\.\d+)?)/);
+  // Look for two numbers (Width x Height or Height x Width)
+  const matches = dimStr.match(/(\d+(?:\.\d+)?)\s*(?:x|×|X|\*)\s*(\d+(?:\.\d+)?)/);
   if (matches && matches[1] && matches[2]) {
     const num1 = parseFloat(matches[1]);
     const num2 = parseFloat(matches[2]);
 
-    const heightCm = Math.min(num1, num2);
-    const widthCm = Math.max(num1, num2);
+    // Check if entered in meters (e.g. 1.2 x 1.8) or centimeters (e.g. 120 x 180)
+    let wMeters = num1 < 10 ? num1 : num1 / 100;
+    let hMeters = num2 < 10 ? num2 : num2 / 100;
 
-    const heightMeters = Math.min(Math.max(heightCm / 100, 0.4), 3.5);
-    const widthMeters = Math.min(Math.max(widthCm / 100, 0.4), 4.5);
+    // Safety bounds: minimum 0.25m (25 cm) to 6.0m (600 cm)
+    wMeters = Math.min(Math.max(wMeters, 0.25), 6.0);
+    hMeters = Math.min(Math.max(hMeters, 0.25), 6.0);
 
-    return { widthMeters, heightMeters };
+    return { widthMeters: wMeters, heightMeters: hMeters };
   }
 
-  return { widthMeters: 1.8, heightMeters: 1.2 };
+  // Single dimension fallback (e.g. "120 cm")
+  const singleMatch = dimStr.match(/(\d+(?:\.\d+)?)/);
+  if (singleMatch && singleMatch[1]) {
+    const num = parseFloat(singleMatch[1]);
+    const meters = num < 10 ? num : num / 100;
+    return { widthMeters: meters, heightMeters: meters };
+  }
+
+  return { widthMeters: 1.5, heightMeters: 1.2 };
 }
 
 /**

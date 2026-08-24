@@ -129,12 +129,10 @@ export function Artwork3DFrame({
     }
   }, []);
 
-  // Physical dimensions from metadata or standard scale
+  // Real-world physical dimensions from artwork metadata
   const dimensions = useMemo(() => {
     const parsed = parseArtworkDimensions(artwork.dimensions);
-    const widthM = Math.min(Math.max(parsed.widthMeters, 0.8), 2.4);
-    const heightM = Math.min(Math.max(parsed.heightMeters, 0.6), 2.0);
-    return { width: widthM, height: heightM };
+    return { width: parsed.widthMeters, height: parsed.heightMeters };
   }, [artwork.dimensions]);
 
   const frameWidth = dimensions.width;
