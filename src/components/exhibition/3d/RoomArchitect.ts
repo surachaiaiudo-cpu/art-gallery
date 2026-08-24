@@ -15,7 +15,8 @@ export function calculateRoomSlots(
   roomIndex: number,
   artworksForThisRoom: Artwork[] = []
 ): CalculatedArtworkSlot[] {
-  const roomCenterZ = roomIndex * -ROOM_SPACING_Z;
+  // Always center active room slots around local origin (0, 0, 0)
+  const roomCenterZ = 0;
   const wallY = EYE_LEVEL_Y;
   const wallOffset = 0.14;
   const slots: CalculatedArtworkSlot[] = [];
@@ -37,10 +38,10 @@ export function calculateRoomSlots(
       // Equiangular distribution clockwise around 360°
       const angle = i * ((Math.PI * 2) / numSlots);
       const posX = Math.sin(angle) * radius;
-      const posZ = roomCenterZ - Math.cos(angle) * radius;
+      const posZ = -Math.cos(angle) * radius;
 
-      // Mathematically guaranteed inward normal pointing to room center (0, roomCenterZ)
-      const rotY = Math.atan2(-posX, -(posZ - roomCenterZ));
+      // Mathematically guaranteed inward normal pointing to room center (0, 0)
+      const rotY = Math.atan2(-posX, -posZ);
 
       const deg = Math.round((angle * 180) / Math.PI);
       const wallName = `ส่วนโค้งวงกลม ${deg}° (Rotunda Ring Slot #${i + 1})`;
@@ -92,19 +93,19 @@ export function calculateRoomSlots(
         if (wallIdx === 0) {
           // North
           posX = -w / 2 + t * w;
-          posZ = roomCenterZ - d / 2 + wallOffset;
+          posZ = -d / 2 + wallOffset;
         } else if (wallIdx === 1) {
           // East
           posX = w / 2 - wallOffset;
-          posZ = roomCenterZ - d / 2 + t * d;
+          posZ = -d / 2 + t * d;
         } else if (wallIdx === 2) {
           // South
           posX = w / 2 - t * w;
-          posZ = roomCenterZ + d / 2 - wallOffset;
+          posZ = d / 2 - wallOffset;
         } else {
           // West
           posX = -w / 2 + wallOffset;
-          posZ = roomCenterZ + d / 2 - t * d;
+          posZ = d / 2 - t * d;
         }
 
         slots.push({
@@ -175,16 +176,16 @@ export function calculateRoomSlots(
 
         if (wallIdx === 0) {
           posX = -w / 2 + t * w;
-          posZ = roomCenterZ - d / 2 + wallOffset;
+          posZ = -d / 2 + wallOffset;
         } else if (wallIdx === 1) {
           posX = w / 2 - wallOffset;
-          posZ = roomCenterZ - d / 2 + t * d;
+          posZ = -d / 2 + t * d;
         } else if (wallIdx === 2) {
           posX = w / 2 - t * w;
-          posZ = roomCenterZ + d / 2 - wallOffset;
+          posZ = d / 2 - wallOffset;
         } else {
           posX = -w / 2 + wallOffset;
-          posZ = roomCenterZ + d / 2 - t * d;
+          posZ = d / 2 - t * d;
         }
 
         slots.push({
@@ -235,22 +236,22 @@ export function calculateRoomSlots(
 
       if (sIdx === 0) {
         posX = -12 + wallOffset;
-        posZ = roomCenterZ + 10 - t * 20;
+        posZ = 10 - t * 20;
       } else if (sIdx === 1) {
         posX = -12 + t * 14;
-        posZ = roomCenterZ - 10 + wallOffset;
+        posZ = -10 + wallOffset;
       } else if (sIdx === 2) {
         posX = 2 - wallOffset;
-        posZ = roomCenterZ - 10 + t * 12;
+        posZ = -10 + t * 12;
       } else if (sIdx === 3) {
         posX = 2 + t * 10;
-        posZ = roomCenterZ + 2 + wallOffset;
+        posZ = 2 + wallOffset;
       } else if (sIdx === 4) {
         posX = 12 - wallOffset;
-        posZ = roomCenterZ + 2 + t * 8;
+        posZ = 2 + t * 8;
       } else {
         posX = 12 - t * 24;
-        posZ = roomCenterZ + 10 - wallOffset;
+        posZ = 10 - wallOffset;
       }
 
       slots.push({
@@ -278,7 +279,10 @@ export function buildMultiRoomConfigs(
   roomShapes: RoomShape[]
 ): RoomGeometryConfig[] {
   const totalArtworks = Math.max(artworks.length, 1);
-  const totalRooms = Math.max(1, Math.ceil(totalArtworks / ARTWORKS_PER_ROOM));
+  const totalRooms = Math.max(
+    1,
+    Math.max(roomShapes.length, Math.ceil(totalArtworks / ARTWORKS_PER_ROOM))
+  );
 
   const configs: RoomGeometryConfig[] = [];
 
@@ -306,7 +310,7 @@ export function buildMultiRoomConfigs(
     configs.push({
       shape,
       roomIndex: r,
-      center: { x: 0, y: 0, z: r * -ROOM_SPACING_Z },
+      center: { x: 0, y: 0, z: 0 },
       width,
       depth,
       height: CEILING_HEIGHT,

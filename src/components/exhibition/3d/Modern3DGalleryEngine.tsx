@@ -501,18 +501,17 @@ function CameraController({
   // Handle Warp Trigger from Minimap or Room Switcher
   useEffect(() => {
     if (warpTarget) {
-      const cz = currentRoomConfig.center.z;
       camera.position.set(warpTarget.x, 1.8, warpTarget.z);
       targetCamPos.current.set(warpTarget.x, 1.8, warpTarget.z);
-      targetLookAt.current.set(warpTarget.x, 1.8, cz);
-      camera.lookAt(warpTarget.x, 1.8, cz);
+      targetLookAt.current.set(0, 1.8, 0);
+      camera.lookAt(0, 1.8, 0);
       if (controlsRef.current) {
-        controlsRef.current.target.set(warpTarget.x, 1.8, cz);
+        controlsRef.current.target.set(0, 1.8, 0);
         controlsRef.current.update();
       }
       onClearWarp();
     }
-  }, [warpTarget, onClearWarp, controlsRef, camera, currentRoomConfig.center.z]);
+  }, [warpTarget, onClearWarp, controlsRef, camera]);
 
   useFrame((state, delta) => {
     const isMoving =
@@ -584,10 +583,9 @@ function CameraController({
         // Boundary Clamp inside room
         const bX = currentRoomConfig.width / 2 - 1.2;
         const bZ = currentRoomConfig.depth / 2 - 1.2;
-        const cz = currentRoomConfig.center.z;
 
         camera.position.x = Math.max(-bX, Math.min(bX, camera.position.x));
-        camera.position.z = Math.max(cz - bZ, Math.min(cz + bZ, camera.position.z));
+        camera.position.z = Math.max(-bZ, Math.min(bZ, camera.position.z));
         camera.position.y = 1.8;
 
         if (controlsRef.current) {
@@ -871,7 +869,7 @@ export function Modern3DGalleryEngine({
         <Suspense fallback={null}>
           <LightingRig
             preset={activeLightPreset}
-            activeRoomZ={currentRoomConfig.center.z}
+            activeRoomZ={0}
             inspectLightAngle={inspectLightAngle}
             inspectLightIntensity={inspectLightIntensity}
             isInspectActive={!!focusedArtwork}
@@ -924,7 +922,7 @@ export function Modern3DGalleryEngine({
             ref={controlsRef}
             enableDamping
             dampingFactor={0.05}
-            target={[0, 1.8, currentRoomConfig.center.z]}
+            target={[0, 1.8, 0]}
             maxPolarAngle={Math.PI / 2 - 0.05}
             minDistance={1.0}
             maxDistance={25.0}
@@ -956,8 +954,7 @@ export function Modern3DGalleryEngine({
                   setCurrentRoomIndex(idx);
                   setFocusedArtwork(null);
                   setFocusedSlot(null);
-                  const targetCenterZ = idx * -ROOM_SPACING_Z;
-                  setWarpTarget({ x: 0, z: targetCenterZ + 8 });
+                  setWarpTarget({ x: 0, z: 8 });
                 }}
                 className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer"
               >
