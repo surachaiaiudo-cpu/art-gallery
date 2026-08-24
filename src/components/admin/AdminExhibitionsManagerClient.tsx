@@ -252,11 +252,11 @@ export function AdminExhibitionsManagerClient({
           'success',
           newStatus === 'active'
             ? lang === 'th'
-              ? `เปิดแสดงนิทรรศการ "${exh.title}" แล้ว`
-              : `Exhibition activated`
+              ? `🟢 เปิดแสดงนิทรรศการ "${exh.title}" แล้ว (ผู้ชมสามารถเข้าชมได้ปกติ)`
+              : `Exhibition "${exh.title}" is now Active & visible to visitors`
             : lang === 'th'
-            ? `ปิดและย้ายนิทรรศการไปยังหมวดย้อนหลังแล้ว`
-            : `Exhibition archived`
+            ? `🔒 ปิดและเก็บนิทรรศการ "${exh.title}" เข้าคลังแล้ว (ซ่อนจากผู้ชมทั่วไป)`
+            : `Exhibition "${exh.title}" is now Closed & hidden from visitors`
         );
         await refreshList();
       }
@@ -357,20 +357,28 @@ export function AdminExhibitionsManagerClient({
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                  {/* Status Badge & Toggle */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                    <button
-                      onClick={() => handleToggleStatus(exh)}
-                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold backdrop-blur shadow transition-all ${
-                        isActive
-                          ? 'bg-emerald-800/90 text-emerald-100 hover:bg-emerald-700'
-                          : 'bg-neutral-800/90 text-neutral-300 hover:bg-neutral-700'
-                      }`}
-                      title={lang === 'th' ? 'คลิกเพื่อสลับเปิด/ปิดสถานะ' : 'Click to toggle active/archived status'}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-400'}`} />
-                      <span>{isActive ? (lang === 'th' ? 'กำลังจัดแสดง (ON)' : 'Active (ON)') : (lang === 'th' ? 'นิทรรศการย้อนหลัง (OFF)' : 'Archived (OFF)')}</span>
-                    </button>
+                    {/* Status Badge & Toggle */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                      <button
+                        onClick={() => handleToggleStatus(exh)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-bold backdrop-blur-md shadow-md transition-all active:scale-95 ${
+                          isActive
+                            ? 'bg-emerald-900/95 text-emerald-100 border border-emerald-400/50 hover:bg-emerald-800'
+                            : 'bg-neutral-900/95 text-neutral-300 border border-neutral-600 hover:bg-neutral-800'
+                        }`}
+                        title={lang === 'th' ? 'คลิกเพื่อสลับเปิดแสดง / ปิดเก็บเข้าคลัง' : 'Click to toggle open/closed exhibition status'}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-400'}`} />
+                        <span>
+                          {isActive
+                            ? lang === 'th'
+                              ? '🟢 เปิดแสดง (ผู้ชมเข้าชมได้)'
+                              : '🟢 Active (Visible)'
+                            : lang === 'th'
+                            ? '🔒 ปิดการแสดง (ซ่อนเข้าคลัง)'
+                            : '🔒 Archived (Hidden)'}
+                        </span>
+                      </button>
 
                     <button
                       type="button"

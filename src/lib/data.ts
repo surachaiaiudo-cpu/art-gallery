@@ -200,6 +200,12 @@ export async function getAllExhibitions(): Promise<Exhibition[]> {
   }
 }
 
+// Fetch only active / visible exhibitions for public visitors (hides 'archived')
+export async function getPublicExhibitions(): Promise<Exhibition[]> {
+  const all = await getAllExhibitions();
+  return all.filter((e) => e.status === 'active' || e.status === 'upcoming');
+}
+
 export async function getAllArtworks(): Promise<Artwork[]> {
   try {
     const raw = await db
