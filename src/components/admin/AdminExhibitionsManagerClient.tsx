@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Exhibition, is3DEnabled, PeerReviewer, getExhibitionPeerReviewers } from '@/types/exhibition';
@@ -35,11 +35,11 @@ import {
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
 
 interface AdminExhibitionsManagerClientProps {
-  initialExhibitions: Exhibition[];
+  initialExhibitions?: Exhibition[];
 }
 
 export function AdminExhibitionsManagerClient({
-  initialExhibitions,
+  initialExhibitions = [],
 }: AdminExhibitionsManagerClientProps) {
   const { lang, t } = useLanguage();
   const [exhibitions, setExhibitions] = useState<Exhibition[]>(initialExhibitions);
@@ -47,6 +47,7 @@ export function AdminExhibitionsManagerClient({
   const [editingExhibition, setEditingExhibition] = useState<Exhibition | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fetchingList, setFetchingList] = useState(initialExhibitions.length === 0);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Form states
@@ -79,8 +80,14 @@ export function AdminExhibitionsManagerClient({
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setFetchingList(false);
     }
   };
+
+  useEffect(() => {
+    refreshList();
+  }, []);
 
   // Open Create Modal
   const handleOpenCreate = () => {
