@@ -24,6 +24,7 @@ import {
   Sparkles,
   ExternalLink,
   Info,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface AdminArtworksClientProps {
@@ -268,8 +269,16 @@ export function AdminArtworksClient({
           </p>
         </div>
 
-        {/* Save Changes Button */}
+        {/* Toolbar Buttons */}
         <div className="flex items-center gap-3">
+          <Link
+            href="/admin/import"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-[#8B1B1B] text-[#D4AF37] hover:bg-[#721515] shadow-md transition-all transform hover:-translate-y-0.5"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>{lang === 'th' ? 'นำเข้า Excel + รูปภาพ' : 'Batch Import'}</span>
+          </Link>
+
           {hasChanges && (
             <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-full animate-pulse flex items-center gap-1 border border-amber-300">
               <Sparkles className="w-3.5 h-3.5" />

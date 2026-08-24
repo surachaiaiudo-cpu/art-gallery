@@ -42,6 +42,7 @@ import {
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ImageUploadDropzone } from '@/components/ui/ImageUploadDropzone';
 import { smartDetectArtwork, parseTabularText } from '@/lib/smartParser';
+import { BatchImportManager } from '@/components/admin/BatchImportManager';
 
 interface AdminExhibitionArtworksClientProps {
   exhibition: Exhibition;
@@ -1364,172 +1365,51 @@ export function AdminExhibitionArtworksClient({
 
       {/* Batch Import Excel / CSV Modal */}
       {isBatchImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-4xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B] max-h-[90vh] flex flex-col justify-between">
-            <div>
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-[#E3DED4] pb-4 mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-800">
-                    <FileSpreadsheet className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold">
-                      {lang === 'th' ? 'ระบบนำเข้าข้อมูลแบบกลุ่ม' : 'Bulk Batch Import'}
-                    </span>
-                    <h2 className="font-serif text-2xl font-bold text-[#1A1918]">
-                      {lang === 'th' ? 'นำเข้าข้อมูลผลงานจาก Excel / CSV' : 'Import Artworks from Excel / CSV'}
-                    </h2>
-                  </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-6xl bg-[#FAF8F5] border border-[#DDD7CC] rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-8 text-[#1E1D1B] max-h-[92vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#E3DED4] pb-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-800 shadow-sm">
+                  <FileSpreadsheet className="w-5 h-5" />
                 </div>
-
-                <button
-                  onClick={() => setIsBatchImportModalOpen(false)}
-                  className="p-1.5 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA]"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Toolbar: Template download & File Upload */}
-              <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white rounded-xl border border-[#E0D9CD] mb-4">
-                <div className="text-xs text-[#5A554A]">
-                  <span className="font-bold text-[#1A1918] block mb-0.5">
-                    {lang === 'th' ? 'วิธีนำเข้าข้อมูล:' : 'How to import:'}
+                <div>
+                  <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold">
+                    {lang === 'th' ? 'ระบบนำเข้าข้อมูลแบบกลุ่ม' : 'Bulk Batch Import'}
                   </span>
-                  {lang === 'th'
-                    ? '1. คัดลอกตารางจาก Excel (Ctrl+C) แล้ววางลงในกล่องด้านล่าง หรือ 2. อัปโหลดไฟล์ .csv'
-                    : '1. Copy table from Excel (Ctrl+C) and paste below, or 2. Upload a .csv file.'}
-                </div>
-
-                <div className="flex items-center gap-2.5">
-                  <button
-                    onClick={handleDownloadSampleTemplate}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#8C6D3F] border border-[#D5CEC0] rounded-lg text-xs font-semibold transition-all shadow-sm"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'ดาวน์โหลดไฟล์แม่แบบ Excel' : 'Download Sample CSV'}</span>
-                  </button>
-
-                  <label className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold cursor-pointer transition-all shadow-sm">
-                    <Upload className="w-3.5 h-3.5 text-[#C5A880]" />
-                    <span>{lang === 'th' ? 'เลือกไฟล์ CSV' : 'Upload CSV'}</span>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".csv,.txt,.tsv"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#1A1918]">
+                    {lang === 'th' ? `นำเข้าผลงานเข้านิทรรศการ: ${exhibition.title}` : `Import Artworks into: ${exhibition.title}`}
+                  </h2>
                 </div>
               </div>
 
-              {/* Paste Box */}
-              <div className="space-y-2 mb-4">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A]">
-                  {lang === 'th'
-                    ? 'วางข้อมูลตารางจาก Excel ที่นี่ (Copy & Paste Text):'
-                    : 'Paste Excel Table Text Here:'}
-                </label>
-                <textarea
-                  rows={4}
-                  value={rawPastedText}
-                  onChange={(e) => parseExcelText(e.target.value)}
-                  placeholder={`ชื่อศิลปิน\tประเทศ\temail\tชื่อผลงาน\tเทคนิค\tขนาด\tหน่วยวัด\tconcept\tURL รูปภาพ\nสมชาย ใจเย็น\tThailand\tsomchai@gmail.com\tแสงอรุณเหนือวิหาร\tOil on Canvas\t120 x 180\tcm.\tภาพสะท้อนแสงแรก...\thttps://...`}
-                  className="w-full p-3 bg-white border border-[#D5CFC3] rounded-xl font-mono text-xs text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-emerald-700 leading-relaxed"
-                />
-              </div>
-
-              {/* Live Preview Table */}
-              {parsedRows.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-[#1A1918]">
-                    <span className="flex items-center gap-1.5 text-emerald-800">
-                      <TableIcon className="w-4 h-4" />
-                      <span>{lang === 'th' ? `ตรวจพบข้อมูลผลงานพร้อมนำเข้า (${parsedRows.length} รายการ):` : `Ready to import (${parsedRows.length} rows):`}</span>
-                    </span>
-                    <span className="text-[11px] text-[#7A7468]">
-                      {lang === 'th' ? 'ตรวจสอบความถูกต้องก่อนกดนำเข้า' : 'Preview before executing import'}
-                    </span>
-                  </div>
-
-                  <div className="max-h-[250px] overflow-x-auto overflow-y-auto border border-[#DDD6C8] rounded-xl bg-white shadow-inner">
-                    <table className="w-full text-left text-xs border-collapse min-w-[750px]">
-                      <thead className="bg-[#FAF8F5] border-b border-[#DDD6C8] sticky top-0 text-[10px] uppercase font-bold text-[#7A7468]">
-                        <tr>
-                          <th className="p-2.5 w-10 text-center">#</th>
-                          <th className="p-2.5">{lang === 'th' ? 'ศิลปิน' : 'Artist'}</th>
-                          <th className="p-2.5">{lang === 'th' ? 'ประเทศ' : 'Country'}</th>
-                          <th className="p-2.5">email</th>
-                          <th className="p-2.5">{lang === 'th' ? 'ชื่อผลงาน' : 'Title'}</th>
-                          <th className="p-2.5">{lang === 'th' ? 'เทคนิค' : 'Medium'}</th>
-                          <th className="p-2.5">{lang === 'th' ? 'ขนาด (W×H)' : 'Dimensions'}</th>
-                          <th className="p-2.5">concept</th>
-                          <th className="p-2.5">URL ภาพ</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#F0ECE4]">
-                        {parsedRows.map((row, rIdx) => (
-                          <tr key={rIdx} className="hover:bg-[#FAF8F5] transition-colors">
-                            <td className="p-2.5 font-mono text-[#8C6D3F] font-bold text-center">#{rIdx + 1}</td>
-                            <td className="p-2.5 font-semibold text-[#1A1918] max-w-[130px] truncate">
-                              {row.artistName || <span className="text-neutral-400 italic">—</span>}
-                            </td>
-                            <td className="p-2.5 text-[#5A554A] max-w-[90px] truncate">
-                              {row.artistCountry || <span className="text-neutral-400 italic">—</span>}
-                            </td>
-                            <td className="p-2.5 font-mono text-[11px] text-[#7A7468] max-w-[120px] truncate">
-                              {(row as any).artistEmail || <span className="text-neutral-400 italic">—</span>}
-                            </td>
-                            <td className="p-2.5 font-serif font-bold text-[#8C6D3F] max-w-[140px] truncate">
-                              {row.title || <span className="text-neutral-400 font-sans font-normal italic">—</span>}
-                            </td>
-                            <td className="p-2.5 text-[#7A7468] max-w-[110px] truncate">
-                              {row.medium || <span className="text-neutral-400 italic">—</span>}
-                            </td>
-                            <td className="p-2.5 font-mono text-[11px] text-emerald-800 font-semibold max-w-[110px] truncate">
-                              {row.dimensions || <span className="text-neutral-400 font-normal italic">—</span>}
-                            </td>
-                            <td className="p-2.5 text-[#5A554A] max-w-[150px] truncate">
-                              {row.concept || <span className="text-neutral-400 italic">—</span>}
-                            </td>
-                            <td className="p-2.5 font-mono text-[10px] text-blue-600 max-w-[120px] truncate">
-                              {row.imageUrl || <span className="text-neutral-400 italic">—</span>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setIsBatchImportModalOpen(false)}
+                className="p-2 rounded-full text-[#827D72] hover:text-[#1E1D1B] hover:bg-[#EAE5DA] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Bottom Actions */}
-            <div className="pt-4 border-t border-[#E3DED4] flex items-center justify-between mt-4">
-              <span className="text-xs text-[#7A7468]">
-                {lang === 'th' ? 'ระบบจะสร้างข้อมูลศิลปินและจัดผัง 3D เริ่มต้นให้อัตโนมัติ' : 'Artists and 3D wall coordinates will be generated automatically.'}
-              </span>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsBatchImportModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[#6E685C] hover:text-[#1A1918]"
-                >
-                  {t.inquiryModal.cancel}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExecuteBatchImport}
-                  disabled={parsedRows.length === 0 || loading}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all disabled:opacity-50 active:scale-95"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>{loading ? (lang === 'th' ? 'กำลังนำเข้าข้อมูล...' : 'Importing...') : (lang === 'th' ? `นำเข้าทั้งหมด (${parsedRows.length} ชิ้น)` : `Import All (${parsedRows.length})`)}</span>
-                </button>
-              </div>
+            {/* Batch Importer Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+              <BatchImportManager
+                initialExhibitionId={exhibition.id}
+                isModalMode={true}
+                onSuccess={() => {
+                  showNotification(
+                    'success',
+                    lang === 'th'
+                      ? 'นำเข้าข้อมูลผลงานและศิลปินเข้านิทรรศการสำเร็จเรียบร้อยแล้ว'
+                      : 'Imported artworks and artists successfully!'
+                  );
+                  setTimeout(() => {
+                    setIsBatchImportModalOpen(false);
+                    window.location.reload();
+                  }, 1200);
+                }}
+                onClose={() => setIsBatchImportModalOpen(false)}
+              />
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
+import { eq } from 'drizzle-orm';
 import { getCountryFlagEmoji } from '@/lib/countryUtils';
 import { findMatchingArtist } from '@/lib/artistMatcher';
 
@@ -11,11 +12,14 @@ interface BatchArtworkRow {
   artistName?: string;
   artistCountry?: string;
   artistEmail?: string;
+  artistAvatarUrl?: string;
+  artistBio?: string;
   medium?: string;
   dimensions?: string;
   yearCreated?: number | string;
   concept?: string;
   imageUrl: string;
+  price?: number | string;
 }
 
 export async function POST(req: NextRequest) {
@@ -28,7 +32,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Fetch all existing users and maintain dynamic candidate list
-    const allUsers = await db.select().from(schema.users);
+    const rawUsers = await db.select().from(schema.users);
+    const allUsers: any[] = Array.isArray(rawUsers) ? rawUsers : ((rawUsers as any)?.results || (rawUsers as any)?.rows || []);
     const candidateArtists: any[] = allUsers.filter((u: any) => u.role !== 'curator');
     const existingEmails = new Set<string>();
 
@@ -40,14 +45,16 @@ export async function POST(req: NextRequest) {
     let targetExhibitionId: string | undefined = exhibitionId;
     let maxOrder = 0;
     if (exhibitionId) {
-      const allExhibitions = await db.select().from(schema.exhibitions);
+      const rawExhibitions = await db.select().from(schema.exhibitions);
+      const allExhibitions: any[] = Array.isArray(rawExhibitions) ? rawExhibitions : ((rawExhibitions as any)?.results || (rawExhibitions as any)?.rows || []);
       const existingExh = allExhibitions.find((e: any) => e.id === exhibitionId);
       if (existingExh) {
         targetExhibitionId = existingExh.id;
       }
 
       if (targetExhibitionId) {
-        const existingArtworks = await db.select().from(schema.exhibitionArtworks);
+        const rawArtworks = await db.select().from(schema.exhibitionArtworks);
+        const existingArtworks: any[] = Array.isArray(rawArtworks) ? rawArtworks : ((rawArtworks as any)?.results || (rawArtworks as any)?.rows || []);
         const exhArtworks = existingArtworks.filter((ea: any) => ea.exhibitionId === targetExhibitionId);
         for (const row of exhArtworks) {
           if (row.displayOrder && row.displayOrder > maxOrder) {
@@ -58,6 +65,7 @@ export async function POST(req: NextRequest) {
     }
 
     const newArtistsToInsert: any[] = [];
+    const artistsToUpdate: Array<{ id: string; avatarUrl?: string; bio?: string }> = [];
     const newArtworksToInsert: any[] = [];
     const newLinksToInsert: any[] = [];
     const importedArtworks: Array<{ id: string; title: string }> = [];
@@ -84,6 +92,15 @@ export async function POST(req: NextRequest) {
 
       if (matchedArtist) {
         artistId = matchedArtist.id;
+        // If avatar provided and matched artist lacks avatar, queue update
+        if (row.artistAvatarUrl && !matchedArtist.avatarUrl) {
+          matchedArtist.avatarUrl = row.artistAvatarUrl;
+          artistsToUpdate.push({
+            id: artistId,
+            avatarUrl: row.artistAvatarUrl,
+            bio: row.artistBio || matchedArtist.bio,
+          });
+        }
       } else {
         artistId = `artist-${now}-${i}-${Math.random().toString(36).substring(2, 6)}`;
 
@@ -100,8 +117,8 @@ export async function POST(req: NextRequest) {
           role: 'artist',
           country: artistCountry,
           flagEmoji: getCountryFlagEmoji(artistCountry),
-          bio: artistName !== 'ศิลปินร่วมแสดง' ? `ศิลปินผู้สร้างสรรค์ผลงานศิลปกรรม` : null,
-          avatarUrl: null,
+          bio: row.artistBio || (artistName !== 'ศิลปินร่วมแสดง' ? `ศิลปินผู้สร้างสรรค์ผลงานศิลปกรรม ${title}` : null),
+          avatarUrl: row.artistAvatarUrl || null,
           socialLinks: null,
         };
 
@@ -116,6 +133,7 @@ export async function POST(req: NextRequest) {
       const dimensions = (row.dimensions || '').trim() || '100 x 100 cm.';
       const concept = (row.concept || '').trim() || null;
       const imageUrl = (row.imageUrl || '').trim() || 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop';
+      const price = row.price ? parseFloat(String(row.price)) || 0 : 0;
 
       newArtworksToInsert.push({
         id: newArtId,
@@ -128,7 +146,7 @@ export async function POST(req: NextRequest) {
         dimensions,
         cloudinaryPublicId: cleanPublicId,
         imageUrl,
-        price: 0,
+        price,
         status: 'available',
       });
 
@@ -152,20 +170,38 @@ export async function POST(req: NextRequest) {
       importedArtworks.push({ id: newArtId, title });
     }
 
-    // 4. INSERTS (Guaranteed to stay within D1 99-variable limit)
+    // 4. INSERTS & UPDATES (Guaranteed to stay within D1 99-variable limit)
     // 4.1 Insert Artists
     for (const artist of newArtistsToInsert) {
       await db.insert(schema.users).values(artist);
     }
 
-    // 4.2 Insert Artworks
-    for (const art of newArtworksToInsert) {
-      await db.insert(schema.artworks).values(art);
+    // 4.2 Update Existing Artists (if new avatar/bio provided)
+    for (const updateObj of artistsToUpdate) {
+      const updateData: any = {};
+      if (updateObj.avatarUrl) updateData.avatarUrl = updateObj.avatarUrl;
+      if (updateObj.bio) updateData.bio = updateObj.bio;
+      if (Object.keys(updateData).length > 0) {
+        await db.update(schema.users).set(updateData).where(eq(schema.users.id, updateObj.id));
+      }
     }
 
-    // 4.3 Insert Exhibition Links
+    // 4.3 Insert Artworks
+    for (const art of newArtworksToInsert) {
+      try {
+        await db.insert(schema.artworks).values(art);
+      } catch (artErr) {
+        console.warn('Error inserting artwork row:', art.title, artErr);
+      }
+    }
+
+    // 4.4 Insert Exhibition Links
     for (const link of newLinksToInsert) {
-      await db.insert(schema.exhibitionArtworks).values(link);
+      try {
+        await db.insert(schema.exhibitionArtworks).values(link);
+      } catch (linkErr) {
+        console.warn('Error linking artwork to exhibition:', link, linkErr);
+      }
     }
 
     return NextResponse.json({

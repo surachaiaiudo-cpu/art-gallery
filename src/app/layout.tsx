@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { Maitree } from 'next/font/google';
@@ -12,11 +12,17 @@ const maitree = Maitree({
   display: 'swap',
 });
 
+export const viewport: Viewport = {
+  themeColor: '#8B1B1B',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export const metadata: Metadata = {
   title: 'หอศิลป์เพาะช่าง (POH-CHANG) | วิทยาลัยเพาะช่าง มทร.รัตนโกสินทร์',
   description: 'หอศิลป์และนิทรรศการศิลปกรรมเสมือนจริง วิทยาลัยเพาะช่าง มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์ (Poh-Chang Academy of Arts Virtual 3D Gallery & E-Catalog)',
   manifest: '/manifest.json',
-  themeColor: '#8B1B1B',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

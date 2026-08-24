@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Palette, Eye, Inbox, FileText, ArrowLeft, Layers, Sparkles, Users, Award, Box } from 'lucide-react';
+import { LayoutDashboard, Palette, Eye, Inbox, FileText, ArrowLeft, Layers, Sparkles, Users, Award, Box, FileSpreadsheet } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function AdminLayout({
@@ -110,6 +110,14 @@ export default function AdminLayout({
             >
               <Palette className="w-4 h-4 text-[#C5A880]" />
               <span>{t.admin.artworks}</span>
+            </Link>
+
+            <Link
+              href="/admin/import"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 hover:bg-emerald-900/30 transition-colors font-medium"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>{lang === 'th' ? 'นำเข้าข้อมูล (Batch)' : 'Batch Import'}</span>
             </Link>
 
             <Link

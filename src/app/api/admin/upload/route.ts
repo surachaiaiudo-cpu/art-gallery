@@ -3,6 +3,17 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
+// Helper: Edge-compatible Base64 encoder
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -15,7 +26,6 @@ export async function POST(req: NextRequest) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
     const originalName = file.name || 'artwork.jpg';
     const extension = originalName.lastIndexOf('.') !== -1 ? originalName.slice(originalName.lastIndexOf('.')) : '.jpg';
     const baseName = originalName.replace(extension, '');
@@ -32,16 +42,17 @@ export async function POST(req: NextRequest) {
       ctx?.env?.IMAGEKIT_KEY ||
       process.env.IMAGEKIT_PRIVATE_KEY ||
       process.env.IMAGEKIT_KEY;
+
     if (imageKitPrivateKey) {
       try {
         const ikFormData = new FormData();
-        const base64File = buffer.toString('base64');
+        const base64File = arrayBufferToBase64(arrayBuffer);
         ikFormData.append('file', `data:${file.type || 'image/jpeg'};base64,${base64File}`);
         ikFormData.append('fileName', finalFileName);
         ikFormData.append('folder', targetFolder);
         ikFormData.append('useUniqueFileName', 'true');
 
-        const authHeader = `Basic ${Buffer.from(`${imageKitPrivateKey}:`).toString('base64')}`;
+        const authHeader = `Basic ${btoa(`${imageKitPrivateKey}:`)}`;
 
         const ikRes = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
           method: 'POST',
@@ -70,7 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Fallback: Base64 data URL
-    const base64Data = buffer.toString('base64');
+    const base64Data = arrayBufferToBase64(arrayBuffer);
     const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64Data}`;
 
     return NextResponse.json({
@@ -81,7 +92,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Upload API error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Upload Failed', details: String(error) }, { status: 500 });
   }
 }
 

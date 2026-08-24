@@ -60,25 +60,56 @@ export function getDb() {
 export const db = new Proxy({} as any, {
   get(_target, prop) {
     const activeDb = getDb();
-    if (!activeDb) {
-      return () => ({
-        from: () => ({
-          where: () => ({ limit: async () => [] }),
-          orderBy: () => ({ limit: async () => [], values: async () => [] }),
-          innerJoin: () => ({ leftJoin: () => ({ where: () => ({ orderBy: async () => [] }) }) }),
-          leftJoin: () => ({ orderBy: async () => [] }),
-          limit: async () => [],
+    if (activeDb) {
+      const val = (activeDb as any)[prop];
+      if (typeof val === 'function') {
+        return val.bind(activeDb);
+      }
+      return val;
+    }
+
+    // Mock fallback when no DB binding is available
+    if (prop === 'select') {
+      return () => {
+        const queryChain: any = {
+          from: () => queryChain,
+          where: () => queryChain,
+          orderBy: () => queryChain,
+          innerJoin: () => queryChain,
+          leftJoin: () => queryChain,
+          limit: () => Promise.resolve([]),
+          then: (resolve: any) => Promise.resolve([]).then(resolve),
+        };
+        return queryChain;
+      };
+    }
+
+    if (prop === 'insert') {
+      return (_table: any) => ({
+        values: (_vals: any) => ({
+          returning: () => Promise.resolve([{ id: `mock-${Date.now()}` }]),
+          then: (resolve: any) => Promise.resolve({ success: true }).then(resolve),
         }),
-        insert: () => ({ values: async () => ({ success: true }) }),
-        update: () => ({ set: () => ({ where: async () => ({ success: true }) }) }),
-        delete: () => ({ where: async () => ({ success: true }) }),
       });
     }
-    const val = (activeDb as any)[prop];
-    if (typeof val === 'function') {
-      return val.bind(activeDb);
+
+    if (prop === 'update') {
+      return (_table: any) => ({
+        set: (_data: any) => ({
+          where: () => Promise.resolve({ success: true }),
+          then: (resolve: any) => Promise.resolve({ success: true }).then(resolve),
+        }),
+      });
     }
-    return val;
+
+    if (prop === 'delete') {
+      return (_table: any) => ({
+        where: () => Promise.resolve({ success: true }),
+        then: (resolve: any) => Promise.resolve({ success: true }).then(resolve),
+      });
+    }
+
+    return () => ({});
   },
 });
 
