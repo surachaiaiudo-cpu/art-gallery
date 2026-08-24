@@ -984,7 +984,7 @@ export function BatchImportManager({
               onClick={() => artworkFileInputRef.current?.click()}
               className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
             >
-              <Image className="w-3.5 h-3.5" />
+              <ImageIcon className="w-3.5 h-3.5" />
               <span>เลือกหลายไฟล์ภาพ (Ctrl+A)</span>
             </button>
             <button
