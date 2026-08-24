@@ -432,18 +432,21 @@ function CameraController({
   const targetCamPos = useRef(new THREE.Vector3(0, 1.8, 8));
   const targetLookAt = useRef(new THREE.Vector3(0, 1.8, 0));
 
-  // Handle Warp Trigger from Minimap
+  // Handle Warp Trigger from Minimap or Room Switcher
   useEffect(() => {
     if (warpTarget) {
+      const cz = currentRoomConfig.center.z;
+      camera.position.set(warpTarget.x, 1.8, warpTarget.z);
       targetCamPos.current.set(warpTarget.x, 1.8, warpTarget.z);
-      targetLookAt.current.set(warpTarget.x, 1.8, warpTarget.z - 3);
+      targetLookAt.current.set(warpTarget.x, 1.8, cz);
+      camera.lookAt(warpTarget.x, 1.8, cz);
       if (controlsRef.current) {
-        controlsRef.current.target.set(warpTarget.x, 1.8, warpTarget.z - 3);
+        controlsRef.current.target.set(warpTarget.x, 1.8, cz);
         controlsRef.current.update();
       }
       onClearWarp();
     }
-  }, [warpTarget, onClearWarp, controlsRef]);
+  }, [warpTarget, onClearWarp, controlsRef, camera, currentRoomConfig.center.z]);
 
   useFrame((state, delta) => {
     const isMoving =
@@ -887,7 +890,8 @@ export function Modern3DGalleryEngine({
                   setCurrentRoomIndex(idx);
                   setFocusedArtwork(null);
                   setFocusedSlot(null);
-                  setWarpTarget({ x: 0, z: 8 });
+                  const targetCenterZ = idx * -ROOM_SPACING_Z;
+                  setWarpTarget({ x: 0, z: targetCenterZ + 8 });
                 }}
                 className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer"
               >
