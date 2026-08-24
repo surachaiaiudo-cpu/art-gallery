@@ -28,6 +28,7 @@ import {
   ImageIcon,
 } from 'lucide-react';
 import { Exhibition } from '@/types/exhibition';
+import { findMatchingArtist } from '@/lib/artistMatcher';
 import { useLanguage } from '@/context/LanguageContext';
 
 interface MatchedImportItem {
@@ -527,15 +528,15 @@ export function BatchImportManager({
         matchedArtworkFile = artworkMapByName.get(artworkTitle.toLowerCase());
       }
 
-      // 3. Artist Detection with Existing DB
+      // 3. Artist Detection with Existing DB (Supports Same Artist in Multiple Exhibitions)
       let isNewArtist = true;
       let matchedExistingArtistId: string | undefined;
       let matchedExistingArtistName: string | undefined;
 
-      const normInputName = artistName.toLowerCase().replace(/\s+/g, ' ').trim();
-      const found = artistsPool.find((a) => {
-        const normDbName = (a.name || '').toLowerCase().replace(/\s+/g, ' ').trim();
-        return normDbName === normInputName || normDbName.includes(normInputName) || normInputName.includes(normDbName);
+      const found = findMatchingArtist(artistsPool, {
+        name: artistName,
+        email: artistEmail,
+        country: artistCountry,
       });
 
       if (found) {
