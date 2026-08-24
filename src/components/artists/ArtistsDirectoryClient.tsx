@@ -288,11 +288,11 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
           </div>
         </div>
 
-        {/* Level 1 Country Quick Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {/* Clean, Modern Country Quick Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
           <button
             onClick={() => setSelectedCountry('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
               selectedCountry === 'all'
                 ? 'bg-[#8B1B1B] text-white shadow-sm font-bold'
                 : 'bg-white hover:bg-[#F2ECE0] text-[#5C5548] border border-[#DDD6C8]'
@@ -300,7 +300,11 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
           >
             <span>🌐</span>
             <span>{lang === 'th' ? 'ทุกประเทศ' : 'All'}</span>
-            <span className="text-[10px] opacity-80 font-mono">({artists.length})</span>
+            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+              selectedCountry === 'all' ? 'bg-white/20 text-white' : 'bg-[#EAE5DA] text-[#6E685C]'
+            }`}>
+              {artists.length}
+            </span>
           </button>
 
           {countries.map((c) => {
@@ -310,15 +314,15 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
               <button
                 key={c}
                 onClick={() => setSelectedCountry(c)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 shrink-0 ${
                   isSelected
                     ? 'bg-[#8B1B1B] text-white shadow-sm font-bold'
                     : 'bg-white hover:bg-[#F2ECE0] text-[#5C5548] border border-[#DDD6C8]'
                 }`}
               >
-                <CountryFlag country={c} size="badge" shape="circle" />
+                <CountryFlag country={c} size="xs" shape="rounded" />
                 <span>{c}</span>
-                <span className={`text-[10px] font-mono px-1 rounded-full ${
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
                   isSelected ? 'bg-white/20 text-white' : 'bg-[#EAE5DA] text-[#6E685C]'
                 }`}>
                   {count}
