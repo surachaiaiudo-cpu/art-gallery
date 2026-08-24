@@ -351,15 +351,14 @@ export function Artwork3DFrame({
           <meshStandardMaterial color="#D1CCC0" roughness={0.2} metalness={0.9} />
         </mesh>
 
-        {/* Dynamic Focus / Hover Spotlight (Seamless without floating cylinder body) */}
-        {(hovered || isFocused) && (
-          <pointLight
-            position={[0, 0.8, 1.2]}
-            intensity={isFocused ? 8.0 : 4.0}
-            color="#FFF7EC"
-            distance={5}
-          />
-        )}
+        {/* Continuous Museum Dedicated Spotlight Beam (Shining on artwork at all times) */}
+        <pointLight
+          position={[0, 0.9, 1.3]}
+          intensity={isFocused ? 9.0 : hovered ? 5.5 : 3.2}
+          color="#FFF6E8"
+          distance={4.8}
+          decay={1.8}
+        />
       </group>
 
       {/* 8. Hover Floating Prompt */}

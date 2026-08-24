@@ -18,6 +18,7 @@ import {
   RotateCcw,
   ExternalLink,
   ArrowLeft,
+  ArrowRight,
   Building2,
   Move,
   Sparkles,
@@ -647,6 +648,14 @@ export default function AdminExhibitionBuilderPage({
 
         <div className="flex items-center gap-3">
           <Link
+            href={`/admin/3d-studio?exhibition=${exhibition.id}`}
+            className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition-all hover:scale-105"
+          >
+            <Sparkles className="w-4 h-4 text-amber-200" />
+            <span>{lang === 'th' ? '✨ เปิดในสตูดิโอ 3D ใหม่' : '✨ Open in New 3D Studio'}</span>
+          </Link>
+
+          <Link
             href={`/exhibitions/${exhibition.slug}?mode=3d`}
             target="_blank"
             className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-[#FAF8F5] text-[#1A1918] border border-[#D5CEC0] rounded-lg text-xs font-semibold uppercase tracking-wider shadow-sm transition-all"
@@ -654,27 +663,33 @@ export default function AdminExhibitionBuilderPage({
             <Box className="w-3.5 h-3.5 text-[#8C6D3F]" />
             <span>{t.admin.test3d}</span>
           </Link>
-
-          <button
-            onClick={handleSaveAll}
-            disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-2 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all disabled:opacity-50"
-          >
-            {isSaving ? (
-              t.admin.saving
-            ) : saveSuccess ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{t.admin.saved}</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5" />
-                <span>{t.admin.saveLayout}</span>
-              </>
-            )}
-          </button>
         </div>
+      </div>
+
+      {/* Upgrade Notice Banner */}
+      <div className="bg-amber-500/10 border-2 border-amber-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center space-x-3.5">
+          <div className="p-3 bg-amber-500 text-white rounded-xl shadow shrink-0">
+            <Box className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-amber-950 text-sm">
+              {lang === 'th' ? 'แนะนำ: ใช้สตูดิโอ 3D Gallery (สถาปัตยกรรมมัลติรูม)' : 'Recommended: Use New 3D Gallery Studio'}
+            </h3>
+            <p className="text-xs text-amber-800/90 mt-0.5">
+              {lang === 'th'
+                ? 'รองรับ 4 รูปทรงห้อง (จัตุรัส/ผืนผ้า/ตัว L/ทรงกลม), ระบบแสงไฟ และสลับสับเปลี่ยนผลงานอย่างง่ายดาย'
+                : 'Supports 4 room geometries, lighting presets, and drag-and-drop curation.'}
+            </p>
+          </div>
+        </div>
+        <Link
+          href={`/admin/3d-studio?exhibition=${exhibition.id}`}
+          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0"
+        >
+          <span>{lang === 'th' ? 'ไปที่สตูดิโอ 3D' : 'Go to 3D Studio'}</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       {/* Room Scale Configuration & Collision Status Bar */}

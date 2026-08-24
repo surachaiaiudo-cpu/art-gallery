@@ -423,13 +423,13 @@ export function AdminExhibitionsManagerClient({
                     <span>{lang === 'th' ? 'จัดการผลงาน' : 'Artworks'}</span>
                   </Link>
 
-                  {/* 3D Wall Builder */}
+                  {/* 3D Studio Link */}
                   <Link
-                    href={`/admin/exhibitions/${exh.id}`}
-                    className="flex items-center justify-center gap-1.5 py-2 bg-[#C5A880] hover:bg-[#D4BC96] text-[#1A1918] rounded-lg text-xs font-semibold uppercase tracking-wider transition-all shadow-sm"
+                    href={`/admin/3d-studio?exhibition=${exh.id}`}
+                    className="flex items-center justify-center gap-1.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-950 border border-amber-500/40 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
                   >
-                    <Box className="w-3.5 h-3.5" />
-                    <span>{lang === 'th' ? 'ผัง 3D' : '3D Walls'}</span>
+                    <Box className="w-3.5 h-3.5 text-amber-700" />
+                    <span>{lang === 'th' ? 'สตูดิโอ 3D' : '3D Studio'}</span>
                   </Link>
                 </div>
 
