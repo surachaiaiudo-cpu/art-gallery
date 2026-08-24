@@ -24,8 +24,11 @@ export default function AdminLayout({
           <div className="border-b border-[#33302C] pb-6 mb-6">
             <div className="flex items-center justify-between">
               <Link href="/" className="group flex items-center gap-2">
-                <span className="font-serif text-2xl font-bold tracking-[0.18em] text-white group-hover:text-[#C5A880] transition-colors">
-                  ARTVARA
+                <div className="w-7 h-7 rounded-lg bg-[#8B1B1B] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center justify-center font-serif font-bold text-xs shadow-sm">
+                  พช
+                </div>
+                <span className="font-serif text-xl font-bold tracking-[0.12em] text-white group-hover:text-[#D4AF37] transition-colors">
+                  POH-CHANG
                 </span>
               </Link>
 

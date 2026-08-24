@@ -2,8 +2,8 @@ export type Language = 'th' | 'en';
 
 export const translations = {
   th: {
-    galleryName: 'ARTVARA',
-    gallerySub: 'หอศิลป์และนิทรรศการศิลปกรรมออนไลน์',
+    galleryName: 'หอศิลป์เพาะช่าง (POH-CHANG)',
+    gallerySub: 'วิทยาลัยเพาะช่าง มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์',
     modes: {
       grid: '2D แกลเลอรี',
       carousel: 'สไลด์โชว์',
@@ -80,8 +80,8 @@ export const translations = {
     },
     lobby: {
       grandLobby: 'โถงกลางหอศิลป์ (Grand Lobby)',
-      welcomeTitle: 'ยินดีต้อนรับสู่ ARTVARA Online Gallery',
-      welcomeSubtitle: 'ศูนย์รวมนิทรรศการศิลปกรรมตามวาระ เลือกเข้าชมนิทรรศการที่ท่านสนใจได้ทั้งรูปแบบ 2D Grid, สไลด์โชว์ Carousel หรือ 3D Virtual Walkthrough และสามารถกลับสู่โถงกลางเพื่อสลับชมนิทรรศการอื่นๆ ได้ตลอดเวลา',
+      welcomeTitle: 'หอศิลป์วิทยาลัยเพาะช่าง (POH-CHANG GALLERY)',
+      welcomeSubtitle: 'ศูนย์รวมนิทรรศการศิลปกรรม วิทยาลัยเพาะช่าง มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์ เลือกเข้าชมผลงานศิลป์ชั้นเลิศได้ทั้งรูปแบบ 2D แกลเลอรี, สไลด์โชว์ หรือ 3D Virtual Gallery เสมือนจริง',
       curatedExhibitions: 'นิทรรศการศิลปกรรมที่เปิดให้เข้าชม',
       activeStatus: 'กำลังจัดแสดง',
       archivedStatus: 'นิทรรศการย้อนหลัง',
@@ -140,8 +140,8 @@ export const translations = {
     },
   },
   en: {
-    galleryName: 'ARTVARA',
-    gallerySub: 'Curated Online Art Exhibition & Gallery',
+    galleryName: 'POH-CHANG GALLERY',
+    gallerySub: 'Poh-Chang Academy of Arts, RMUTR',
     modes: {
       grid: '2D Grid',
       carousel: 'Carousel',
@@ -218,8 +218,8 @@ export const translations = {
     },
     lobby: {
       grandLobby: 'Museum Grand Lobby',
-      welcomeTitle: 'Welcome to ARTVARA Online Gallery',
-      welcomeSubtitle: 'Explore temporary curated exhibitions in 2D Grid, Carousel, or 3D Virtual Walkthrough. Return to the Grand Lobby anytime to visit other exhibition halls.',
+      welcomeTitle: 'Poh-Chang Academy of Arts Virtual Gallery',
+      welcomeSubtitle: 'Explore prestigious curated art exhibitions by Poh-Chang Academy of Arts, RMUTR in 2D Grid, Carousel, or 3D Virtual Walkthrough.',
       curatedExhibitions: 'Curated Exhibition Halls',
       activeStatus: 'Now On View',
       archivedStatus: 'Archived Collection',

@@ -1,13 +1,13 @@
 {
-  "name": "ARTVARA | Virtual Art Gallery & Exhibition",
-  "short_name": "ARTVARA",
-  "description": "World-Class Virtual 3D Art Gallery & Curated Exhibition Platform",
+  "name": "POH-CHANG | หอศิลป์วิทยาลัยเพาะช่าง มทร.รัตนโกสินทร์",
+  "short_name": "POH-CHANG",
+  "description": "หอศิลป์และนิทรรศการศิลปกรรมเสมือนจริง วิทยาลัยเพาะช่าง มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์",
   "start_url": "/",
   "id": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#1A1918",
-  "theme_color": "#1A1918",
+  "background_color": "#8B1B1B",
+  "theme_color": "#8B1B1B",
   "categories": [
     "lifestyle",
     "entertainment",
@@ -52,8 +52,8 @@
       ]
     },
     {
-      "name": "Artists Directory",
-      "short_name": "Artists",
+      "name": "ทำเนียบศิลปิน",
+      "short_name": "ศิลปิน",
       "url": "/artists",
       "icons": [
         {

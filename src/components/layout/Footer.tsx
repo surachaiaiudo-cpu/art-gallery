@@ -54,11 +54,11 @@ export function Footer({ exhibition }: FooterProps) {
 
           {/* Brand */}
           <div className="flex flex-col gap-0.5">
-            <span className="font-serif text-xl sm:text-2xl font-bold tracking-[0.15em] text-[#1A1918]">
-              ARTVARA
+            <span className="font-serif text-xl sm:text-2xl font-bold tracking-[0.12em] text-[#8B1B1B]">
+              POH-CHANG
             </span>
             <span className="text-[10px] tracking-widest text-[#8C8477] uppercase">
-              {lang === 'th' ? 'หอศิลป์ออนไลน์' : 'Fine Arts & Contemporary Heritage Gallery'}
+              {lang === 'th' ? 'หอศิลป์วิทยาลัยเพาะช่าง มทร.รัตนโกสินทร์' : 'Poh-Chang Academy of Arts, RMUTR'}
             </span>
           </div>
 
@@ -193,10 +193,10 @@ export function Footer({ exhibition }: FooterProps) {
         {/* Bottom Copyright Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 pt-4 border-t border-[#E3DDD3]">
           <span className="text-[10px] sm:text-[11px] text-[#7A756B] text-center sm:text-left">
-            ARTVARA Fine Arts &amp; Contemporary Heritage Gallery
+            วิทยาลัยเพาะช่าง มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์ • Poh-Chang Academy of Arts, RMUTR
           </span>
           <span className="text-[10px] sm:text-[11px] text-[#8C8477] tracking-wide text-center sm:text-right shrink-0">
-            © {new Date().getFullYear()} ARTVARA. All rights reserved.
+            © {new Date().getFullYear()} POH-CHANG. All rights reserved.
           </span>
         </div>
 

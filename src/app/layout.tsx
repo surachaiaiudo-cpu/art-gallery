@@ -13,14 +13,14 @@ const maitree = Maitree({
 });
 
 export const metadata: Metadata = {
-  title: 'ARTVARA | หอศิลป์และนิทรรศการศิลปกรรมออนไลน์ (Virtual Gallery & E-Catalog)',
-  description: 'Online Art Exhibition & Gallery System with 2D Grid / Carousel / 3D Virtual Room and Automated PDF Catalog Generator',
+  title: 'หอศิลป์เพาะช่าง (POH-CHANG) | วิทยาลัยเพาะช่าง มทร.รัตนโกสินทร์',
+  description: 'หอศิลป์และนิทรรศการศิลปกรรมเสมือนจริง วิทยาลัยเพาะช่าง มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์ (Poh-Chang Academy of Arts Virtual 3D Gallery & E-Catalog)',
   manifest: '/manifest.json',
-  themeColor: '#1A1918',
+  themeColor: '#8B1B1B',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'ARTVARA',
+    title: 'POH-CHANG',
   },
   icons: {
     icon: '/icons/icon-192x192.png',

@@ -26,11 +26,19 @@ export function Navbar({
     <header className="sticky top-0 z-40 w-full bg-[#F9F8F6]/95 backdrop-blur-md border-b border-[#E5E2DC] transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Left: Brand Logo & Exit to Grand Lobby */}
-        <div className="flex items-center gap-3 sm:gap-5">
-          <Link href="/" className="group flex items-center gap-2" title={t.actions.returnToLobby}>
-            <span className="font-serif text-2xl sm:text-3xl font-bold tracking-[0.18em] text-[#1A1918] group-hover:text-[#8C6D3F] transition-colors">
-              ARTVARA
-            </span>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link href="/" className="group flex items-center gap-2.5" title={t.actions.returnToLobby}>
+            <div className="w-8 h-8 rounded-xl bg-[#8B1B1B] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center justify-center font-serif font-bold text-xs shadow-sm shrink-0 group-hover:scale-105 transition-transform">
+              พช
+            </div>
+            <div className="flex flex-col">
+              <span className="font-serif text-lg sm:text-xl font-bold tracking-[0.12em] text-[#8B1B1B] group-hover:text-[#5E1212] transition-colors leading-none">
+                POH-CHANG
+              </span>
+              <span className="text-[9px] font-sans font-semibold tracking-[0.16em] text-[#8C6D3F] uppercase leading-tight mt-0.5">
+                {lang === 'th' ? 'หอศิลป์เพาะช่าง' : 'Academy of Arts'}
+              </span>
+            </div>
           </Link>
 
           {/* Explicit Exit to Lobby Button with Bubble Tooltip */}
