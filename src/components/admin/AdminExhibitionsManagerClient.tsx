@@ -240,6 +240,11 @@ export function AdminExhibitionsManagerClient({
   // Toggle Active / Archived Status
   const handleToggleStatus = async (exh: Exhibition) => {
     const newStatus = exh.status === 'active' ? 'archived' : 'active';
+    await handleStatusChange(exh, newStatus);
+  };
+
+  // Change Status directly from Dropdown or Switch
+  const handleStatusChange = async (exh: Exhibition, newStatus: 'active' | 'archived' | 'upcoming') => {
     try {
       const res = await fetch('/api/admin/exhibitions', {
         method: 'PUT',
@@ -248,16 +253,21 @@ export function AdminExhibitionsManagerClient({
       });
 
       if (res.ok) {
-        showNotification(
-          'success',
-          newStatus === 'active'
-            ? lang === 'th'
-              ? `🟢 เปิดแสดงนิทรรศการ "${exh.title}" แล้ว (ผู้ชมสามารถเข้าชมได้ปกติ)`
-              : `Exhibition "${exh.title}" is now Active & visible to visitors`
-            : lang === 'th'
+        let msg = '';
+        if (newStatus === 'active') {
+          msg = lang === 'th'
+            ? `🟢 เปิดแสดงนิทรรศการ "${exh.title}" แล้ว (ผู้ชมสามารถเข้าชมได้ปกติ)`
+            : `Exhibition "${exh.title}" is now Active & visible to visitors`;
+        } else if (newStatus === 'archived') {
+          msg = lang === 'th'
             ? `🔒 ปิดและเก็บนิทรรศการ "${exh.title}" เข้าคลังแล้ว (ซ่อนจากผู้ชมทั่วไป)`
-            : `Exhibition "${exh.title}" is now Closed & hidden from visitors`
-        );
+            : `Exhibition "${exh.title}" is now Closed & hidden in archives`;
+        } else {
+          msg = lang === 'th'
+            ? `⏳ ตั้งสถานะนิทรรศการ "${exh.title}" เป็น "เร็วๆ นี้"`
+            : `Exhibition "${exh.title}" set to Upcoming`;
+        }
+        showNotification('success', msg);
         await refreshList();
       }
     } catch (err) {
@@ -416,6 +426,66 @@ export function AdminExhibitionsManagerClient({
                   <p className="text-xs text-[#6E685C] line-clamp-2 italic font-serif">
                     "{exh.curatorNote || 'Curated Exhibition Collection'}"
                   </p>
+
+                  {/* Status & Visibility Quick Control Box */}
+                  <div className="pt-2">
+                    <div className="p-2.5 bg-[#FAF8F5] border border-[#E5DFD3] rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-[#5A554A]">
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                          <span>{lang === 'th' ? 'การแสดงผลต่อผู้ชม:' : 'Public Visibility:'}</span>
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-200 text-neutral-700'
+                        }`}>
+                          {isActive ? (lang === 'th' ? '🟢 เปิดให้เข้าชม' : '🟢 Visible') : (lang === 'th' ? '🔒 ซ่อนเข้าคลัง' : '🔒 Hidden')}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* 1-Click Toggle Switch Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleStatus(exh)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0 ${
+                            isActive
+                              ? 'bg-emerald-800 hover:bg-emerald-700 text-white'
+                              : 'bg-neutral-700 hover:bg-neutral-800 text-white'
+                          }`}
+                          title={lang === 'th' ? 'คลิกเพื่อสลับ เปิด/ปิด นิทรรศการ' : 'Toggle Open/Closed'}
+                        >
+                          {isActive ? (
+                            <>
+                              <ToggleRight className="w-4 h-4 text-emerald-300 shrink-0" />
+                              <span>{lang === 'th' ? 'เปิด (ON)' : 'ON'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <ToggleLeft className="w-4 h-4 text-neutral-400 shrink-0" />
+                              <span>{lang === 'th' ? 'ปิด (OFF)' : 'OFF'}</span>
+                            </>
+                          )}
+                        </button>
+
+                        {/* Dropdown Status Selector */}
+                        <select
+                          value={exh.status}
+                          onChange={(e) => handleStatusChange(exh, e.target.value as any)}
+                          className={`flex-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border focus:outline-none focus:ring-2 focus:ring-[#8C6D3F] shadow-xs cursor-pointer ${
+                            exh.status === 'active'
+                              ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                              : exh.status === 'upcoming'
+                              ? 'bg-blue-50 text-blue-900 border-blue-300'
+                              : 'bg-neutral-100 text-neutral-800 border-neutral-300'
+                          }`}
+                        >
+                          <option value="active">🟢 {lang === 'th' ? 'กำลังจัดแสดง' : 'Active (Current)'}</option>
+                          <option value="archived">🏛️ {lang === 'th' ? 'นิทรรศการย้อนหลัง' : 'Archived (Past)'}</option>
+                          <option value="upcoming">⏳ {lang === 'th' ? 'นิทรรศการเร็วๆ นี้' : 'Upcoming'}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -585,10 +655,11 @@ export function AdminExhibitionsManagerClient({
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-semibold focus:outline-none"
+                    className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-semibold focus:outline-none cursor-pointer"
                   >
-                    <option value="active">🟢 {lang === 'th' ? 'กำลังจัดแสดง (Active)' : 'Active (On Display)'}</option>
-                    <option value="archived">⚪ {lang === 'th' ? 'นิทรรศการย้อนหลัง (Archived)' : 'Archived'}</option>
+                    <option value="active">🟢 {lang === 'th' ? 'กำลังจัดแสดง (Active - เปิดให้ผู้ชมเข้าชม)' : 'Active (On Display)'}</option>
+                    <option value="archived">🏛️ {lang === 'th' ? 'นิทรรศการย้อนหลัง (Archived - เก็บเข้าคลัง/ซ่อนจากผู้ชม)' : 'Archived (Stored in Gallery)'}</option>
+                    <option value="upcoming">⏳ {lang === 'th' ? 'นิทรรศการเร็วๆ นี้ (Upcoming)' : 'Upcoming'}</option>
                   </select>
                 </div>
 
