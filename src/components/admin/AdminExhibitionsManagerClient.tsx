@@ -84,9 +84,10 @@ export function AdminExhibitionsManagerClient({
 
   // Open Create Modal
   const handleOpenCreate = () => {
+    const autoSlug = `exhibition-${Date.now().toString(36)}`;
     setFormData({
       title: '',
-      slug: '',
+      slug: autoSlug,
       curatorNote: '',
       bannerUrl: '',
       startDate: new Date().toISOString().split('T')[0],
@@ -213,7 +214,10 @@ export function AdminExhibitionsManagerClient({
           }),
         });
 
-        if (!res.ok) throw new Error('Failed to update');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.details || errData.error || 'Failed to update exhibition');
+        }
         showNotification('success', lang === 'th' ? 'บันทึกการแก้ไขนิทรรศการสำเร็จ' : 'Exhibition updated successfully');
         setEditingExhibition(null);
       } else {
@@ -224,7 +228,10 @@ export function AdminExhibitionsManagerClient({
           body: JSON.stringify(formData),
         });
 
-        if (!res.ok) throw new Error('Failed to create');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.details || errData.error || 'Failed to create exhibition');
+        }
         showNotification('success', lang === 'th' ? 'เพิ่มนิทรรศการใหม่เรียบร้อยแล้ว' : 'Exhibition created successfully');
         setIsCreateModalOpen(false);
       }
@@ -592,10 +599,11 @@ export function AdminExhibitionsManagerClient({
                   value={formData.title}
                   onChange={(e) => {
                     const title = e.target.value;
+                    const clean = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
                     setFormData((prev) => ({
                       ...prev,
                       title,
-                      slug: !editingExhibition ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : prev.slug,
+                      slug: !editingExhibition ? (clean || prev.slug || `exhibition-${Date.now().toString(36)}`) : prev.slug,
                     }));
                   }}
                   placeholder={lang === 'th' ? 'เช่น สยามศิลป์ร่วมสมัย ครั้งที่ 2' : 'e.g. Siam Contemporary Art Festival'}

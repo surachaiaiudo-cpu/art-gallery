@@ -74,11 +74,42 @@ export async function POST(req: NextRequest) {
     }
 
     const newId = `exh-${Date.now()}`;
-    const cleanSlug = (slug || title)
+    let cleanSlug = (slug || '')
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || `exhibition-${Date.now()}`;
+      .replace(/^-+|-+$/g, '');
+
+    if (!cleanSlug) {
+      const titleAscii = (title || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      cleanSlug = titleAscii || `exhibition-${Date.now().toString(36)}`;
+    }
+
+    // Ensure unique slug in database
+    const existing = await db
+      .select()
+      .from(schema.exhibitions)
+      .where(eq(schema.exhibitions.slug, cleanSlug))
+      .limit(1);
+
+    if (existing.length > 0) {
+      cleanSlug = `${cleanSlug}-${Date.now().toString(36)}`;
+    }
+
+    // Auto-link first curator if available
+    let curatorId: string | null = null;
+    const curators = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.role, 'curator'))
+      .limit(1);
+    if (curators.length > 0) {
+      curatorId = curators[0].id;
+    }
 
     const themeConfig = JSON.stringify({
       roomSize: roomSize || 'medium',
@@ -94,8 +125,9 @@ export async function POST(req: NextRequest) {
 
     await db.insert(schema.exhibitions).values({
       id: newId,
-      title,
+      title: title.trim(),
       slug: cleanSlug,
+      curatorId,
       curatorNote: curatorNote || '',
       bannerUrl: bannerUrl || '',
       catalogPdfUrl: `/api/exhibitions/${cleanSlug}/catalog`,
