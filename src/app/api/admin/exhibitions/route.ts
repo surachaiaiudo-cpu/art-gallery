@@ -1,10 +1,19 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
-import { db, schema } from '@/db';
+import { db, schema, getD1Binding } from '@/db';
 import { eq, desc } from 'drizzle-orm';
 import { getAllExhibitions } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
+
+async function ensureExhibitionsColumns() {
+  try {
+    const binding = getD1Binding();
+    if (binding && typeof binding.prepare === 'function') {
+      await binding.prepare("ALTER TABLE exhibitions ADD COLUMN curator_id TEXT").run().catch(() => {});
+    }
+  } catch {}
+}
 
 async function deleteFromImageKit(imageUrl: string, privateKey?: string) {
   if (!privateKey || !imageUrl || !imageUrl.includes('ik.imagekit.io')) return;
@@ -42,6 +51,7 @@ async function deleteFromImageKit(imageUrl: string, privateKey?: string) {
 // GET: List all exhibitions with full relations
 export async function GET() {
   try {
+    await ensureExhibitionsColumns();
     const list = await getAllExhibitions();
     return NextResponse.json({ exhibitions: list });
   } catch (error) {
@@ -53,6 +63,7 @@ export async function GET() {
 // POST: Create a new exhibition
 export async function POST(req: NextRequest) {
   try {
+    await ensureExhibitionsColumns();
     const body = await req.json();
     const {
       title,
@@ -135,6 +146,7 @@ export async function POST(req: NextRequest) {
 // PUT: Update exhibition details or toggle status
 export async function PUT(req: NextRequest) {
   try {
+    await ensureExhibitionsColumns();
     const body = await req.json();
     const { id, title, curatorNote, bannerUrl, startDate, endDate, status, roomSize, enable3D, catalogFooterText, catalogPlateFooterText, peerReviewers } = body;
 
