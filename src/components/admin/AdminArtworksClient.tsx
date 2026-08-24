@@ -25,6 +25,9 @@ import {
   ExternalLink,
   Info,
   FileSpreadsheet,
+  Trash2,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 
 interface AdminArtworksClientProps {
@@ -40,9 +43,11 @@ export function AdminArtworksClient({
 
   const [selectedExhibitionId, setSelectedExhibitionId] = useState<string>('all');
   const [artworksList, setArtworksList] = useState<Artwork[]>([]);
+  const [selectedArtIds, setSelectedArtIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Drag & drop state
@@ -220,6 +225,102 @@ export function AdminArtworksClient({
     }
   };
 
+  // Toggle single artwork selection
+  const toggleSelectArtwork = (artId: string) => {
+    setSelectedArtIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(artId)) {
+        next.delete(artId);
+      } else {
+        next.add(artId);
+      }
+      return next;
+    });
+  };
+
+  // Toggle select all visible artworks
+  const toggleSelectAll = () => {
+    if (selectedArtIds.size === filteredArtworks.length && filteredArtworks.length > 0) {
+      setSelectedArtIds(new Set());
+    } else {
+      setSelectedArtIds(new Set(filteredArtworks.map((a) => a.id)));
+    }
+  };
+
+  // Delete single artwork
+  const handleDeleteArtwork = async (art: Artwork) => {
+    const confirmMsg =
+      lang === 'th'
+        ? `⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบผลงาน "${art.title}" ของศิลปิน "${art.artist?.name || 'ไม่ระบุ'}" ออกจากระบบถาวร?`
+        : `⚠️ Are you sure you want to permanently delete "${art.title}" by "${art.artist?.name || 'Artist'}"?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setDeleting(true);
+      const res = await fetch(`/api/admin/artworks?id=${encodeURIComponent(art.id)}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setArtworksList((prev) => prev.filter((a) => a.id !== art.id));
+        setSelectedArtIds((prev) => {
+          const next = new Set(prev);
+          next.delete(art.id);
+          return next;
+        });
+        showNotification(
+          'success',
+          lang === 'th' ? `ลบผลงาน "${art.title}" เรียบร้อยแล้ว` : `Deleted "${art.title}" successfully`
+        );
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete artwork');
+      }
+    } catch (err: any) {
+      showNotification('error', err.message || 'Error deleting artwork');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Batch delete selected artworks
+  const handleBatchDelete = async () => {
+    const idsToDelete = Array.from(selectedArtIds);
+    if (idsToDelete.length === 0) return;
+
+    const confirmMsg =
+      lang === 'th'
+        ? `🚨 ยืนยันการลบผลงานที่เลือกทั้งหมด ${idsToDelete.length} ชิ้น ออกจากระบบถาวร?\n(การกระทำนี้ไม่สามารถย้อนกลับได้)`
+        : `🚨 Permanently delete all ${idsToDelete.length} selected artworks?\n(This action cannot be undone)`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setDeleting(true);
+      let successCount = 0;
+      for (const id of idsToDelete) {
+        const res = await fetch(`/api/admin/artworks?id=${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) successCount++;
+      }
+
+      setArtworksList((prev) => prev.filter((a) => !selectedArtIds.has(a.id)));
+      setSelectedArtIds(new Set());
+      showNotification(
+        'success',
+        lang === 'th'
+          ? `ลบผลงานสำเร็จทั้งหมด ${successCount} ชิ้น`
+          : `Successfully deleted ${successCount} artworks`
+      );
+    } catch (err: any) {
+      showNotification('error', err.message || 'Error in batch deletion');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Filter for search
   const filteredArtworks = artworksList.filter((art) => {
     if (!searchQuery.trim()) return true;
@@ -264,13 +365,29 @@ export function AdminArtworksClient({
           </h1>
           <p className="text-xs text-[#6E685C] mt-1">
             {lang === 'th'
-              ? 'สามารถปรับลำดับการแสดงผลงานได้โดยการ "ลากและวาง" หรือ "เปลี่ยนตัวเลขลำดับ" ได้ทันที'
-              : 'Reorder artworks by Drag & Drop or by editing numeric order sequence.'}
+              ? 'สามารถปรับลำดับการแสดงผลงานได้โดยการ "ลากและวาง" หรือ "เปลี่ยนตัวเลขลำดับ" และลบผลงานได้ทันที'
+              : 'Reorder artworks by Drag & Drop, change order number, or delete artworks.'}
           </p>
         </div>
 
         {/* Toolbar Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Batch Delete Button */}
+          {selectedArtIds.size > 0 && (
+            <button
+              onClick={handleBatchDelete}
+              disabled={deleting}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white shadow-md transition-all active:scale-95 animate-fade-in"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>
+                {lang === 'th'
+                  ? `ลบที่เลือก (${selectedArtIds.size} ชิ้น)`
+                  : `Delete Selected (${selectedArtIds.size})`}
+              </span>
+            </button>
+          )}
+
           <Link
             href="/admin/import"
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-[#8B1B1B] text-[#D4AF37] hover:bg-[#721515] shadow-md transition-all transform hover:-translate-y-0.5"
@@ -416,6 +533,15 @@ export function AdminArtworksClient({
           <table className="w-full text-left border-collapse text-xs text-[#2C2925]">
             <thead>
               <tr className="bg-[#1A1918] text-[#E5D2B8] text-xs font-bold uppercase tracking-wider border-b border-[#33302C]">
+                <th className="py-4 px-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedArtIds.size === filteredArtworks.length && filteredArtworks.length > 0}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer accent-rose-600"
+                    title={lang === 'th' ? 'เลือกทั้งหมด' : 'Select All'}
+                  />
+                </th>
                 <th className="py-4 px-3 w-28 text-center">{lang === 'th' ? 'ลำดับแสดง' : 'Order #'}</th>
                 <th className="py-4 px-3 w-10 text-center"></th>
                 <th className="py-4 px-4">{lang === 'th' ? 'ผลงานศิลปะ' : 'Artwork Title'}</th>
@@ -423,13 +549,13 @@ export function AdminArtworksClient({
                 <th className="py-4 px-3 text-center">{lang === 'th' ? 'สัญชาติ' : 'Country'}</th>
                 <th className="py-4 px-4">{lang === 'th' ? 'เทคนิค & ขนาด' : 'Medium & Size'}</th>
                 <th className="py-4 px-3 text-center">{lang === 'th' ? 'ปีที่สร้าง' : 'Year'}</th>
-                <th className="py-4 px-4 text-right">{lang === 'th' ? 'ย้ายตำแหน่ง' : 'Actions'}</th>
+                <th className="py-4 px-4 text-right">{lang === 'th' ? 'จัดการ' : 'Actions'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F0ECE4]">
               {filteredArtworks.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#8C8477]">
+                  <td colSpan={9} className="py-12 text-center text-[#8C8477]">
                     {lang === 'th' ? 'ไม่พบผลงานศิลปะตามเงื่อนไขที่เลือก' : 'No artworks found matching filter'}
                   </td>
                 </tr>
@@ -451,9 +577,21 @@ export function AdminArtworksClient({
                           ? 'opacity-40 bg-[#FAF4EB]'
                           : isDragOver
                           ? 'bg-[#EAE2D2] border-t-2 border-b-2 border-[#8C6D3F]'
+                          : selectedArtIds.has(art.id)
+                          ? 'bg-rose-50/60'
                           : 'hover:bg-[#FAF8F5]'
                       }`}
                     >
+                      {/* Checkbox for batch selection */}
+                      <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedArtIds.has(art.id)}
+                          onChange={() => toggleSelectArtwork(art.id)}
+                          className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer accent-rose-600"
+                        />
+                      </td>
+
                       {/* Numeric Order Input & Badge */}
                       <td className="py-3.5 px-3 text-center">
                         <div className="flex items-center justify-center gap-1.5">
@@ -529,7 +667,7 @@ export function AdminArtworksClient({
                         {art.yearCreated || '2026'}
                       </td>
 
-                      {/* Move Up / Down Buttons */}
+                      {/* Move Up / Down Buttons + Delete */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {/* Jump to Top */}
@@ -570,6 +708,16 @@ export function AdminArtworksClient({
                             title={lang === 'th' ? 'ย้ายไปล่างสุด' : 'Jump to Bottom'}
                           >
                             <ArrowDownToLine className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Delete Artwork */}
+                          <button
+                            onClick={() => handleDeleteArtwork(art)}
+                            disabled={deleting}
+                            className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 transition-colors ml-1"
+                            title={lang === 'th' ? `ลบผลงาน "${art.title}"` : `Delete "${art.title}"`}
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
