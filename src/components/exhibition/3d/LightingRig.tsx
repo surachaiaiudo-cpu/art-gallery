@@ -65,75 +65,82 @@ export function LightingRig({
   const inspectX = Math.sin(rad) * 2.5;
   const inspectZ = Math.cos(rad) * 2.5;
 
+  const dirTarget = useRef(new THREE.Object3D());
+  const spotTargets = useRef([
+    new THREE.Object3D(),
+    new THREE.Object3D(),
+    new THREE.Object3D(),
+    new THREE.Object3D(),
+  ]);
+
   return (
-    <group>
+    <group position={[0, 0, activeRoomZ]}>
       {/* 1. Skylight Natural Daylight Simulation (Hemisphere Light) */}
       <hemisphereLight
         args={[config.skyColor, config.groundColor, config.skyIntensity]}
-        position={[0, 20, activeRoomZ]}
+        position={[0, 20, 0]}
       />
 
       {/* 2. Soft Ambient Light Fill */}
-      <ambientLight color={config.ambientColor} intensity={config.ambientIntensity} />
+      <ambientLight color={config.ambientColor} intensity={config.ambientIntensity * 1.3} />
 
-      {/* 3. Central Ceiling Skylight Directional Downlight */}
+      {/* 3. Central Ceiling Skylight Directional Downlight with Attached Target */}
+      <primitive object={dirTarget.current} position={[0, 0, 0]} />
       <directionalLight
-        position={[0, 15, activeRoomZ]}
-        intensity={0.6}
+        position={[0, 15, 0]}
+        target={dirTarget.current}
+        intensity={0.8}
         color={config.skyColor}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-bias={-0.0001}
       />
 
-      {/* 4. Ceiling Spot Track Lights Array around Room */}
+      {/* 4. Ceiling Spot Track Lights Array around Room with Explicit Targets */}
+      <primitive object={spotTargets.current[0]} position={[-8, 2.2, -8]} />
       <spotLight
-        position={[-6, 7.5, activeRoomZ - 6]}
-        target-position={[-8, 2.2, activeRoomZ - 8]}
-        intensity={config.spotlightIntensity}
-        angle={0.7}
+        position={[-5, 7.5, -5]}
+        target={spotTargets.current[0]}
+        intensity={config.spotlightIntensity * 1.2}
+        angle={0.8}
         penumbra={0.8}
         color={config.spotlightColor}
-        castShadow
       />
+
+      <primitive object={spotTargets.current[1]} position={[8, 2.2, -8]} />
       <spotLight
-        position={[6, 7.5, activeRoomZ - 6]}
-        target-position={[8, 2.2, activeRoomZ - 8]}
-        intensity={config.spotlightIntensity}
-        angle={0.7}
+        position={[5, 7.5, -5]}
+        target={spotTargets.current[1]}
+        intensity={config.spotlightIntensity * 1.2}
+        angle={0.8}
         penumbra={0.8}
         color={config.spotlightColor}
-        castShadow
       />
+
+      <primitive object={spotTargets.current[2]} position={[-8, 2.2, 8]} />
       <spotLight
-        position={[-6, 7.5, activeRoomZ + 6]}
-        target-position={[-8, 2.2, activeRoomZ + 8]}
-        intensity={config.spotlightIntensity}
-        angle={0.7}
+        position={[-5, 7.5, 5]}
+        target={spotTargets.current[2]}
+        intensity={config.spotlightIntensity * 1.2}
+        angle={0.8}
         penumbra={0.8}
         color={config.spotlightColor}
-        castShadow
       />
+
+      <primitive object={spotTargets.current[3]} position={[8, 2.2, 8]} />
       <spotLight
-        position={[6, 7.5, activeRoomZ + 6]}
-        target-position={[8, 2.2, activeRoomZ + 8]}
-        intensity={config.spotlightIntensity}
-        angle={0.7}
+        position={[5, 7.5, 5]}
+        target={spotTargets.current[3]}
+        intensity={config.spotlightIntensity * 1.2}
+        angle={0.8}
         penumbra={0.8}
         color={config.spotlightColor}
-        castShadow
       />
 
       {/* 5. Interactive Studio Light for Inspection Mode */}
       {isInspectActive && (
-        <spotLight
-          position={[inspectX, 3.5, activeRoomZ + inspectZ]}
-          intensity={inspectLightIntensity}
-          angle={0.65}
-          penumbra={0.85}
+        <pointLight
+          position={[inspectX, 3.0, inspectZ]}
+          intensity={inspectLightIntensity * 2.0}
           color="#FFF8E8"
-          castShadow
+          distance={8}
         />
       )}
     </group>
