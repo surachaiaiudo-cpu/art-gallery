@@ -68,8 +68,10 @@ function createPlacardTexture(title: string, artistName: string, year: number | 
 }
 
 // -------------------------------------------------------------
-// Dedicated High-Reliability Artwork Texture Plane
+// Global High-Speed Texture Cache (Instant 0ms Room Switching)
 // -------------------------------------------------------------
+const globalTextureCache = new Map<string, THREE.Texture>();
+
 function ArtworkPicturePlane({
   imageUrl,
   title,
@@ -103,6 +105,13 @@ function ArtworkPicturePlane({
       ? `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`
       : imageUrl;
 
+    // Instant memory cache hit
+    if (globalTextureCache.has(targetUrl)) {
+      const cached = globalTextureCache.get(targetUrl)!;
+      if (active) setTexture(cached);
+      return;
+    }
+
     // Use HTML5 Image loader for 100% reliable canvas texture creation
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
@@ -113,6 +122,7 @@ function ArtworkPicturePlane({
         const tex = new THREE.Texture(img);
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.needsUpdate = true;
+        globalTextureCache.set(targetUrl, tex);
         setTexture(tex);
       } catch (err) {
         console.warn('Canvas texture creation error, using fallback:', err);

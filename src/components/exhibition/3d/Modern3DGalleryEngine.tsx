@@ -644,6 +644,23 @@ export function Modern3DGalleryEngine({
 
   const currentRoomConfig = roomConfigs[currentRoomIndex] || roomConfigs[0];
 
+  // Background Preload Artwork Images across rooms for instant transitions
+  useEffect(() => {
+    if (typeof window === 'undefined' || !exhibition?.artworks) return;
+    const urls = exhibition.artworks
+      .map((a) => a?.imageUrl)
+      .filter((u): u is string => Boolean(u));
+
+    urls.forEach((url) => {
+      const targetUrl = url.startsWith('http')
+        ? `/api/image-proxy?url=${encodeURIComponent(url)}`
+        : url;
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = targetUrl;
+    });
+  }, [exhibition?.artworks]);
+
   // Global Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -868,8 +885,9 @@ export function Modern3DGalleryEngine({
                 onChange={(e) => {
                   const idx = Number(e.target.value);
                   setCurrentRoomIndex(idx);
-                  const targetZ = idx * -ROOM_SPACING_Z;
-                  setWarpTarget({ x: 0, z: targetZ + 6 });
+                  setFocusedArtwork(null);
+                  setFocusedSlot(null);
+                  setWarpTarget({ x: 0, z: 8 });
                 }}
                 className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer"
               >
