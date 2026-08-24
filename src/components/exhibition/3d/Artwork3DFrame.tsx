@@ -20,6 +20,54 @@ interface Artwork3DFrameProps {
 }
 
 // -------------------------------------------------------------
+// Dedicated Zero-Flicker Canvas Placard Texture Generator
+// -------------------------------------------------------------
+function createPlacardTexture(title: string, artistName: string, year: number | string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+
+  // Background Ivory / Alabaster Plate
+  ctx.fillStyle = '#F8F6F0';
+  ctx.fillRect(0, 0, 1024, 256);
+
+  // Outer Border Trim
+  ctx.strokeStyle = '#D5CBB9';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(10, 10, 1004, 236);
+
+  // Inner Gold Accent Line
+  ctx.strokeStyle = '#8C6D3F';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(18, 18, 988, 220);
+
+  // Title Typography
+  ctx.fillStyle = '#1E1D1B';
+  ctx.font = 'bold 50px "Sarabun", "Noto Sans Thai", "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const cleanTitle = title || 'Untitled';
+  const displayTitle = cleanTitle.length > 32 ? cleanTitle.slice(0, 30) + '...' : cleanTitle;
+  ctx.fillText(displayTitle, 512, 95);
+
+  // Artist & Year Typography
+  ctx.fillStyle = '#6E675F';
+  ctx.font = '500 34px "Sarabun", "Noto Sans Thai", "Segoe UI", sans-serif';
+  const subtitle = `${artistName || 'Artist'} • ${year || '2026'}`;
+  const displaySub = subtitle.length > 42 ? subtitle.slice(0, 40) + '...' : subtitle;
+  ctx.fillText(displaySub, 512, 175);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+// -------------------------------------------------------------
 // Dedicated High-Reliability Artwork Texture Plane
 // -------------------------------------------------------------
 function ArtworkPicturePlane({
@@ -141,6 +189,16 @@ export function Artwork3DFrame({
   // Contact shadow texture
   const contactShadowTex = useMemo(() => createContactShadowTexture(), []);
 
+  // Ultra-Reliable Zero-Flicker Canvas Placard Texture
+  const placardTexture = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    return createPlacardTexture(
+      artwork.title,
+      artwork.artist?.name || 'Artist',
+      artwork.yearCreated || '2026'
+    );
+  }, [artwork.title, artwork.artist?.name, artwork.yearCreated]);
+
   useEffect(() => {
     if (hovered) {
       document.body.style.cursor = 'pointer';
@@ -246,35 +304,17 @@ export function Artwork3DFrame({
         height={frameHeight}
       />
 
-      {/* 6. Museum Placard / Exhibition Label Plate */}
-      <group position={[0, -(frameHeight / 2 + 0.24), 0.01]}>
+      {/* 6. Museum Placard / Exhibition Label Plate (Zero Z-Fighting Single Texture Mesh) */}
+      <group position={[0, -(frameHeight / 2 + 0.22), 0.02]}>
         <mesh castShadow receiveShadow>
-          <boxGeometry args={[1.2, 0.24, 0.015]} />
-          <meshStandardMaterial color="#F4F2EB" roughness={0.3} metalness={0.05} />
+          <boxGeometry args={[1.2, 0.24, 0.02]} />
+          <meshStandardMaterial
+            map={placardTexture || undefined}
+            color={placardTexture ? '#FFFFFF' : '#F4F2EB'}
+            roughness={0.4}
+            metalness={0.05}
+          />
         </mesh>
-
-        <Text
-          position={[0, 0.045, 0.01]}
-          fontSize={0.048}
-          color="#1E293B"
-          anchorX="center"
-          anchorY="middle"
-          maxWidth={1.1}
-          textAlign="center"
-        >
-          {artwork.title || 'Untitled'}
-        </Text>
-        <Text
-          position={[0, -0.04, 0.01]}
-          fontSize={0.034}
-          color="#64748B"
-          anchorX="center"
-          anchorY="middle"
-          maxWidth={1.1}
-          textAlign="center"
-        >
-          {artwork.artist?.name || 'Artist'} • {artwork.yearCreated || '2026'}
-        </Text>
       </group>
 
       {/* 7. Dedicated 35° Track Light Fixture Body */}
