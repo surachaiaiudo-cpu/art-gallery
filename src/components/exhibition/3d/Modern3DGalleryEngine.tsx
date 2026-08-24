@@ -46,6 +46,10 @@ import {
   Volume2,
   VolumeX,
   Music,
+  ChevronUp,
+  ChevronDown,
+  RotateCw,
+  MapPin,
 } from 'lucide-react';
 import { museumAudio } from './MuseumSoundscape';
 
@@ -693,6 +697,12 @@ export function Modern3DGalleryEngine({
   const [cameraRadarPos, setCameraRadarPos] = useState({ x: 0, z: 8 });
   const [cameraRadarRotY, setCameraRadarRotY] = useState(0);
   const [warpTarget, setWarpTarget] = useState<{ x: number; z: number } | null>(null);
+  const [isMinimapMobileOpen, setIsMinimapMobileOpen] = useState(false);
+
+  // Virtual Touch Controller handlers
+  const handleTouchKey = (key: string, pressed: boolean) => {
+    activeKeys.current[key] = pressed;
+  };
 
   // Guided Tour
   const [isGuidedTour, setIsGuidedTour] = useState(false);
@@ -852,7 +862,7 @@ export function Modern3DGalleryEngine({
   };
 
   return (
-    <div className="relative w-full h-[calc(100vh-64px)] overflow-hidden bg-[#F4F3EE] select-none text-slate-800">
+    <div className="relative w-full h-[calc(100dvh-64px)] overflow-hidden bg-[#F4F3EE] select-none text-slate-800">
       {/* 3D WebGL Canvas */}
       <Canvas
         camera={{ position: [0, 1.8, 4.5], fov: 60 }}
@@ -931,22 +941,23 @@ export function Modern3DGalleryEngine({
       </Canvas>
 
       {/* Top Header Bar Controls (Role-aware: Clean Visitor View vs Full Curator View) */}
-      <header className="absolute top-4 left-0 right-0 z-30 flex items-center justify-between px-6 pointer-events-none">
-        <div className="flex items-center space-x-3 pointer-events-auto">
+      <header className="absolute top-3 sm:top-4 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-6 pointer-events-none gap-2">
+        <div className="flex items-center space-x-1.5 sm:space-x-3 pointer-events-auto">
           {onSwitchTo2D && (
             <button
               onClick={onSwitchTo2D}
-              className="px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-white text-xs font-semibold text-slate-800 border border-slate-200 shadow-md flex items-center space-x-2 transition-all hover:scale-105"
+              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-white/95 hover:bg-white text-xs font-semibold text-slate-800 border border-slate-200 shadow-md flex items-center space-x-1 sm:space-x-2 transition-all active:scale-95"
             >
-              <ChevronLeft className="w-4 h-4 text-amber-600" />
-              <span>กลับสู่มุมมอง 2D</span>
+              <ChevronLeft className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="hidden sm:inline">กลับสู่มุมมอง 2D</span>
+              <span className="sm:hidden font-bold">2D</span>
             </button>
           )}
 
           {/* Multi-Room Switcher or Single-Room Badge */}
           {roomConfigs.length > 1 ? (
-            <div className="flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
-              <span className="text-amber-800 font-medium">ห้อง:</span>
+            <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
+              <span className="text-amber-800 font-medium hidden sm:inline">ห้อง:</span>
               <select
                 value={currentRoomIndex}
                 onChange={(e) => {
@@ -956,7 +967,7 @@ export function Modern3DGalleryEngine({
                   setFocusedSlot(null);
                   setWarpTarget({ x: 0, z: 4.5 });
                 }}
-                className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                className="bg-transparent font-semibold text-slate-800 focus:outline-none cursor-pointer text-xs"
               >
                 {roomConfigs.map((r, i) => (
                   <option key={i} value={i}>
@@ -966,28 +977,28 @@ export function Modern3DGalleryEngine({
               </select>
             </div>
           ) : (
-            <div className="flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-200 shadow-sm text-xs font-semibold text-slate-800">
+            <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border border-slate-200 shadow-sm text-xs font-semibold text-slate-800">
               <Building className="w-3.5 h-3.5 text-amber-600 mr-1" />
-              <span>ห้อง #{currentRoomIndex + 1} • {shapeTitles[currentRoomConfig.shape] || currentRoomConfig.shape}</span>
+              <span>ห้อง #{currentRoomIndex + 1}</span>
             </div>
           )}
 
           {/* Ambient Museum Soundscape Audio Player (For all viewers) */}
-          <div className="flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
+          <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md px-2 sm:px-3 py-1 sm:py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
             <button
               onClick={handleToggleAudio}
-              className="flex items-center space-x-1.5 text-amber-900 font-semibold focus:outline-none hover:text-amber-700"
+              className="flex items-center space-x-1 text-amber-900 font-semibold focus:outline-none hover:text-amber-700"
               title={isAudioPlaying ? 'ปิดเสียงบรรยากาศ' : 'เปิดเสียงบรรยากาศ'}
             >
               {isAudioPlaying ? (
                 <>
                   <Volume2 className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                  <span className="text-amber-800 hidden sm:inline">เสียงบรรยากาศ</span>
+                  <span className="text-amber-800 hidden md:inline">เสียงบรรยากาศ</span>
                 </>
               ) : (
                 <>
                   <VolumeX className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="text-slate-500 hidden sm:inline">เปิดเสียง</span>
+                  <span className="text-slate-500 hidden md:inline">เปิดเสียง</span>
                 </>
               )}
             </button>
@@ -999,10 +1010,10 @@ export function Modern3DGalleryEngine({
                   setAudioPreset(preset);
                   museumAudio.startSoundscape(preset);
                 }}
-                className="bg-transparent font-medium text-slate-800 focus:outline-none cursor-pointer text-xs ml-1"
+                className="bg-transparent font-medium text-slate-800 focus:outline-none cursor-pointer text-xs ml-0.5"
               >
                 <option value="museum">🏛️ หอศิลป์</option>
-                <option value="river">🌿 ริมสายน้ำ</option>
+                <option value="river">🌿 สายน้ำ</option>
                 <option value="piano">🎹 เปียโน</option>
               </select>
             )}
@@ -1012,7 +1023,7 @@ export function Modern3DGalleryEngine({
           {isCuratorMode && (
             <>
               {/* Light Atmosphere Preset Switcher for Curator */}
-              <div className="flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
+              <div className="hidden lg:flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
                 <Sun className="w-3.5 h-3.5 text-amber-600" />
                 <select
                   value={activeLightPreset}
@@ -1028,7 +1039,7 @@ export function Modern3DGalleryEngine({
               </div>
 
               {/* Shape Switcher */}
-              <div className="flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
+              <div className="hidden lg:flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs">
                 <Shapes className="w-3.5 h-3.5 text-amber-600" />
                 <select
                   value={currentRoomConfig.shape}
@@ -1046,22 +1057,10 @@ export function Modern3DGalleryEngine({
         </div>
 
         {/* Right Header Buttons */}
-        <div className="flex items-center space-x-2 pointer-events-auto">
-          {/* Curator Studio Modal Button (Only in Curator mode) */}
-          {isCuratorMode && (
-            <button
-              onClick={() => setIsCuratorStudioOpen(true)}
-              className="px-4 py-2 rounded-2xl bg-amber-500/25 hover:bg-amber-500/35 text-amber-950 border border-amber-500/50 text-xs font-bold flex items-center space-x-2 shadow-md transition-all hover:scale-105"
-              title="เปิดสตูดิโอจัดการห้องจัดแสดง 3D และผังผนัง"
-            >
-              <Settings className="w-4 h-4 text-amber-700 animate-spin-slow" />
-              <span>⚙️ จัดการห้อง 3D (Curator Studio)</span>
-            </button>
-          )}
-
+        <div className="flex items-center space-x-1 sm:space-x-2 pointer-events-auto">
           <button
             onClick={() => setIsGuidedTour(!isGuidedTour)}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-semibold flex items-center space-x-1.5 shadow-sm border transition-all ${
+            className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl text-xs font-semibold flex items-center space-x-1 sm:space-x-1.5 shadow-sm border transition-all ${
               isGuidedTour
                 ? 'bg-amber-600 text-white border-amber-600 animate-pulse'
                 : 'bg-white/95 hover:bg-white text-amber-900 border-slate-200'
@@ -1070,12 +1069,13 @@ export function Modern3DGalleryEngine({
             {isGuidedTour ? (
               <>
                 <Pause className="w-3.5 h-3.5" />
-                <span>หยุด Tour</span>
+                <span className="hidden sm:inline">หยุด Tour</span>
               </>
             ) : (
               <>
                 <Play className="w-3.5 h-3.5 text-amber-600" />
-                <span>Guided Tour</span>
+                <span className="hidden sm:inline">Guided Tour</span>
+                <span className="sm:hidden font-bold">Tour</span>
               </>
             )}
           </button>
@@ -1084,13 +1084,13 @@ export function Modern3DGalleryEngine({
             onClick={() => {
               setFocusedArtwork(null);
               setFocusedSlot(null);
-              setWarpTarget({ x: 0, z: currentRoomConfig.center.z + 8 });
+              setWarpTarget({ x: 0, z: 4.5 });
             }}
-            className="px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-white text-slate-800 border border-slate-200 text-xs font-medium flex items-center space-x-1.5 shadow-sm transition-all"
+            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl bg-white/95 hover:bg-white text-slate-800 border border-slate-200 text-xs font-medium flex items-center space-x-1 sm:space-x-1.5 shadow-sm transition-all"
             title="รีเซ็ตตำแหน่งกล้องสู่ภาพรวมห้อง"
           >
             <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-            <span>ภาพรวม</span>
+            <span className="hidden sm:inline">ภาพรวม</span>
           </button>
         </div>
       </header>
@@ -1129,8 +1129,8 @@ export function Modern3DGalleryEngine({
         </div>
       </div>
 
-      {/* Top Right Minimap Radar */}
-      <div className="absolute top-20 right-6 z-30 pointer-events-auto block">
+      {/* Top Right Minimap Radar (Desktop: Fixed, Mobile: Toggleable) */}
+      <div className="absolute top-20 right-6 z-30 pointer-events-auto hidden sm:block">
         <MinimapRadar
           roomConfig={currentRoomConfig}
           cameraPos={cameraRadarPos}
@@ -1142,13 +1142,100 @@ export function Modern3DGalleryEngine({
         />
       </div>
 
+      {/* Mobile Minimap Toggle Button */}
+      <div className="absolute top-16 right-3 z-30 pointer-events-auto sm:hidden">
+        <button
+          onClick={() => setIsMinimapMobileOpen(!isMinimapMobileOpen)}
+          className={`p-2.5 rounded-2xl shadow-lg border backdrop-blur-md flex items-center gap-1.5 text-xs font-bold transition-all ${
+            isMinimapMobileOpen
+              ? 'bg-amber-600 text-white border-amber-600'
+              : 'bg-white/90 text-amber-900 border-slate-200/80'
+          }`}
+          title="เปิด/ปิด แผนที่ผังห้อง"
+        >
+          <Compass className="w-4 h-4" />
+          <span>แผนที่</span>
+        </button>
+
+        {/* Mobile Minimap Popup Modal */}
+        {isMinimapMobileOpen && (
+          <div className="absolute top-12 right-0 bg-white/95 backdrop-blur-xl p-2 rounded-3xl shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <MinimapRadar
+              roomConfig={currentRoomConfig}
+              cameraPos={cameraRadarPos}
+              cameraRotationY={cameraRadarRotY}
+              onWarpToPosition={(x, z) => {
+                setWarpTarget({ x, z });
+                setIsMinimapMobileOpen(false);
+              }}
+              onSelectArtwork={(slot) => {
+                if (slot.artwork) {
+                  handleInspectArtwork(slot.artwork);
+                  setIsMinimapMobileOpen(false);
+                }
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Touch Virtual D-Pad (Walk & Turn for Touchscreen / Mobile) */}
+      <div className="absolute bottom-24 left-3 z-30 pointer-events-auto flex flex-col items-center gap-1 sm:hidden select-none">
+        {/* Forward Button */}
+        <button
+          onTouchStart={() => handleTouchKey('w', true)}
+          onTouchEnd={() => handleTouchKey('w', false)}
+          onMouseDown={() => handleTouchKey('w', true)}
+          onMouseUp={() => handleTouchKey('w', false)}
+          className="w-12 h-11 rounded-2xl bg-white/90 active:bg-amber-500 active:text-white backdrop-blur-md border border-slate-200/90 shadow-lg flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+          aria-label="Walk Forward"
+        >
+          <ChevronUp className="w-6 h-6" />
+        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Turn Left Button */}
+          <button
+            onTouchStart={() => handleTouchKey('arrowleft', true)}
+            onTouchEnd={() => handleTouchKey('arrowleft', false)}
+            onMouseDown={() => handleTouchKey('arrowleft', true)}
+            onMouseUp={() => handleTouchKey('arrowleft', false)}
+            className="w-11 h-11 rounded-2xl bg-white/90 active:bg-amber-500 active:text-white backdrop-blur-md border border-slate-200/90 shadow-lg flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+            aria-label="Turn Left"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+          {/* Backward Button */}
+          <button
+            onTouchStart={() => handleTouchKey('s', true)}
+            onTouchEnd={() => handleTouchKey('s', false)}
+            onMouseDown={() => handleTouchKey('s', true)}
+            onMouseUp={() => handleTouchKey('s', false)}
+            className="w-12 h-11 rounded-2xl bg-white/90 active:bg-amber-500 active:text-white backdrop-blur-md border border-slate-200/90 shadow-lg flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+            aria-label="Walk Backward"
+          >
+            <ChevronDown className="w-6 h-6" />
+          </button>
+          {/* Turn Right Button */}
+          <button
+            onTouchStart={() => handleTouchKey('arrowright', true)}
+            onTouchEnd={() => handleTouchKey('arrowright', false)}
+            onMouseDown={() => handleTouchKey('arrowright', true)}
+            onMouseUp={() => handleTouchKey('arrowright', false)}
+            className="w-11 h-11 rounded-2xl bg-white/90 active:bg-amber-500 active:text-white backdrop-blur-md border border-slate-200/90 shadow-lg flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+            aria-label="Turn Right"
+          >
+            <RotateCw className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
       {/* Bottom Artwork Carousel Bar */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-full px-4">
-        <div className="bg-white/95 backdrop-blur-xl px-4 py-2.5 rounded-2xl flex items-center space-x-3 shadow-2xl border border-white/80">
+      <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-full px-2 sm:px-4">
+        <div className="bg-white/95 backdrop-blur-xl px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl flex items-center space-x-2 sm:space-x-3 shadow-2xl border border-white/80">
           <span className="text-xs text-slate-500 font-medium pr-2 border-r border-slate-200 hidden md:inline">
             ผลงานในห้องนี้:
           </span>
-          <div className="flex items-center space-x-2 overflow-x-auto max-w-[70vw] sm:max-w-lg py-1">
+          <div className="flex items-center space-x-2 overflow-x-auto max-w-[90vw] sm:max-w-lg py-1 scrollbar-none">
             {currentRoomConfig.slots
               .filter((s) => s.artwork)
               .map((slot) => {

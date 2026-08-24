@@ -226,7 +226,7 @@ export function ArtworkLightbox({
             <div className="h-4 w-[1px] bg-white/30 mx-0.5" />
 
             {/* Quick Preset Buttons (1x, 2x, 4x, 8x) */}
-            <div className="flex items-center gap-1 text-[11px] font-mono font-bold">
+            <div className="hidden sm:flex items-center gap-1 text-[11px] font-mono font-bold">
               <button
                 onClick={() => handleZoom(1)}
                 className={`px-2 py-0.5 rounded-full transition-all ${

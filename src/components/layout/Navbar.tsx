@@ -36,49 +36,49 @@ export function Navbar({
           {/* Explicit Exit to Lobby Button */}
           <Link
             href="/"
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-[#EAE5DA] hover:bg-[#DDD6C8] text-[#2C2924] border border-[#D5CEC0] transition-colors shadow-sm active:scale-95"
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-[#EAE5DA] hover:bg-[#DDD6C8] text-[#2C2924] border border-[#D5CEC0] transition-colors shadow-sm active:scale-95 shrink-0"
             title={t.actions.returnToLobby}
           >
             <Home className="w-3.5 h-3.5 text-[#8C6D3F]" />
-            <span>{t.actions.returnToLobby}</span>
+            <span className="hidden md:inline">{t.actions.returnToLobby}</span>
           </Link>
         </div>
 
         {/* Center: 2D / Carousel / 3D View Switcher */}
         {onModeChange && (
-          <div className="flex items-center bg-[#EBE8E0] p-1 rounded-full border border-[#DDD8CD] shadow-inner">
+          <div className="flex items-center bg-[#EBE8E0] p-0.5 sm:p-1 rounded-full border border-[#DDD8CD] shadow-inner shrink-0">
             <button
               onClick={() => onModeChange('2d')}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider transition-all duration-200 ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider transition-all duration-200 ${
                 currentMode === '2d'
                   ? 'bg-[#1A1918] text-white shadow-sm'
                   : 'text-[#6B655B] hover:text-[#1A1918]'
               }`}
             >
-              <Eye className="w-3.5 h-3.5" />
-              <span>{t.modes.grid}</span>
+              <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden xs:inline">{t.modes.grid}</span>
             </button>
             <button
               onClick={() => onModeChange('carousel')}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider transition-all duration-200 ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider transition-all duration-200 ${
                 currentMode === 'carousel'
                   ? 'bg-[#1A1918] text-white shadow-sm'
                   : 'text-[#6B655B] hover:text-[#1A1918]'
               }`}
             >
-              <GalleryHorizontal className="w-3.5 h-3.5" />
-              <span>{t.modes.carousel}</span>
+              <GalleryHorizontal className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{t.modes.carousel}</span>
             </button>
             {is3DEnabled(exhibition) && (
               <button
                 onClick={() => onModeChange('3d')}
-                className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider transition-all duration-200 ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider transition-all duration-200 ${
                   currentMode === '3d'
                     ? 'bg-[#1A1918] text-white shadow-sm'
                     : 'text-[#6B655B] hover:text-[#1A1918]'
                 }`}
               >
-                <Box className="w-3.5 h-3.5" />
+                <Box className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C5A880]" />
                 <span>{t.modes.room3d}</span>
               </button>
             )}
