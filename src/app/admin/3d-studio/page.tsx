@@ -2,6 +2,7 @@ import React from 'react';
 import { getAllExhibitions } from '@/lib/data';
 import { Admin3DStudioClient } from '@/components/admin/Admin3DStudioClient';
 
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export default async function Admin3DStudioPage() {
