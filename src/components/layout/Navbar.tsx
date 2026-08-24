@@ -136,17 +136,7 @@ export function Navbar({
             </>
           )}
 
-          {/* 3D Studio & Settings Link */}
-          <Link
-            href="/admin/3d-studio"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-900 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 rounded-full transition-all shadow-sm"
-            title="3D Gallery Studio & Settings"
-          >
-            <Box className="w-3.5 h-3.5 text-amber-600" />
-            <span className="hidden sm:inline">{lang === 'th' ? 'สตูดิโอ 3D' : '3D Studio'}</span>
-          </Link>
-
-          {/* Curator Admin Portal Link */}
+          {/* Curator Admin Portal Link (Only for admins) */}
           <Link
             href="/admin"
             className="p-2 text-[#7A746A] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-full transition-colors"
