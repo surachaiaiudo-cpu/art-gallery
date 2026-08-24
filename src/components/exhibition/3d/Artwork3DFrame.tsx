@@ -327,28 +327,28 @@ export function Artwork3DFrame({
         </mesh>
       </group>
 
-      {/* 7. Realistic Gallery Suspension System (Stainless Steel Hanging Wires & Wall Brackets) */}
-      <group position={[0, frameHeight / 2 + 0.03, 0.015]}>
-        {/* Left Brass Mounting Clip */}
-        <mesh position={[-frameWidth * 0.32, 0.03, 0]} castShadow>
-          <boxGeometry args={[0.04, 0.06, 0.03]} />
-          <meshStandardMaterial color="#8C6D3F" roughness={0.3} metalness={0.7} />
+      {/* 7. Realistic Gallery Suspension System (Stainless Steel Hanging Wires & Brass Brackets) */}
+      <group position={[0, frameHeight / 2 + 0.02, 0.02]}>
+        {/* Left Brass Mounting Bracket */}
+        <mesh position={[-frameWidth * 0.32, 0.04, 0.01]} castShadow>
+          <boxGeometry args={[0.05, 0.08, 0.03]} />
+          <meshStandardMaterial color="#D4AF37" roughness={0.25} metalness={0.8} />
         </mesh>
-        {/* Left Stainless Steel Suspension Cable */}
-        <mesh position={[-frameWidth * 0.32, 1.8, 0]}>
-          <cylinderGeometry args={[0.003, 0.003, 3.6, 8]} />
-          <meshStandardMaterial color="#A8A29E" roughness={0.2} metalness={0.9} />
+        {/* Left Stainless Steel Suspension Cable (Reaching up to ceiling) */}
+        <mesh position={[-frameWidth * 0.32, 2.5, 0.01]}>
+          <cylinderGeometry args={[0.005, 0.005, 5.0, 12]} />
+          <meshStandardMaterial color="#D1CCC0" roughness={0.2} metalness={0.9} />
         </mesh>
 
-        {/* Right Brass Mounting Clip */}
-        <mesh position={[frameWidth * 0.32, 0.03, 0]} castShadow>
-          <boxGeometry args={[0.04, 0.06, 0.03]} />
-          <meshStandardMaterial color="#8C6D3F" roughness={0.3} metalness={0.7} />
+        {/* Right Brass Mounting Bracket */}
+        <mesh position={[frameWidth * 0.32, 0.04, 0.01]} castShadow>
+          <boxGeometry args={[0.05, 0.08, 0.03]} />
+          <meshStandardMaterial color="#D4AF37" roughness={0.25} metalness={0.8} />
         </mesh>
-        {/* Right Stainless Steel Suspension Cable */}
-        <mesh position={[frameWidth * 0.32, 1.8, 0]}>
-          <cylinderGeometry args={[0.003, 0.003, 3.6, 8]} />
-          <meshStandardMaterial color="#A8A29E" roughness={0.2} metalness={0.9} />
+        {/* Right Stainless Steel Suspension Cable (Reaching up to ceiling) */}
+        <mesh position={[frameWidth * 0.32, 2.5, 0.01]}>
+          <cylinderGeometry args={[0.005, 0.005, 5.0, 12]} />
+          <meshStandardMaterial color="#D1CCC0" roughness={0.2} metalness={0.9} />
         </mesh>
 
         {/* Dynamic Focus / Hover Spotlight (Seamless without floating cylinder body) */}

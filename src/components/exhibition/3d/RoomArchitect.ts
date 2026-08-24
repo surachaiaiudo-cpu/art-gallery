@@ -17,7 +17,7 @@ export function calculateRoomSlots(
 ): CalculatedArtworkSlot[] {
   const roomCenterZ = roomIndex * -ROOM_SPACING_Z;
   const wallY = EYE_LEVEL_Y;
-  const wallOffset = 0.08;
+  const wallOffset = 0.14;
   const slots: CalculatedArtworkSlot[] = [];
 
   // Filter valid artworks

@@ -113,6 +113,16 @@ function RoomStructureMesh({
     []
   );
 
+  const trackLightMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#1A1918',
+        roughness: 0.3,
+        metalness: 0.8,
+      }),
+    []
+  );
+
   // 1. CIRCULAR ROTUNDA
   if (config.shape === 'CIRCULAR') {
     const radius = 12;
@@ -141,6 +151,24 @@ function RoomStructureMesh({
           <ringGeometry args={[4, radius, 64]} />
           <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
         </mesh>
+
+        {/* Museum Ceiling Track Light Ring */}
+        <group position={[0, h - 0.45, 0]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[9.3, 9.5, 64]} />
+            <primitive object={trackLightMat} attach="material" />
+          </mesh>
+          {/* Radial Track Spotlights */}
+          {Array.from({ length: 12 }).map((_, idx) => {
+            const a = (idx * Math.PI * 2) / 12;
+            return (
+              <mesh key={idx} position={[Math.sin(a) * 9.4, -0.15, Math.cos(a) * 9.4]} rotation={[0.4, -a, 0]}>
+                <cylinderGeometry args={[0.07, 0.07, 0.2, 12]} />
+                <primitive object={trackLightMat} attach="material" />
+              </mesh>
+            );
+          })}
+        </group>
 
         {/* Central Circular Bench */}
         <group position={[0, 0.25, 0]}>
@@ -182,6 +210,14 @@ function RoomStructureMesh({
           <planeGeometry args={[10, 8]} />
           <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
         </mesh>
+
+        {/* Museum Ceiling Track Light Rig (L-Shape) */}
+        <group position={[0, h - 0.45, 0]}>
+          <mesh position={[-5, 0, -6]}><boxGeometry args={[10, 0.08, 0.08]} /><primitive object={trackLightMat} attach="material" /></mesh>
+          <mesh position={[-5, 0, 6]}><boxGeometry args={[10, 0.08, 0.08]} /><primitive object={trackLightMat} attach="material" /></mesh>
+          <mesh position={[-9, 0, 0]}><boxGeometry args={[0.08, 0.08, 14]} /><primitive object={trackLightMat} attach="material" /></mesh>
+          <mesh position={[6, 0, 6]}><boxGeometry args={[6, 0.08, 0.08]} /><primitive object={trackLightMat} attach="material" /></mesh>
+        </group>
 
         {/* Wall 0: Outer West Wall (x = -12, length = 20m) */}
         <mesh position={[-12, h / 2, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
@@ -274,6 +310,20 @@ function RoomStructureMesh({
           <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
         </mesh>
 
+        {/* Museum Ceiling Track Lighting System (Rectangle Loop) */}
+        <group position={[0, h - 0.45, 0]}>
+          <mesh position={[0, 0, -5]}><boxGeometry args={[22, 0.08, 0.08]} /><primitive object={trackLightMat} attach="material" /></mesh>
+          <mesh position={[0, 0, 5]}><boxGeometry args={[22, 0.08, 0.08]} /><primitive object={trackLightMat} attach="material" /></mesh>
+          <mesh position={[-11, 0, 0]}><boxGeometry args={[0.08, 0.08, 10]} /><primitive object={trackLightMat} attach="material" /></mesh>
+          <mesh position={[11, 0, 0]}><boxGeometry args={[0.08, 0.08, 10]} /><primitive object={trackLightMat} attach="material" /></mesh>
+          {[-8, -4, 0, 4, 8].map((offset, i) => (
+            <React.Fragment key={i}>
+              <mesh position={[offset, -0.15, -5]} rotation={[-0.4, 0, 0]}><cylinderGeometry args={[0.07, 0.07, 0.2, 12]} /><primitive object={trackLightMat} attach="material" /></mesh>
+              <mesh position={[offset, -0.15, 5]} rotation={[0.4, 0, 0]}><cylinderGeometry args={[0.07, 0.07, 0.2, 12]} /><primitive object={trackLightMat} attach="material" /></mesh>
+            </React.Fragment>
+          ))}
+        </group>
+
         {/* North Wall */}
         <mesh position={[0, h / 2, -d / 2]} receiveShadow>
           <boxGeometry args={[w, h, 0.2]} />
@@ -346,6 +396,22 @@ function RoomStructureMesh({
         <planeGeometry args={[w, d]} />
         <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
       </mesh>
+
+      {/* Museum Ceiling Track Lighting Square Rig */}
+      <group position={[0, h - 0.45, 0]}>
+        <mesh position={[0, 0, -7.5]}><boxGeometry args={[15.2, 0.08, 0.08]} /><primitive object={trackLightMat} attach="material" /></mesh>
+        <mesh position={[0, 0, 7.5]}><boxGeometry args={[15.2, 0.08, 0.08]} /><primitive object={trackLightMat} attach="material" /></mesh>
+        <mesh position={[-7.5, 0, 0]}><boxGeometry args={[0.08, 0.08, 15.2]} /><primitive object={trackLightMat} attach="material" /></mesh>
+        <mesh position={[7.5, 0, 0]}><boxGeometry args={[0.08, 0.08, 15.2]} /><primitive object={trackLightMat} attach="material" /></mesh>
+        {[-5, -1.5, 1.5, 5].map((offset, i) => (
+          <React.Fragment key={i}>
+            <mesh position={[offset, -0.15, -7.5]} rotation={[-0.4, 0, 0]}><cylinderGeometry args={[0.07, 0.07, 0.2, 12]} /><primitive object={trackLightMat} attach="material" /></mesh>
+            <mesh position={[offset, -0.15, 7.5]} rotation={[0.4, 0, 0]}><cylinderGeometry args={[0.07, 0.07, 0.2, 12]} /><primitive object={trackLightMat} attach="material" /></mesh>
+            <mesh position={[-7.5, -0.15, offset]} rotation={[0, 0, 0.4]}><cylinderGeometry args={[0.07, 0.07, 0.2, 12]} /><primitive object={trackLightMat} attach="material" /></mesh>
+            <mesh position={[7.5, -0.15, offset]} rotation={[0, 0, -0.4]}><cylinderGeometry args={[0.07, 0.07, 0.2, 12]} /><primitive object={trackLightMat} attach="material" /></mesh>
+          </React.Fragment>
+        ))}
+      </group>
 
       {/* North Wall (Back) */}
       <mesh position={[0, h / 2, -d / 2]} receiveShadow>
