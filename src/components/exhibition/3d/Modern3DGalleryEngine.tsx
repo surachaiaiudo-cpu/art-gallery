@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Exhibition, Artwork } from '@/types/exhibition';
 import {
@@ -750,26 +749,103 @@ function CameraController({
   onAimArtwork,
   onMarkViewed,
 }: CameraControllerProps) {
-  const { camera, raycaster, scene } = useThree();
+  const { camera, raycaster, scene, gl } = useThree();
   const targetCamPos = useRef(new THREE.Vector3(0, 1.8, ROOM_D / 2 - 3));
-  const targetLookAt = useRef(new THREE.Vector3(0, 1.8, 0));
   const screenCenter = useRef(new THREE.Vector2(0, 0));
   const aimHoldTimeRef = useRef(0);
+
+  // First-Person Free-Look State (Yaw: Left/Right, Pitch: Up/Down)
+  const isPointerDown = useRef(false);
+  const pointerStart = useRef({ x: 0, y: 0 });
+  const yaw = useRef(0); // Horizontal angle in radians (0 = looking down -Z)
+  const pitch = useRef(0); // Vertical angle in radians (0 = horizontal, >0 = up, <0 = down)
+  const targetYaw = useRef(0);
+  const targetPitch = useRef(0);
+  const isInitialized = useRef(false);
+
+  // Initialize initial camera angles
+  useEffect(() => {
+    if (!isInitialized.current) {
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      const initYaw = Math.atan2(dir.x, -dir.z);
+      const initPitch = Math.asin(Math.max(-1, Math.min(1, dir.y)));
+      yaw.current = initYaw;
+      targetYaw.current = initYaw;
+      pitch.current = initPitch;
+      targetPitch.current = initPitch;
+      isInitialized.current = true;
+    }
+  }, [camera]);
 
   // Handle Warp Trigger from Minimap or Room Switcher
   useEffect(() => {
     if (warpTarget) {
       camera.position.set(warpTarget.x, 1.8, warpTarget.z);
       targetCamPos.current.set(warpTarget.x, 1.8, warpTarget.z);
-      targetLookAt.current.set(warpTarget.x, 1.8, warpTarget.z - 5);
-      camera.lookAt(targetLookAt.current);
-      if (controlsRef.current) {
-        controlsRef.current.target.set(targetLookAt.current.x, 1.8, targetLookAt.current.z);
-        controlsRef.current.update();
-      }
+      targetYaw.current = 0;
+      targetPitch.current = 0;
+      yaw.current = 0;
+      pitch.current = 0;
       onClearWarp();
     }
-  }, [warpTarget, onClearWarp, controlsRef, camera]);
+  }, [warpTarget, onClearWarp, camera]);
+
+  // Mouse / Pointer / Touch Drag Look-Around (Left, Right, Up, Down)
+  useEffect(() => {
+    const dom = gl.domElement;
+    if (!dom) return;
+
+    dom.style.cursor = 'grab';
+
+    const onPointerDown = (e: PointerEvent) => {
+      isPointerDown.current = true;
+      pointerStart.current = { x: e.clientX, y: e.clientY };
+      dom.style.cursor = 'grabbing';
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isPointerDown.current) return;
+      const dx = e.clientX - pointerStart.current.x;
+      const dy = e.clientY - pointerStart.current.y;
+      pointerStart.current = { x: e.clientX, y: e.clientY };
+
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        if (focusedArtwork || focusedSlot) {
+          onClearFocus();
+        }
+      }
+
+      // Smooth mouse drag sensitivity: dx for Yaw (left/right), dy for Pitch (up/down)
+      const sensitivity = 0.0034;
+      targetYaw.current -= dx * sensitivity;
+      targetPitch.current = Math.max(-1.3, Math.min(1.3, targetPitch.current - dy * sensitivity));
+    };
+
+    const onPointerUp = () => {
+      isPointerDown.current = false;
+      dom.style.cursor = 'grab';
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (camera instanceof THREE.PerspectiveCamera) {
+        camera.fov = Math.max(35, Math.min(75, camera.fov + e.deltaY * 0.04));
+        camera.updateProjectionMatrix();
+      }
+    };
+
+    dom.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    dom.addEventListener('wheel', onWheel, { passive: true });
+
+    return () => {
+      dom.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      dom.removeEventListener('wheel', onWheel);
+    };
+  }, [gl, camera, focusedArtwork, focusedSlot, onClearFocus]);
 
   useFrame((state, delta) => {
     // 0. Raycast center screen to detect aimed artwork & track viewed progress
@@ -809,16 +885,33 @@ function CameraController({
       activeKeys.current['s'] ||
       activeKeys.current['arrowdown'] ||
       activeKeys.current['a'] ||
-      activeKeys.current['d'] ||
-      activeKeys.current['arrowleft'] ||
-      activeKeys.current['arrowright'];
+      activeKeys.current['d'];
 
     if (isMoving && (focusedArtwork || focusedSlot)) {
       onClearFocus();
     }
 
-    // 1. Smooth Focus Mode on Selected Artwork
-    if (focusedSlot && !isMoving) {
+    // 1. Keyboard Look Rotation (ArrowLeft / ArrowRight / Q / E) & Pitch (PageUp / PageDown)
+    const keyTurnSpeed = 2.2 * delta;
+    if (activeKeys.current['arrowleft'] || activeKeys.current['q']) {
+      targetYaw.current += keyTurnSpeed;
+    }
+    if (activeKeys.current['arrowright'] || activeKeys.current['e']) {
+      targetYaw.current -= keyTurnSpeed;
+    }
+    if (activeKeys.current['pageup']) {
+      targetPitch.current = Math.min(1.3, targetPitch.current + keyTurnSpeed * 0.6);
+    }
+    if (activeKeys.current['pagedown']) {
+      targetPitch.current = Math.max(-1.3, targetPitch.current - keyTurnSpeed * 0.6);
+    }
+
+    // 2. Smooth Damping for Yaw & Pitch
+    yaw.current = THREE.MathUtils.lerp(yaw.current, targetYaw.current, 0.18);
+    pitch.current = THREE.MathUtils.lerp(pitch.current, targetPitch.current, 0.18);
+
+    // 3. Smooth Focus Mode on Selected Artwork
+    if (focusedSlot && !isMoving && !isPointerDown.current) {
       const offsetDist = 2.4;
       const artPos = focusedSlot.worldPosition || focusedSlot.position;
       const rotY = focusedSlot.worldRotationY !== undefined ? focusedSlot.worldRotationY : focusedSlot.rotationY;
@@ -826,39 +919,17 @@ function CameraController({
       const camZ = artPos.z + Math.cos(rotY) * offsetDist;
 
       targetCamPos.current.set(camX, EYE_LEVEL_Y, camZ);
-      targetLookAt.current.set(artPos.x, EYE_LEVEL_Y, artPos.z);
-
       camera.position.lerp(targetCamPos.current, 0.08);
-      camera.lookAt(targetLookAt.current);
 
-      if (controlsRef.current) {
-        controlsRef.current.target.lerp(targetLookAt.current, 0.08);
-      }
+      const lookDx = artPos.x - camera.position.x;
+      const lookDz = artPos.z - camera.position.z;
+      targetYaw.current = Math.atan2(lookDx, -lookDz);
+      targetPitch.current = (artPos.y - EYE_LEVEL_Y) * 0.15;
     } else {
-      // 2. Turn View Left / Right with Arrow Keys
-      const turnSpeed = 2.2 * delta;
-      if (activeKeys.current['arrowleft'] && controlsRef.current) {
-        const offset = controlsRef.current.target.clone().sub(camera.position);
-        offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), turnSpeed);
-        controlsRef.current.target.copy(camera.position).add(offset);
-        controlsRef.current.update();
-      }
-      if (activeKeys.current['arrowright'] && controlsRef.current) {
-        const offset = controlsRef.current.target.clone().sub(camera.position);
-        offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), -turnSpeed);
-        controlsRef.current.target.copy(camera.position).add(offset);
-        controlsRef.current.update();
-      }
-
-      // 3. Walk / Strafe Movement (WASD + ArrowUp/ArrowDown)
+      // 4. Walk / Strafe Movement (WASD + ArrowUp/ArrowDown)
       const moveSpeed = 5.5 * delta;
-      const forward = new THREE.Vector3();
-      camera.getWorldDirection(forward);
-      forward.y = 0;
-      forward.normalize();
-
-      const right = new THREE.Vector3();
-      right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+      const forward = new THREE.Vector3(Math.sin(yaw.current), 0, -Math.cos(yaw.current)).normalize();
+      const right = new THREE.Vector3(Math.cos(yaw.current), 0, Math.sin(yaw.current)).normalize();
 
       const move = new THREE.Vector3();
       if (activeKeys.current['w'] || activeKeys.current['arrowup']) move.add(forward);
@@ -923,18 +994,7 @@ function CameraController({
         const finalX = curRoom.center.x + clampedRot.x;
         const finalZ = curRoom.center.z + clampedRot.z;
 
-        const deltaMove = new THREE.Vector3(
-          finalX - camera.position.x,
-          0,
-          finalZ - camera.position.z
-        );
-
         camera.position.set(finalX, 1.8, finalZ);
-
-        if (controlsRef.current) {
-          controlsRef.current.target.add(deltaMove);
-          controlsRef.current.update();
-        }
 
         // Check if room index changed
         const newRoomIdx = findCurrentRoomIndex(
@@ -948,10 +1008,20 @@ function CameraController({
       }
     }
 
+    // 5. Compute Look-At vector from current Camera Position + Head Orientation (Yaw + Pitch)
+    const forwardX = Math.sin(yaw.current) * Math.cos(pitch.current);
+    const forwardY = Math.sin(pitch.current);
+    const forwardZ = -Math.cos(yaw.current) * Math.cos(pitch.current);
+
+    const lookTarget = new THREE.Vector3(
+      camera.position.x + forwardX,
+      camera.position.y + forwardY,
+      camera.position.z + forwardZ
+    );
+    camera.lookAt(lookTarget);
+
     // Sync camera orientation to Minimap Radar
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    const rotY = Math.atan2(dir.x, dir.z);
+    const rotY = Math.atan2(forwardX, -forwardZ);
     onCameraUpdate({ x: camera.position.x, z: camera.position.z }, rotY);
   });
 
@@ -1477,16 +1547,6 @@ export function Modern3DGalleryEngine({
             }}
             onMarkViewed={handleMarkViewed}
           />
-
-          <OrbitControls
-            ref={controlsRef}
-            enableDamping
-            dampingFactor={0.05}
-            target={[0, 1.8, 0]}
-            maxPolarAngle={Math.PI / 2 - 0.05}
-            minDistance={1.0}
-            maxDistance={25.0}
-          />
         </Suspense>
       </Canvas>
 
@@ -1656,7 +1716,7 @@ export function Modern3DGalleryEngine({
               }}
             />
           </div>
-          <span className="text-[11px] font-mono font-medium text-[#C5A880] whitespace-nowrap">
+          <span className="text-[11px] font-mono text-[#D9B878] font-bold shrink-0">
             ชมแล้ว {viewedArtworkIds.size}/{exhibition.artworks?.length || 0}
           </span>
         </div>
@@ -1740,6 +1800,14 @@ export function Modern3DGalleryEngine({
             </h3>
             <div className="space-y-2.5 text-xs text-neutral-200">
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                <span>🖱️ ลากเมาส์ (Click & Drag)</span>
+                <span className="font-semibold text-[#FFD98A]">หันหน้า ซ้าย-ขวา-ก้ม-เงย 360°</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                <span>🔍 เลื่อนล้อเมาส์ (Wheel)</span>
+                <span className="font-semibold text-[#FFD98A]">ซูมเข้า / ซูมออก (Zoom)</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
                 <span>เดินหน้า / ถอยหลัง / สไลด์</span>
                 <div className="flex gap-1 font-mono text-[#FFD98A]">
                   <kbd className="px-2 py-0.5 bg-black/40 rounded border border-[#D9B878]/30">W</kbd>
@@ -1749,8 +1817,10 @@ export function Modern3DGalleryEngine({
                 </div>
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                <span>หมุนมุมมองซ้าย / ขวา</span>
+                <span>หมุนมุมมองด้วยคีย์บอร์ด</span>
                 <div className="flex gap-1 font-mono text-[#FFD98A]">
+                  <kbd className="px-2 py-0.5 bg-black/40 rounded border border-[#D9B878]/30">Q</kbd>
+                  <kbd className="px-2 py-0.5 bg-black/40 rounded border border-[#D9B878]/30">E</kbd>
                   <kbd className="px-2 py-0.5 bg-black/40 rounded border border-[#D9B878]/30">←</kbd>
                   <kbd className="px-2 py-0.5 bg-black/40 rounded border border-[#D9B878]/30">→</kbd>
                 </div>
