@@ -49,9 +49,6 @@
   .no-print, header, footer, nav {
     display: none !important;
   }
-  .print-hide-this-page {
-    display: none !important;
-  }
   main {
     margin: 0 !important;
     padding: 0 !important;
@@ -80,5 +77,19 @@
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
+  }
+
+  /* Single-Page Print Overrides */
+  .catalog-a4-page.print-hide-this-page,
+  .print-hide-this-page,
+  body.print-single-mode .catalog-a4-page:not(.print-this-page-only) {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
   }
 }

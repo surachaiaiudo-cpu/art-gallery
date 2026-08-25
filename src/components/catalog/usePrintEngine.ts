@@ -33,12 +33,15 @@ export function usePrintEngine(exhibition: Exhibition) {
     document.title = `${cleanSlug}-Page-${pageNum}-Official-A4-Vector`;
 
     // Mark single page for print
+    document.body.classList.add('print-single-mode');
     const pages = document.querySelectorAll<HTMLElement>('main .catalog-a4-page');
     pages.forEach((page, idx) => {
       if (idx === pageIndex) {
         page.classList.add('print-this-page-only');
+        page.classList.remove('print-hide-this-page');
       } else {
         page.classList.add('print-hide-this-page');
+        page.classList.remove('print-this-page-only');
       }
     });
 
@@ -47,6 +50,7 @@ export function usePrintEngine(exhibition: Exhibition) {
 
     const cleanup = () => {
       document.title = originalTitle;
+      document.body.classList.remove('print-single-mode');
       pages.forEach((page) => {
         page.classList.remove('print-this-page-only', 'print-hide-this-page');
       });
