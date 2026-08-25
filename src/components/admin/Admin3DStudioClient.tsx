@@ -792,7 +792,7 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                       key={slot.slotIndex}
                       onClick={() => handleSlotClick(slot.slotIndex)}
                       style={{ left: `${leftPx}px`, top: `${topPx}px` }}
-                      className={`absolute -translate-x-1/2 -translate-y-1/2 transition-all cursor-pointer z-30 group ${
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 transition-all cursor-pointer z-30 group hover:z-50 ${
                         isSelected ? 'scale-105 z-40' : 'hover:scale-105'
                       }`}
                     >
@@ -870,40 +870,54 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                         </div>
                       )}
 
-                      {/* Tooltip on Hover with Smart Directional Flipping */}
+                      {/* Popout Rollover Card to Side (Horizontal Popout - Zero Vertical Overlap) */}
                       <div
-                        className={`pointer-events-none absolute left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-50 whitespace-nowrap ${
-                          row >= 5 ? 'top-full mt-2' : 'bottom-full mb-2'
+                        className={`pointer-events-none absolute top-1/2 -translate-y-1/2 hidden group-hover:flex items-center z-50 whitespace-nowrap ${
+                          side === -1 ? 'left-full ml-3 flex-row' : 'right-full mr-3 flex-row-reverse'
                         }`}
                       >
-                        {row >= 5 && (
-                          <div className="w-2.5 h-2.5 bg-[#1A1918]/95 rotate-45 -mb-1.5 border-l border-t border-white/20 z-10" />
-                        )}
-                        <div className="bg-[#1A1918]/95 text-white p-2.5 rounded-xl border border-white/20 shadow-2xl flex items-center space-x-2.5">
-                          {art?.imageUrl && (
+                        {/* Pointer Arrow */}
+                        <div
+                          className={`w-2.5 h-2.5 bg-[#1A1918]/95 rotate-45 border-white/20 shrink-0 z-10 ${
+                            side === -1
+                              ? '-mr-1.5 border-l border-b'
+                              : '-ml-1.5 border-r border-t'
+                          }`}
+                        />
+
+                        {/* Card Body */}
+                        <div className="bg-[#1A1918]/95 text-white p-3 rounded-2xl border border-white/20 shadow-2xl flex items-center space-x-3 backdrop-blur-md min-w-[210px]">
+                          {art?.imageUrl ? (
                             <img
                               src={art.imageUrl}
                               alt={art.title}
-                              className="w-10 h-10 rounded-lg object-cover border border-white/20 shadow-md"
+                              className="w-12 h-12 rounded-xl object-cover border border-white/20 shadow-md shrink-0"
                             />
-                          )}
-                          <div className="text-left">
-                            <div className="text-[10px] font-bold text-[#FFD98A]">
-                              สล็อต #{slot.slotIndex + 1}: {art?.title || 'ช่องว่าง (Empty Slot)'}
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white/50 text-xs shrink-0 font-bold">
+                              ว่าง
                             </div>
-                            <div className="text-[9px] text-neutral-300">
+                          )}
+
+                          <div className="text-left">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#8C6D3F] text-white shrink-0">
+                                สล็อต #{slot.slotIndex + 1}
+                              </span>
+                              <span className="text-[10px] text-[#FFD98A] font-bold truncate max-w-[150px]">
+                                {art?.title || 'ช่องว่าง (Empty Slot)'}
+                              </span>
+                            </div>
+                            <div className="text-[9px] text-neutral-300 mt-0.5">
                               {art?.artist?.name ? `ศิลปิน: ${art.artist.name}` : `${side === -1 ? 'ผนังฝั่งซ้าย' : 'ผนังฝั่งขวา'} แถวที่ ${row + 1}`}
                             </div>
                             {art?.medium && (
-                              <div className="text-[8px] text-[#C5A880]">
+                              <div className="text-[8px] text-[#C5A880] mt-0.5">
                                 เทคนิค: {art.medium}
                               </div>
                             )}
                           </div>
                         </div>
-                        {row < 5 && (
-                          <div className="w-2.5 h-2.5 bg-[#1A1918]/95 rotate-45 -mt-1.5 border-r border-b border-white/20 z-10" />
-                        )}
                       </div>
                     </div>
                   );
