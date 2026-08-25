@@ -44,6 +44,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th" className={maitree.variable}>
+      <head>
+        <link rel="preconnect" href="https://ik.imagekit.io" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://ik.imagekit.io" />
+        <link rel="preconnect" href="https://flagcdn.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://flagcdn.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      </head>
       <body className={`${maitree.className} min-h-screen flex flex-col bg-[#F9F8F6] text-[#1E1D1B]`}>
         <LanguageProvider>{children}</LanguageProvider>
         <PWARegister />

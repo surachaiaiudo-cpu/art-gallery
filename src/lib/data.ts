@@ -2,9 +2,9 @@ import { db, schema, hasD1Binding } from '@/db';
 import { eq, desc, asc, or, and } from 'drizzle-orm';
 import { Exhibition, Artwork, User, Inquiry, WallPosition } from '@/types/exhibition';
 
-// In-Memory Cache with 10s TTL to prevent Worker CPU limit exhaustion
+// In-Memory Cache with 60s TTL to prevent Worker CPU limit exhaustion & boost response speed
 const cache = new Map<string, { data: any; expiry: number }>();
-const CACHE_TTL = 10000; // 10 seconds
+const CACHE_TTL = 60000; // 60 seconds
 
 function getCached<T>(key: string): T | null {
   const item = cache.get(key);

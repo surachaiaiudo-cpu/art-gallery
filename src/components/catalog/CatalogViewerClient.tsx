@@ -77,6 +77,36 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const [activeViewMode, setActiveViewMode] = useState<'grid3' | 'full'>('grid3');
   const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
 
+  // Progressive streaming batch count for Grid View (Infinite Scroll performance)
+  const [visibleCount, setVisibleCount] = useState(24);
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (activeViewMode !== 'grid3') return;
+    if (visibleCount >= artworks.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + 24, artworks.length));
+        }
+      },
+      { rootMargin: '400px' }
+    );
+
+    const currentSentinel = sentinelRef.current;
+    if (currentSentinel) {
+      observer.observe(currentSentinel);
+    }
+
+    return () => {
+      if (currentSentinel) {
+        observer.unobserve(currentSentinel);
+      }
+      observer.disconnect();
+    };
+  }, [activeViewMode, visibleCount, artworks.length]);
+
   // Print engine hook
   const { handlePrintSinglePage, handleSaveVectorPDF100Percent } = usePrintEngine(exhibition);
 
@@ -405,8 +435,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </div>
             )}
 
-            {/* 3. Artwork Thumbnail Cards (Optimized w-380 Images + Lazy loading) */}
-            {artworks.map((art, idx) => {
+            {/* 3. Artwork Thumbnail Cards (Progressive Streaming w-380 + Lazy loading) */}
+            {artworks.slice(0, visibleCount).map((art, idx) => {
               const artist = art.artist;
               const pageIdx = hasReviewers ? idx + 2 : idx + 1;
               const pageNum = pageIdx + 1;
@@ -478,6 +508,16 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 </div>
               );
             })}
+
+            {/* Infinite Scroll Sentinel & Loader */}
+            {visibleCount < artworks.length && (
+              <div ref={sentinelRef} className="col-span-full py-8 flex justify-center items-center">
+                <div className="flex items-center space-x-2 text-xs font-semibold text-[#8C6D3F] bg-white px-4 py-2 rounded-full border border-[#DDD6C8] shadow-sm">
+                  <div className="w-3.5 h-3.5 border-2 border-[#8C6D3F] border-t-transparent rounded-full animate-spin" />
+                  <span>กำลังโหลดผลงานเพิ่มเติม ({visibleCount} / {artworks.length} ชิ้น)...</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
