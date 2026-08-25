@@ -71,20 +71,20 @@ export function LightingRig({
     <>
       {/* 1. Global Soft Skylight Daylight Simulation */}
       <hemisphereLight
-        args={[config.skyColor, config.groundColor, config.skyIntensity * 0.45]}
+        args={[config.skyColor, config.groundColor, config.skyIntensity * 1.2]}
         position={[0, 30, 0]}
       />
 
       {/* 2. Global Soft Ambient Light Fill */}
-      <ambientLight color={config.ambientColor} intensity={config.ambientIntensity * 0.4} />
+      <ambientLight color={config.ambientColor} intensity={config.ambientIntensity * 1.1} />
 
       {/* 3. Central Ceiling Skylight Directional Downlight Following Active Room */}
       <group position={[activeRoomCenter.x, 0, activeRoomCenter.z]}>
         <primitive object={dirTarget.current} position={[0, 0, 0]} />
         <directionalLight
-          position={[0, 15, 0]}
+          position={[0, 18, 0]}
           target={dirTarget.current}
-          intensity={0.5}
+          intensity={1.2}
           color={config.skyColor}
         />
 

@@ -368,6 +368,15 @@ function RoomStructureMesh({
         </group>
       ))}
 
+      {/* Warm Room Ceiling Luminaire Wash Light (Per Room Lighting) */}
+      <pointLight
+        position={[0, h - 0.3, 0]}
+        intensity={2.8}
+        distance={36}
+        decay={1.2}
+        color="#FFF6E8"
+      />
+
       {/* Baseboards Left & Right */}
       <mesh position={[-w / 2 + 0.03, 0.06, 0]}>
         <boxGeometry args={[0.06, 0.12, d]} />
