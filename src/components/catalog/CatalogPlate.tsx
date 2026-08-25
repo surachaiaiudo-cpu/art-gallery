@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Artwork } from '@/types/exhibition';
 import { formatPrice } from '@/lib/utils';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
@@ -23,6 +23,7 @@ export function CatalogPlate({
   customFooterImageUrl,
   isReaderModal = false,
 }: CatalogPlateProps) {
+  const [photoError, setPhotoError] = useState(false);
   const artist = artwork.artist;
   const UNSPLASH_PLACEHOLDERS = [
     'unsplash.com/photo-1507003211169',
@@ -33,7 +34,7 @@ export function CatalogPlate({
     rawAvatarUrl.length > 0 &&
     !UNSPLASH_PLACEHOLDERS.some((p) => rawAvatarUrl.includes(p));
   const resolvedPhotoUrl = isRealAvatar ? rawAvatarUrl : (artwork.imageUrl || '');
-  const hasRealPhoto = resolvedPhotoUrl.length > 0;
+  const hasRealPhoto = resolvedPhotoUrl.length > 0 && !photoError;
   const isAvatarFallback = hasRealPhoto && !isRealAvatar;
 
   const optimizedArtworkUrl = getOptimizedImageUrl(artwork.imageUrl, {
@@ -85,6 +86,7 @@ export function CatalogPlate({
                   alt={artist?.name || 'Artist'}
                   loading="lazy"
                   decoding="async"
+                  onError={() => setPhotoError(true)}
                   className={`w-full h-full ${isAvatarFallback ? 'object-cover opacity-80' : 'object-cover'}`}
                 />
                 {isAvatarFallback && (

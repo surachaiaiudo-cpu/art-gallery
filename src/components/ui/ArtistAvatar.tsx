@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
 
 interface ArtistAvatarProps {
@@ -25,12 +25,14 @@ export function ArtistAvatar({
   size = 'md',
   className = '',
 }: ArtistAvatarProps) {
+  const [hasError, setHasError] = useState(false);
   const sizeClass = sizeMap[size] || sizeMap.md;
   const cleanName = (name || 'A').trim();
   const initial = cleanName.charAt(0).toUpperCase();
 
-  // If artist has an uploaded avatar and it is not an unsplash mockup
+  // If artist has an uploaded avatar, it is not an unsplash mockup, and hasn't 404'd
   if (
+    !hasError &&
     avatarUrl &&
     avatarUrl.trim() &&
     !avatarUrl.includes('unsplash.com/photo-1507003211169') &&
@@ -44,6 +46,7 @@ export function ArtistAvatar({
           alt={cleanName}
           loading="lazy"
           decoding="async"
+          onError={() => setHasError(true)}
           className="w-full h-full object-cover"
         />
       </div>
