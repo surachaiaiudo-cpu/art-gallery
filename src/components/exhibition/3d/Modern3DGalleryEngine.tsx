@@ -1057,6 +1057,45 @@ export function Modern3DGalleryEngine({
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ title: string; sub: string } | null>(null);
 
+  // Milestone D: Persistence of Visitor Viewed & Liked Artworks
+  useEffect(() => {
+    if (typeof window === 'undefined' || !exhibition?.slug) return;
+    try {
+      const savedViews = localStorage.getItem(`artvara_viewed_${exhibition.slug}`);
+      if (savedViews) {
+        const parsed = JSON.parse(savedViews);
+        if (Array.isArray(parsed)) setViewedArtworkIds(new Set(parsed));
+      }
+      const savedLikes = localStorage.getItem(`artvara_likes_${exhibition.slug}`);
+      if (savedLikes) {
+        const parsed = JSON.parse(savedLikes);
+        if (Array.isArray(parsed)) setLikedArtworkIds(new Set(parsed));
+      }
+    } catch (e) {
+      console.warn('Failed to load visitor progress from localStorage:', e);
+    }
+  }, [exhibition?.slug]);
+
+  // Persist viewed state
+  useEffect(() => {
+    if (typeof window === 'undefined' || !exhibition?.slug || viewedArtworkIds.size === 0) return;
+    try {
+      localStorage.setItem(`artvara_viewed_${exhibition.slug}`, JSON.stringify(Array.from(viewedArtworkIds)));
+    } catch (e) {
+      console.warn('Failed to save viewed progress:', e);
+    }
+  }, [viewedArtworkIds, exhibition?.slug]);
+
+  // Persist liked state
+  useEffect(() => {
+    if (typeof window === 'undefined' || !exhibition?.slug) return;
+    try {
+      localStorage.setItem(`artvara_likes_${exhibition.slug}`, JSON.stringify(Array.from(likedArtworkIds)));
+    } catch (e) {
+      console.warn('Failed to save likes:', e);
+    }
+  }, [likedArtworkIds, exhibition?.slug]);
+
   const handleToggleLike = (id: string) => {
     setLikedArtworkIds((prev) => {
       const next = new Set(prev);
@@ -1532,7 +1571,15 @@ export function Modern3DGalleryEngine({
                     setCurrentRoomIndex(idx);
                     setFocusedArtwork(null);
                     setFocusedSlot(null);
-                    setWarpTarget({ x: 0, z: 4.5 });
+                    const targetRoom = roomConfigs[idx];
+                    if (targetRoom) {
+                      const halfD = (targetRoom.depth || ROOM_D) / 2;
+                      const offset = rotatePointY(0, halfD - 3.2, targetRoom.rotationY);
+                      setWarpTarget({
+                        x: targetRoom.center.x + offset.x,
+                        z: targetRoom.center.z + offset.z,
+                      });
+                    }
                   }}
                   className="bg-transparent font-bold text-white focus:outline-none cursor-pointer text-xs"
                 >
@@ -1654,7 +1701,17 @@ export function Modern3DGalleryEngine({
             onClick={() => {
               setFocusedArtwork(null);
               setFocusedSlot(null);
-              setWarpTarget({ x: 0, z: 4.5 });
+              const room0 = roomConfigs[0];
+              if (room0) {
+                const halfD = (room0.depth || ROOM_D) / 2;
+                const offset = rotatePointY(0, halfD - 3.2, room0.rotationY);
+                setWarpTarget({
+                  x: room0.center.x + offset.x,
+                  z: room0.center.z + offset.z,
+                });
+              } else {
+                setWarpTarget({ x: 0, z: 12.8 });
+              }
             }}
             className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-[#161310]/25 backdrop-blur-xl hover:bg-[#221C16]/50 text-white border border-[#D9B878]/30 text-xs font-medium flex items-center space-x-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.25)] transition-all"
             title="รีเซ็ตมุมมองสู่จุดเริ่มต้น"
@@ -1890,6 +1947,8 @@ export function Modern3DGalleryEngine({
         onLightAngleChange={setInspectLightAngle}
         lightIntensity={inspectLightIntensity}
         onLightIntensityChange={setInspectLightIntensity}
+        isLiked={focusedArtwork ? likedArtworkIds.has(focusedArtwork.id) : false}
+        onToggleLike={(art) => handleToggleLike(art.id)}
       />
 
       {/* 3D Exhibition & Room Curator Studio Modal (Curator mode only) */}
@@ -1902,8 +1961,15 @@ export function Modern3DGalleryEngine({
           currentRoomIndex={currentRoomIndex}
           onSelectRoomIndex={(idx) => {
             setCurrentRoomIndex(idx);
-            const targetZ = idx * -ROOM_SPACING_Z;
-            setWarpTarget({ x: 0, z: targetZ + 6 });
+            const targetRoom = roomConfigs[idx];
+            if (targetRoom) {
+              const halfD = (targetRoom.depth || ROOM_D) / 2;
+              const offset = rotatePointY(0, halfD - 3.2, targetRoom.rotationY);
+              setWarpTarget({
+                x: targetRoom.center.x + offset.x,
+                z: targetRoom.center.z + offset.z,
+              });
+            }
           }}
           onAddRoom={handleAddRoom}
           onRemoveRoom={handleRemoveRoom}

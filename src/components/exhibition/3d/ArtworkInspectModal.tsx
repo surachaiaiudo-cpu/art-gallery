@@ -25,6 +25,8 @@ interface ArtworkInspectModalProps {
   onLightAngleChange: (angle: number) => void;
   lightIntensity: number;
   onLightIntensityChange: (intensity: number) => void;
+  isLiked?: boolean;
+  onToggleLike?: (artwork: Artwork) => void;
 }
 
 export function ArtworkInspectModal({
@@ -37,21 +39,19 @@ export function ArtworkInspectModal({
   onLightAngleChange,
   lightIntensity,
   onLightIntensityChange,
+  isLiked = false,
+  onToggleLike,
 }: ArtworkInspectModalProps) {
   const [reactions, setReactions] = useState(24);
-  const [hasReacted, setHasReacted] = useState(false);
   const [showLightControls, setShowLightControls] = useState(false);
 
   if (!isOpen || !artwork) return null;
 
   const handleReaction = () => {
-    if (!hasReacted) {
-      setReactions((prev) => prev + 1);
-      setHasReacted(true);
-    } else {
-      setReactions((prev) => Math.max(0, prev - 1));
-      setHasReacted(false);
+    if (onToggleLike) {
+      onToggleLike(artwork);
     }
+    setReactions((prev) => (isLiked ? Math.max(0, prev - 1) : prev + 1));
   };
 
   return (
@@ -209,17 +209,17 @@ export function ArtworkInspectModal({
             <button
               onClick={handleReaction}
               className={`py-2.5 px-3 rounded-xl border text-xs font-medium flex items-center justify-center space-x-1.5 transition-all ${
-                hasReacted
+                isLiked
                   ? 'bg-rose-950/60 border-rose-500 text-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.3)]'
                   : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-300'
               }`}
             >
               <Heart
                 className={`w-3.5 h-3.5 text-rose-400 ${
-                  hasReacted ? 'fill-rose-400' : ''
+                  isLiked ? 'fill-rose-400' : ''
                 }`}
               />
-              <span>{hasReacted ? 'ถูกใจแล้ว' : 'ถูกใจ'} ({reactions})</span>
+              <span>{isLiked ? 'ถูกใจแล้ว' : 'ถูกใจ'} ({reactions})</span>
             </button>
 
             {onOpenInquiry && (
