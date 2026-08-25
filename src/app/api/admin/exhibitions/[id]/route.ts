@@ -72,10 +72,10 @@ export async function PUT(
     if (body.lightPreset) {
       mergedTheme.lightPreset = body.lightPreset;
     }
-    if (body.ceilingHeight) {
+    if (body.ceilingHeight !== undefined && body.ceilingHeight !== null) {
       mergedTheme.ceilingHeight = body.ceilingHeight;
     }
-    if (body.spotlightIntensity) {
+    if (body.spotlightIntensity !== undefined && body.spotlightIntensity !== null) {
       mergedTheme.spotlightIntensity = body.spotlightIntensity;
     }
     if (body.enable3D !== undefined) {

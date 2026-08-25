@@ -19,6 +19,9 @@ export interface CalculatedArtworkSlot {
 export interface RoomGeometryConfig {
   shape: RoomShape;
   roomIndex: number;
+  // Index into the exhibition's own room sequence (excluding corner pavilions).
+  // Used to look up roomShapes[]. Set to -1 for pavilions.
+  exhibitionRoomIndex: number;
   isCornerPavilion?: boolean;
   pavilionTitle?: string;
   center: { x: number; y: number; z: number };

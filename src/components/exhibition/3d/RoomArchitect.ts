@@ -112,7 +112,8 @@ export function calculateRoomSlots(
   roomIndex: number,
   artworksForThisRoom: Artwork[] = [],
   roomCenter: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
-  roomRotationY: number = 0
+  roomRotationY: number = 0,
+  slotIndexOffset: number = roomIndex * ARTWORKS_PER_ROOM
 ): CalculatedArtworkSlot[] {
   const slots: CalculatedArtworkSlot[] = [];
   const validArtworks = artworksForThisRoom.filter(Boolean);
@@ -121,7 +122,9 @@ export function calculateRoomSlots(
 
   for (let k = 0; k < totalArtCount; k++) {
     const art = validArtworks[k] || null;
-    const globalIdx = roomIndex * ARTWORKS_PER_ROOM + k;
+    // slotIndex MUST map directly into the flat artworks array
+    // (consumers index artworksList[slot.slotIndex]) — never include pavilions.
+    const globalIdx = slotIndexOffset + k;
     const side = k % 2 === 0 ? -1 : 1; // -1: Left wall, 1: Right wall
     const row = Math.floor(k / 2);
     
@@ -208,6 +211,7 @@ export function buildMultiRoomConfigs(
       configs.push({
         shape: 'SQUARE',
         roomIndex: totalRoomIdx,
+        exhibitionRoomIndex: -1,
         isCornerPavilion: true,
         pavilionTitle: `โถงพักชมประติมากรรมมุมอาคาร (Corner Pavilion ${cornerLetter})`,
         center: pavCenter,
@@ -259,7 +263,8 @@ export function buildMultiRoomConfigs(
       totalRoomIdx,
       roomArtworks,
       curCenter,
-      curRotY
+      curRotY,
+      exhIdx * ARTWORKS_PER_ROOM
     );
 
     const isLastExhRoom = exhIdx === totalExhRooms - 1;
@@ -268,6 +273,7 @@ export function buildMultiRoomConfigs(
     configs.push({
       shape,
       roomIndex: totalRoomIdx,
+      exhibitionRoomIndex: exhIdx,
       isCornerPavilion: false,
       center: { ...curCenter },
       rotationY: curRotY,

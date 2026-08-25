@@ -406,9 +406,9 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                 }}
                 className="bg-transparent text-[#1E1D1B] font-bold focus:outline-none cursor-pointer text-xs"
               >
-                {roomConfigs.map((r, i) => (
+                {roomConfigs.map((r, i) => r.isCornerPavilion ? null : (
                   <option key={i} value={i}>
-                    ห้อง #{i + 1} ({shapeLabels[r.shape] || r.shape}) • {r.slots.filter(s => s.artwork).length} ภาพ
+                    ห้อง #{(r.exhibitionRoomIndex ?? i) + 1} ({shapeLabels[r.shape] || r.shape}) • {r.slots.filter(s => s.artwork).length} ภาพ
                   </option>
                 ))}
               </select>
@@ -428,7 +428,11 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                 value={currentRoom?.shape}
                 onChange={(e) => {
                   const updated = [...roomShapes];
-                  updated[selectedRoomIndex] = e.target.value as RoomShape;
+                  // Write to the exhibition room index (excluding pavilions),
+                  // NOT the config-array index — otherwise shapes land on the wrong room
+                  // once corner pavilions exist (61+ artworks).
+                  const exhRoomIdx = currentRoom?.exhibitionRoomIndex ?? selectedRoomIndex;
+                  if (exhRoomIdx >= 0) updated[exhRoomIdx] = e.target.value as RoomShape;
                   setRoomShapes(updated);
                   setSelectedWallIndex(0);
                   setSelectedSlotIndex(null);
