@@ -1,12 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;600;700&family=Maitree:wght@300;400;500;600;700&display=swap');
-
-@font-face {
-  font-family: 'CatalogHeading';
-  src: local('Sukhumvit Set'), local('SukhumvitSet'), local('Sukhumvit Set Bold');
-  font-weight: 300 700;
-  font-style: normal;
-  font-display: swap;
-}
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap');
 
 .catalog-a4-page,
 .catalog-a4-page * {
@@ -17,7 +9,7 @@
 }
 
 .catalog-heading-th {
-  font-family: 'CatalogHeading', 'Noto Sans Thai', 'Helvetica Neue', sans-serif !important;
+  font-family: 'Prompt', 'Noto Sans Thai', 'Helvetica Neue', sans-serif !important;
   letter-spacing: 0em !important;
 }
 

@@ -6,7 +6,8 @@
 
 @layer base {
   :root {
-    --font-sukhumvit: 'Sukhumvit Set', 'Sukhumvit', -apple-system, BlinkMacSystemFont, 'Prompt', 'Noto Sans Thai', 'Thonburi', sans-serif;
+    --font-prompt: 'Prompt', -apple-system, BlinkMacSystemFont, 'Noto Sans Thai', 'Thonburi', sans-serif;
+    --font-sukhumvit: var(--font-prompt);
     --font-maitree: var(--font-maitree, 'Maitree'), 'Maitree', 'Noto Serif Thai', Georgia, serif;
     --background: #f7f6f2;
     --foreground: #181716;
@@ -21,12 +22,13 @@
     overflow-x: hidden;
   }
 
-  /* หัวข้อทั้งหมดใช้สุขุมวิท (Sukhumvit) */
+  /* หัวข้อทั้งหมดใช้ Prompt */
   h1, h2, h3, h4, h5, h6,
   .font-heading,
+  .font-prompt,
   .font-sukhumvit,
   .font-serif {
-    font-family: var(--font-sukhumvit) !important;
+    font-family: var(--font-prompt) !important;
   }
 
   /* เนื้อหา ข้อความ และย่อหน้าใช้ Maitree */
@@ -36,7 +38,7 @@
     font-family: var(--font-maitree);
   }
 
-  /* รักษาสุขุมวิทสำหรับหัวเรื่องและแท็กเฉพาะ */
+  /* รักษา Prompt สำหรับหัวเรื่องและแท็กเฉพาะ */
   h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
     font-family: inherit;
   }
