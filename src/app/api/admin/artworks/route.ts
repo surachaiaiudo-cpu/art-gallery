@@ -2,7 +2,7 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq, and, asc } from 'drizzle-orm';
-import { getAllArtworks } from '@/lib/data';
+import { getAllArtworks, invalidateDataCache } from '@/lib/data';
 import { getCountryFlagEmoji } from '@/lib/countryUtils';
 import { findMatchingArtist } from '@/lib/artistMatcher';
 
@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    invalidateDataCache();
     return NextResponse.json({ success: true, id: newArtId });
   } catch (error) {
     console.error('Error creating artwork:', error);
@@ -167,10 +168,11 @@ export async function PUT(req: NextRequest) {
       .set(updateFields)
       .where(eq(schema.artworks.id, id));
 
+    invalidateDataCache();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating artwork:', error);
-    return NextResponse.json({ error: 'Failed to update artwork' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update artwork', details: String(error) }, { status: 500 });
   }
 }
 
@@ -178,7 +180,7 @@ export async function PUT(req: NextRequest) {
 async function deleteFromImageKit(imageUrl: string, privateKey?: string) {
   if (!privateKey || !imageUrl || !imageUrl.includes('ik.imagekit.io')) return;
   try {
-    const authHeader = `Basic ${Buffer.from(`${privateKey}:`).toString('base64')}`;
+    const authHeader = `Basic ${btoa(`${privateKey}:`)}`;
     const parts = imageUrl.split('?')[0].split('/');
     const filename = parts[parts.length - 1];
 

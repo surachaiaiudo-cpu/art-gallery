@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import Image from 'next/image';
+import React, { useState, useEffect, useRef } from 'react';
 import { UploadCloud, Image as ImageIcon, CheckCircle2, AlertCircle, X, Link as LinkIcon, Loader2, RefreshCw } from 'lucide-react';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
 
@@ -32,6 +31,10 @@ export function ImageUploadDropzone({
   const [mode, setMode] = useState<'upload' | 'url'>('upload');
   const [inputUrl, setInputUrl] = useState(value || '');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setInputUrl(value || '');
+  }, [value]);
 
   const handleUploadFile = async (file: File) => {
     if (!file) return;
@@ -234,7 +237,11 @@ export function ImageUploadDropzone({
                   shape === 'circle' ? 'w-10 h-10 rounded-full border border-[#C5A880]' : 'w-10 h-10 rounded border border-[#D5CFC3]'
                 } overflow-hidden bg-[#1A1918] shrink-0`}
               >
-                <Image src={value} alt="Preview" fill className="object-cover" />
+                <img
+                  src={getOptimizedImageUrl(value, { width: 160, quality: 75 })}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <span className="text-[11px] text-[#6E685C] truncate font-mono flex-1">{value}</span>
             </div>

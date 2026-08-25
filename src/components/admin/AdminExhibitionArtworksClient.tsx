@@ -305,7 +305,10 @@ export function AdminExhibitionArtworksClient({
 
   const refreshExhibition = async () => {
     try {
-      const res = await fetch(`/api/exhibitions/${exhibition.slug}`);
+      const res = await fetch(`/api/exhibitions/${exhibition.slug}?_t=${Date.now()}`, {
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        cache: 'no-store',
+      });
       const data = await res.json();
       if (data.exhibition) {
         setExhibition(data.exhibition);
@@ -464,6 +467,24 @@ export function AdminExhibitionArtworksClient({
   const handleSubmitEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingArtwork) return;
+
+    // Optimistic UI update
+    setArtworksList((prev) =>
+      prev.map((art) =>
+        art.id === editingArtwork.id
+          ? {
+              ...art,
+              title: artworkForm.title,
+              medium: artworkForm.medium,
+              dimensions: artworkForm.dimensions,
+              yearCreated: artworkForm.yearCreated,
+              imageUrl: artworkForm.imageUrl,
+              concept: artworkForm.concept,
+            }
+          : art
+      )
+    );
+
     setLoading(true);
 
     try {

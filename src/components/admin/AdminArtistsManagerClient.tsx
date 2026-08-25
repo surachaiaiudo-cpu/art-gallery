@@ -348,7 +348,10 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
 
   const refreshList = async () => {
     try {
-      const res = await fetch('/api/admin/artists');
+      const res = await fetch(`/api/admin/artists?_t=${Date.now()}`, {
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        cache: 'no-store',
+      });
       const data = await res.json();
       if (data.artists) {
         setArtists(data.artists);
@@ -374,29 +377,31 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
 
   const handleOpenEdit = (artist: ArtistWithStats) => {
     setEditingArtist(artist);
-    let social: any = {};
+    let ig = '';
+    let web = '';
     if (artist.socialLinks) {
       try {
-        social = JSON.parse(artist.socialLinks);
+        const parsed = JSON.parse(artist.socialLinks);
+        ig = parsed.instagram || '';
+        web = parsed.website || '';
       } catch {}
     }
 
     setFormData({
-      name: artist.name,
-      email: artist.email,
+      name: artist.name || '',
+      email: artist.email || '',
       country: artist.country || 'Thailand',
       flagEmoji: artist.flagEmoji || '🇹🇭',
       avatarUrl: artist.avatarUrl || '',
       bio: artist.bio || '',
-      instagram: social.instagram || '',
-      website: social.website || '',
+      instagram: ig,
+      website: web,
     });
   };
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    let cleanE = cleanEmail(formData.email);
     const cleanN = cleanText(formData.name);
 
     if (!cleanN) {
@@ -404,10 +409,9 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
       return;
     }
 
-    // Auto-heal or auto-fallback email if missing or malformed (e.g. "dach.nhomall.com" or empty)
+    let cleanE = cleanEmail(formData.email);
     if (!cleanE || !cleanE.includes('@') || !cleanE.includes('.')) {
       if (cleanE && cleanE.includes('.')) {
-        // e.g. "dach.nhomall.com" -> "dach.n@nhomall.com" or "dach@homall.com"
         const lastDot = cleanE.lastIndexOf('.');
         const beforeDot = cleanE.substring(0, lastDot);
         const domainExt = cleanE.substring(lastDot);
@@ -442,6 +446,23 @@ export function AdminArtistsManagerClient({ initialArtists }: AdminArtistsManage
 
     try {
       if (editingArtist) {
+        setArtists((prev) =>
+          prev.map((a) =>
+            a.id === editingArtist.id
+              ? {
+                  ...a,
+                  name: payload.name,
+                  email: payload.email,
+                  country: payload.country,
+                  flagEmoji: payload.flagEmoji,
+                  avatarUrl: payload.avatarUrl,
+                  bio: payload.bio,
+                  socialLinks: JSON.stringify(payload.socialLinks),
+                }
+              : a
+          )
+        );
+
         const res = await fetch('/api/admin/artists', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
