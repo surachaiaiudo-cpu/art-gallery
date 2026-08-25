@@ -292,6 +292,150 @@ function RoomStructureMesh({
     return t;
   }, [config.roomIndex]);
 
+  if (config.isCornerPavilion) {
+    const pw = config.width || 14;
+    const pd = config.depth || 14;
+    const pSegW = (pw - DOOR_W) / 2;
+    const pSegD = (pd - DOOR_W) / 2;
+
+    return (
+      <group>
+        {/* Floor */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[pw, pd]} />
+          <primitive object={floorMaterial} attach="material" />
+        </mesh>
+
+        {/* Ceiling with warm skylight */}
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, h, 0]}>
+          <planeGeometry args={[pw, pd]} />
+          <meshStandardMaterial color="#F5F5F0" roughness={0.95} />
+        </mesh>
+
+        {/* Central Skylight Panel */}
+        <group position={[0, h - 0.03, 0]}>
+          <mesh>
+            <boxGeometry args={[4.5, 0.04, 4.5]} />
+            <meshStandardMaterial color="#FFFFFF" emissive="#FFF9F0" emissiveIntensity={0.9} />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, -0.03, 0]}>
+            <planeGeometry args={[4.5, 4.5]} />
+            <meshBasicMaterial color="#FFF9F0" />
+          </mesh>
+        </group>
+
+        {/* Pavilion Wash Light */}
+        <pointLight
+          position={[0, h - 0.4, 0]}
+          intensity={3.2}
+          distance={28}
+          decay={1.2}
+          color="#FFF6E8"
+        />
+
+        {/* Front Wall (z = +pd/2) -> Entrance from previous room */}
+        <group position={[0, 0, pd / 2]}>
+          <mesh position={[-(DOOR_W / 2 + pSegW / 2), h / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
+            <planeGeometry args={[pSegW, h]} />
+            <primitive object={wallBaseMat} attach="material" />
+          </mesh>
+          <mesh position={[DOOR_W / 2 + pSegW / 2, h / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
+            <planeGeometry args={[pSegW, h]} />
+            <primitive object={wallBaseMat} attach="material" />
+          </mesh>
+          <mesh position={[0, DOOR_H + (h - DOOR_H) / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
+            <planeGeometry args={[DOOR_W, h - DOOR_H]} />
+            <primitive object={wallBaseMat} attach="material" />
+          </mesh>
+        </group>
+
+        {/* Back Wall (z = -pd/2) -> Solid wall */}
+        <mesh position={[0, h / 2, -pd / 2]} receiveShadow>
+          <planeGeometry args={[pw, h]} />
+          <primitive object={wallBaseMat} attach="material" />
+        </mesh>
+
+        {/* Left Wall (x = -pw/2) -> Solid wall */}
+        <mesh position={[-pw / 2, h / 2, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+          <planeGeometry args={[pd, h]} />
+          <primitive object={wallBaseMat} attach="material" />
+        </mesh>
+
+        {/* Right Wall (x = +pw/2) -> Exit to next room (Right Turn) */}
+        <group position={[pw / 2, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+          <mesh position={[-(DOOR_W / 2 + pSegD / 2), h / 2, 0]} receiveShadow>
+            <planeGeometry args={[pSegD, h]} />
+            <primitive object={wallBaseMat} attach="material" />
+          </mesh>
+          <mesh position={[DOOR_W / 2 + pSegD / 2, h / 2, 0]} receiveShadow>
+            <planeGeometry args={[pSegD, h]} />
+            <primitive object={wallBaseMat} attach="material" />
+          </mesh>
+          <mesh position={[0, DOOR_H + (h - DOOR_H) / 2, 0]} receiveShadow>
+            <planeGeometry args={[DOOR_W, h - DOOR_H]} />
+            <primitive object={wallBaseMat} attach="material" />
+          </mesh>
+          {/* Flush Portal Archway */}
+          <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
+            <boxGeometry args={[0.08, DOOR_H, 0.08]} />
+            <primitive object={trimMat} attach="material" />
+          </mesh>
+          <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
+            <boxGeometry args={[0.08, DOOR_H, 0.08]} />
+            <primitive object={trimMat} attach="material" />
+          </mesh>
+          <mesh position={[0, DOOR_H + 0.04, 0]}>
+            <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.08]} />
+            <primitive object={trimMat} attach="material" />
+          </mesh>
+        </group>
+
+        {/* Central Masterpiece Sculpture on Grand Pedestal */}
+        <group position={[0, 0, 0]}>
+          <mesh position={[0, 0.55, 0]}>
+            <boxGeometry args={[0.9, 1.1, 0.9]} />
+            <primitive object={pedMat} attach="material" />
+          </mesh>
+          <mesh position={[0, 1.55, 0]} rotation={[0.4, 0.6, 0]}>
+            <torusKnotGeometry args={[0.38, 0.11, 120, 16]} />
+            <primitive object={bronzeMat} attach="material" />
+          </mesh>
+        </group>
+
+        {/* 2 Decorative Plants on Solid Wall Corners */}
+        {[
+          [-pw / 2 + 1.2, -pd / 2 + 1.2],
+          [-pw / 2 + 1.2, pd / 2 - 1.2],
+        ].map(([px, pz], pi) => (
+          <group key={`pav-plant-${pi}`} position={[px, 0, pz]}>
+            <mesh position={[0, 0.275, 0]}>
+              <cylinderGeometry args={[0.34, 0.26, 0.55, 12]} />
+              <primitive object={potMat} attach="material" />
+            </mesh>
+            <mesh position={[0, 0.54, 0]}>
+              <cylinderGeometry args={[0.3, 0.3, 0.04, 12]} />
+              <primitive object={soilMat} attach="material" />
+            </mesh>
+            {Array.from({ length: 6 }).map((_, f) => (
+              <mesh
+                key={f}
+                position={[
+                  Math.sin(f * 2.5 + pi) * (0.22 + f * 0.03),
+                  0.75 + f * 0.16,
+                  Math.cos(f * 2.5 + pi) * (0.22 + f * 0.03),
+                ]}
+                scale={[1, 0.75, 1]}
+              >
+                <sphereGeometry args={[0.28 - f * 0.02, 8, 6]} />
+                <primitive object={leafMat} attach="material" />
+              </mesh>
+            ))}
+          </group>
+        ))}
+      </group>
+    );
+  }
+
   return (
     <group>
       {/* Floor */}
@@ -739,28 +883,38 @@ function CameraController({
         const dz = tentativeZ - curRoom.center.z;
         const local = rotatePointY(dx, dz, -curRoom.rotationY);
 
+        const isPavilion = curRoom.isCornerPavilion;
         const halfW = (curRoom.width || ROOM_W) / 2;
         const halfD = (curRoom.depth || ROOM_D) / 2;
         const margin = 0.6;
         const doorHalfW = DOOR_W / 2;
 
-        // Clamp local X (side walls)
-        local.x = Math.max(-halfW + margin, Math.min(halfW - margin, local.x));
+        if (isPavilion) {
+          // Corner Pavilion: Front entrance (z = +halfD), Right exit (x = +halfW)
+          const inFrontDoor = Math.abs(local.x) < doorHalfW - 0.35;
+          const inRightDoor = Math.abs(local.z) < doorHalfW - 0.35;
 
-        // Check Doorways along local Z
-        const inDoor = Math.abs(local.x) < doorHalfW - 0.45;
+          // Clamp local X
+          if (local.x < -halfW + margin) local.x = -halfW + margin; // Left wall solid
+          if (local.x > halfW - margin && !inRightDoor) local.x = halfW - margin; // Right wall doorway
 
-        // Front wall boundary (z = +halfD = +16)
-        if (local.z > halfD - margin) {
-          if (!curRoom.doorways?.front || !inDoor) {
-            local.z = halfD - margin;
+          // Clamp local Z
+          if (local.z < -halfD + margin) local.z = -halfD + margin; // Back wall solid
+          if (local.z > halfD - margin && !inFrontDoor) local.z = halfD - margin; // Front wall doorway
+        } else {
+          // Standard Exhibition Gallery Room
+          local.x = Math.max(-halfW + margin, Math.min(halfW - margin, local.x));
+
+          const inDoor = Math.abs(local.x) < doorHalfW - 0.45;
+          if (local.z > halfD - margin) {
+            if (!curRoom.doorways?.front || !inDoor) {
+              local.z = halfD - margin;
+            }
           }
-        }
-
-        // Back wall boundary (z = -halfD = -16)
-        if (local.z < -halfD + margin) {
-          if (!curRoom.doorways?.back || !inDoor) {
-            local.z = -halfD + margin;
+          if (local.z < -halfD + margin) {
+            if (!curRoom.doorways?.back || !inDoor) {
+              local.z = -halfD + margin;
+            }
           }
         }
 
@@ -951,12 +1105,19 @@ export function Modern3DGalleryEngine({
   useEffect(() => {
     const rConfig = roomConfigs[currentRoomIndex];
     if (rConfig) {
-      const letter = String.fromCharCode(65 + currentRoomIndex);
-      const artCount = rConfig.slots.filter((s) => s.artwork).length;
-      setToastMessage({
-        title: `E X H I B I T   ${letter}`,
-        sub: `ห้องที่ ${currentRoomIndex + 1} จาก ${roomConfigs.length} · ${artCount} ผลงานจัดแสดง`,
-      });
+      if (rConfig.isCornerPavilion) {
+        setToastMessage({
+          title: `C O R N E R   P A V I L I O N`,
+          sub: rConfig.pavilionTitle || `โถงพักชมประติมากรรมมุมอาคาร (เลี้ยวขวา)`,
+        });
+      } else {
+        const letter = String.fromCharCode(65 + currentRoomIndex);
+        const artCount = rConfig.slots.filter((s) => s.artwork).length;
+        setToastMessage({
+          title: `E X H I B I T   ${letter}`,
+          sub: `ห้องที่ ${currentRoomIndex + 1} จาก ${roomConfigs.length} · ${artCount} ผลงานจัดแสดง`,
+        });
+      }
       const t = setTimeout(() => setToastMessage(null), 2800);
       return () => clearTimeout(t);
     }

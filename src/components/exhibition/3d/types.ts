@@ -19,6 +19,8 @@ export interface CalculatedArtworkSlot {
 export interface RoomGeometryConfig {
   shape: RoomShape;
   roomIndex: number;
+  isCornerPavilion?: boolean;
+  pavilionTitle?: string;
   center: { x: number; y: number; z: number };
   rotationY: number;
   width: number;
@@ -28,6 +30,8 @@ export interface RoomGeometryConfig {
   doorways?: {
     front: boolean;
     back: boolean;
+    right?: boolean;
+    left?: boolean;
   };
 }
 

@@ -159,45 +159,129 @@ export function calculateRoomSlots(
   return slots;
 }
 
+export const CORNER_SIZE = 14; // Square transition pavilion 14m x 14m
+
 /**
- * Calculates complete multi-room configurations in world coordinates.
+ * Calculates complete multi-room configurations in world coordinates with Corner Pavilions every 3 rooms.
  */
 export function buildMultiRoomConfigs(
   artworks: Artwork[],
   roomShapes: RoomShape[] = []
 ): RoomGeometryConfig[] {
   const totalArtworks = Math.max(artworks.length, 1);
-  const totalRooms = Math.max(1, Math.ceil(totalArtworks / ARTWORKS_PER_ROOM));
-  const pathNodes = buildRoomPath(totalRooms);
+  const totalExhRooms = Math.max(1, Math.ceil(totalArtworks / ARTWORKS_PER_ROOM));
 
   const configs: RoomGeometryConfig[] = [];
+  const legDirections = [
+    { forward: { x: 0, z: -1 }, rotY: 0 },              // Leg 0: North (-Z)
+    { forward: { x: 1, z: 0 }, rotY: -Math.PI / 2 },    // Leg 1: East (+X)
+    { forward: { x: 0, z: 1 }, rotY: Math.PI },          // Leg 2: South (+Z)
+    { forward: { x: -1, z: 0 }, rotY: Math.PI / 2 },    // Leg 3: West (-X)
+  ];
 
-  for (let r = 0; r < totalRooms; r++) {
-    const shape = roomShapes[r] || 'RECTANGLE';
-    const startIdx = r * ARTWORKS_PER_ROOM;
+  let curCenter = { x: 0, y: 0, z: 0 };
+  let curForward = legDirections[0].forward;
+  let curRotY = legDirections[0].rotY;
+  let totalRoomIdx = 0;
+
+  for (let exhIdx = 0; exhIdx < totalExhRooms; exhIdx++) {
+    const legIdx = Math.floor(exhIdx / 3) % 4;
+    const posInLeg = exhIdx % 3;
+    const legInfo = legDirections[legIdx];
+
+    // If starting a new leg (after 3 exhibition rooms), insert a Corner Transition Pavilion!
+    if (exhIdx > 0 && posInLeg === 0) {
+      const prevForward = curForward;
+      const nextForward = legInfo.forward;
+      const pavilionRotY = curRotY; // Pavilion aligns with previous leg's heading
+
+      // Position pavilion directly at the exit of the previous room
+      // Exit of prev room = curCenter + prevForward * (ROOM_D / 2)
+      // Pavilion center = Exit of prev room + prevForward * (CORNER_SIZE / 2)
+      const pavCenter = {
+        x: curCenter.x + prevForward.x * (ROOM_D / 2 + CORNER_SIZE / 2),
+        y: 0,
+        z: curCenter.z + prevForward.z * (ROOM_D / 2 + CORNER_SIZE / 2),
+      };
+
+      const cornerLetter = String.fromCharCode(65 + totalRoomIdx);
+      configs.push({
+        shape: 'SQUARE',
+        roomIndex: totalRoomIdx,
+        isCornerPavilion: true,
+        pavilionTitle: `โถงพักชมประติมากรรมมุมอาคาร (Corner Pavilion ${cornerLetter})`,
+        center: pavCenter,
+        rotationY: pavilionRotY,
+        width: CORNER_SIZE,
+        depth: CORNER_SIZE,
+        height: ROOM_H,
+        slots: [],
+        doorways: {
+          front: true, // Entrance from previous room (Front wall)
+          back: false,
+          right: true, // Exit to next room (Right wall)
+          left: false,
+        },
+      });
+
+      totalRoomIdx++;
+
+      // Now set current position and direction for the new leg
+      curForward = nextForward;
+      curRotY = legInfo.rotY;
+
+      // New room's entrance meets the Pavilion's Right Door!
+      // Right door of Pavilion in world space = pavCenter + rightVector * (CORNER_SIZE / 2)
+      // where rightVector in world space = nextForward!
+      // Center of new room = Right door of Pavilion + nextForward * (ROOM_D / 2)
+      curCenter = {
+        x: pavCenter.x + nextForward.x * (CORNER_SIZE / 2 + ROOM_D / 2),
+        y: 0,
+        z: pavCenter.z + nextForward.z * (CORNER_SIZE / 2 + ROOM_D / 2),
+      };
+    } else if (exhIdx > 0) {
+      // Continue along the same straight leg
+      curCenter = {
+        x: curCenter.x + curForward.x * ROOM_D,
+        y: 0,
+        z: curCenter.z + curForward.z * ROOM_D,
+      };
+    }
+
+    // Exhibition Room
+    const shape = roomShapes[exhIdx] || 'RECTANGLE';
+    const startIdx = exhIdx * ARTWORKS_PER_ROOM;
     const endIdx = startIdx + ARTWORKS_PER_ROOM;
     const roomArtworks = artworks.slice(startIdx, endIdx);
-    const node = pathNodes[r];
 
     const slots = calculateRoomSlots(
       shape,
-      r,
+      totalRoomIdx,
       roomArtworks,
-      node.center,
-      node.rotationY
+      curCenter,
+      curRotY
     );
+
+    const isLastExhRoom = exhIdx === totalExhRooms - 1;
+    const needsBackDoor = !isLastExhRoom; // Connect to next room or next corner pavilion
 
     configs.push({
       shape,
-      roomIndex: r,
-      center: node.center,
-      rotationY: node.rotationY,
+      roomIndex: totalRoomIdx,
+      isCornerPavilion: false,
+      center: { ...curCenter },
+      rotationY: curRotY,
       width: ROOM_W,
       depth: ROOM_D,
       height: ROOM_H,
       slots,
-      doorways: node.doorways,
+      doorways: {
+        front: totalRoomIdx > 0,
+        back: needsBackDoor,
+      },
     });
+
+    totalRoomIdx++;
   }
 
   return configs;

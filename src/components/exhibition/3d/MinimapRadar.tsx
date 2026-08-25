@@ -78,22 +78,36 @@ export function MinimapRadar({
       ctx.fill();
       ctx.stroke();
 
-      // Room Letter Label
-      ctx.fillStyle = isCur ? '#FFD98A' : 'rgba(255, 255, 255, 0.6)';
-      ctx.font = 'bold 9px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(String.fromCharCode(65 + r.roomIndex), 0, 0);
-
-      // Artwork ticks on walls
-      r.slots.forEach((slot) => {
-        const lx = slot.position.x * scale;
-        const lz = slot.position.z * scale;
-        ctx.fillStyle = slot.artwork ? '#FFD98A' : 'rgba(255, 255, 255, 0.2)';
+      if (r.isCornerPavilion) {
+        // Draw Central Sculpture Marker in Pavilion
+        ctx.fillStyle = '#D9B878';
         ctx.beginPath();
-        ctx.arc(lx, lz, 2.0, 0, Math.PI * 2);
+        ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
         ctx.fill();
-      });
+
+        ctx.fillStyle = isCur ? '#FFD98A' : 'rgba(255, 255, 255, 0.7)';
+        ctx.font = 'bold 8px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🏛️', 0, -rD / 4);
+      } else {
+        // Room Letter Label
+        ctx.fillStyle = isCur ? '#FFD98A' : 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 9px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String.fromCharCode(65 + r.roomIndex), 0, 0);
+
+        // Artwork ticks on walls
+        r.slots.forEach((slot) => {
+          const lx = slot.position.x * scale;
+          const lz = slot.position.z * scale;
+          ctx.fillStyle = slot.artwork ? '#FFD98A' : 'rgba(255, 255, 255, 0.2)';
+          ctx.beginPath();
+          ctx.arc(lx, lz, 2.0, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
 
       ctx.restore();
     });
