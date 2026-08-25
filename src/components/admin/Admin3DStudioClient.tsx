@@ -629,32 +629,32 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
 
           {/* ---------------- PROJECTION MODE: ACCURATE ARCHITECTURAL 2D FLOOR PLAN ---------------- */}
           {projectionMode === 'floorplan' && (
-            <div className="flex-1 flex flex-col justify-center items-center my-auto py-2">
-              <div className="relative w-[620px] h-[360px] bg-[#FAF8F5] rounded-2xl border-2 border-[#D5CFC4] shadow-md p-2 flex items-center justify-center overflow-hidden select-none">
-                
-                {/* Blueprint Header Controls Overlay */}
-                <div className="absolute top-2.5 left-3 right-3 z-40 flex items-center justify-between pointer-events-auto">
-                  <div className="flex items-center space-x-1 bg-[#1E1D1B]/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 text-white shadow-sm">
-                    <Building className="w-3 h-3 text-[#D9B878] mr-1" />
-                    <span className="text-[10px] font-bold">
-                      {currentRoom?.isCornerPavilion
-                        ? 'โถงพักประติมากรรม (14×14 ม.)'
-                        : `ผังห้องจัดแสดง #${(currentRoom?.exhibitionRoomIndex ?? selectedRoomIndex) + 1} (14×32 ม.)`}
-                    </span>
-                  </div>
-
-                  {/* Thumbnail Preview Toggle Button */}
-                  {!currentRoom?.isCornerPavilion && (
-                    <button
-                      onClick={() => setShowBlueprintThumbnails(!showBlueprintThumbnails)}
-                      className="px-2.5 py-1 rounded-lg bg-white/95 hover:bg-white text-[#8C6D3F] border border-[#D5CFC4] text-[10px] font-bold flex items-center space-x-1 shadow-sm transition-all"
-                      title="สลับโหมดแสดงภาพตัวอย่าง / แสดงเฉพาะหมายเลข"
-                    >
-                      <span>{showBlueprintThumbnails ? '🖼️ แสดงภาพเต็มปีก' : '🔢 เฉพาะตัวเลข'}</span>
-                    </button>
-                  )}
+            <div className="flex-1 flex flex-col justify-center items-center my-auto py-1">
+              {/* Dedicated Blueprint Header Toolbar (Outside canvas to prevent any overlap) */}
+              <div className="w-[620px] mb-2 flex items-center justify-between shrink-0">
+                <div className="flex items-center space-x-1.5 bg-white px-3 py-1 rounded-xl border border-[#DDD7CC] text-[#1E1D1B] shadow-sm">
+                  <Building className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                  <span className="text-xs font-bold">
+                    {currentRoom?.isCornerPavilion
+                      ? '🏛️ โถงพักประติมากรรม (14×14 ม.)'
+                      : `ผังห้องจัดแสดง #${(currentRoom?.exhibitionRoomIndex ?? selectedRoomIndex) + 1} (14×32 ม.)`}
+                  </span>
                 </div>
 
+                {/* Thumbnail Preview Toggle Button */}
+                {!currentRoom?.isCornerPavilion && (
+                  <button
+                    onClick={() => setShowBlueprintThumbnails(!showBlueprintThumbnails)}
+                    className="px-3 py-1 rounded-xl bg-white hover:bg-[#FAF8F5] text-[#8C6D3F] border border-[#DDD7CC] text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer"
+                    title="สลับโหมดแสดงภาพตัวอย่าง / แสดงเฉพาะหมายเลข"
+                  >
+                    <span>{showBlueprintThumbnails ? '🖼️ แสดงรูปภาพ' : '🔢 เฉพาะตัวเลข'}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Blueprint Frame Container */}
+              <div className="relative w-[620px] h-[345px] bg-[#FAF8F5] rounded-2xl border-2 border-[#D5CFC4] shadow-md p-2 flex items-center justify-center select-none">
                 {/* SVG ARCHITECTURAL BLUEPRINT */}
                 <svg viewBox="0 0 560 330" className="w-full h-full">
                   {/* Grid background */}
@@ -770,13 +770,13 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                   const side = i % 2 === 0 ? -1 : 1; // -1: Left Wing, 1: Right Wing
                   const row = Math.floor(i / 2); // 0 to 9 from front to back
 
-                  // SVG container is 620px x 360px, SVG viewBox is 560 x 330
+                  // SVG container is 620px x 345px, SVG viewBox is 560 x 330
                   // Card center in SVG: Left Wing X = 118, Right Wing X = 442
                   const svgCardX = side === -1 ? 118 : 442;
                   const svgY = 46 + (9 - row) * 26.4;
 
                   const leftPx = (svgCardX / 560) * 620;
-                  const topPx = (svgY / 330) * 360;
+                  const topPx = (svgY / 330) * 345;
 
                   return (
                     <div
@@ -861,8 +861,15 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                         </div>
                       )}
 
-                      {/* Tooltip on Hover */}
-                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex flex-col items-center z-50 whitespace-nowrap">
+                      {/* Tooltip on Hover with Smart Directional Flipping */}
+                      <div
+                        className={`pointer-events-none absolute left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-50 whitespace-nowrap ${
+                          row >= 5 ? 'top-full mt-2' : 'bottom-full mb-2'
+                        }`}
+                      >
+                        {row >= 5 && (
+                          <div className="w-2.5 h-2.5 bg-[#1A1918]/95 rotate-45 -mb-1.5 border-l border-t border-white/20 z-10" />
+                        )}
                         <div className="bg-[#1A1918]/95 text-white p-2.5 rounded-xl border border-white/20 shadow-2xl flex items-center space-x-2.5">
                           {art?.imageUrl && (
                             <img
@@ -885,7 +892,9 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                             )}
                           </div>
                         </div>
-                        <div className="w-2 h-2 bg-[#1A1918]/95 rotate-45 -mt-1 border-r border-b border-white/20" />
+                        {row < 5 && (
+                          <div className="w-2.5 h-2.5 bg-[#1A1918]/95 rotate-45 -mt-1.5 border-r border-b border-white/20 z-10" />
+                        )}
                       </div>
                     </div>
                   );
