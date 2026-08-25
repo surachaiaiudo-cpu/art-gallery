@@ -630,7 +630,7 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
           {/* ---------------- PROJECTION MODE: ACCURATE ARCHITECTURAL 2D FLOOR PLAN ---------------- */}
           {projectionMode === 'floorplan' && (
             <div className="flex-1 flex flex-col justify-center items-center my-auto py-2">
-              <div className="relative w-[520px] h-[340px] bg-[#FAF8F5] rounded-2xl border-2 border-[#D5CFC4] shadow-md p-2 flex items-center justify-center overflow-hidden select-none">
+              <div className="relative w-[620px] h-[360px] bg-[#FAF8F5] rounded-2xl border-2 border-[#D5CFC4] shadow-md p-2 flex items-center justify-center overflow-hidden select-none">
                 
                 {/* Blueprint Header Controls Overlay */}
                 <div className="absolute top-2.5 left-3 right-3 z-40 flex items-center justify-between pointer-events-auto">
@@ -647,27 +647,27 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                   {!currentRoom?.isCornerPavilion && (
                     <button
                       onClick={() => setShowBlueprintThumbnails(!showBlueprintThumbnails)}
-                      className="px-2 py-1 rounded-lg bg-white/90 hover:bg-white text-[#8C6D3F] border border-[#D5CFC4] text-[10px] font-bold flex items-center space-x-1 shadow-sm transition-all"
+                      className="px-2.5 py-1 rounded-lg bg-white/95 hover:bg-white text-[#8C6D3F] border border-[#D5CFC4] text-[10px] font-bold flex items-center space-x-1 shadow-sm transition-all"
                       title="สลับโหมดแสดงภาพตัวอย่าง / แสดงเฉพาะหมายเลข"
                     >
-                      <span>{showBlueprintThumbnails ? '🖼️ แสดงรูปภาพ' : '🔢 เฉพาะตัวเลข'}</span>
+                      <span>{showBlueprintThumbnails ? '🖼️ แสดงภาพเต็มปีก' : '🔢 เฉพาะตัวเลข'}</span>
                     </button>
                   )}
                 </div>
 
                 {/* SVG ARCHITECTURAL BLUEPRINT */}
-                <svg viewBox="0 0 460 310" className="w-full h-full">
+                <svg viewBox="0 0 560 330" className="w-full h-full">
                   {/* Grid background */}
                   <defs>
                     <pattern id="archGrid" width="20" height="20" patternUnits="userSpaceOnUse">
                       <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#EAE5DC" strokeWidth="0.8" />
                     </pattern>
                   </defs>
-                  <rect width="460" height="310" fill="url(#archGrid)" />
+                  <rect width="560" height="330" fill="url(#archGrid)" />
 
                   {/* 1. CORNER PAVILION BLUEPRINT (14x14m) */}
                   {currentRoom?.isCornerPavilion ? (
-                    <g transform="translate(135, 60)">
+                    <g transform="translate(185, 65)">
                       {/* Floor */}
                       <rect x="0" y="0" width="190" height="190" fill="#F4EFE6" stroke="#8C6D3F" strokeWidth="3" rx="4" />
                       
@@ -696,81 +696,87 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                       </text>
                     </g>
                   ) : (
-                    /* 2. STANDARD EXHIBITION GALLERY HALL (14x32m, 20 Slots) */
+                    /* 2. STANDARD EXHIBITION GALLERY HALL (14x32m, 20 Slots with Side Wings) */
                     <g>
-                      {/* Room Floor (X: 165 to 295, Y: 18 to 286) */}
-                      <rect x="165" y="18" width="130" height="268" fill="#F4EFE6" rx="4" />
+                      {/* Room Floor (X: 225 to 335, Y: 28 to 298) */}
+                      <rect x="225" y="28" width="110" height="270" fill="#F4EFE6" rx="4" />
 
                       {/* Left & Right Structural Walls */}
-                      <line x1="165" y1="18" x2="165" y2="286" stroke="#4A3E31" strokeWidth="4" />
-                      <line x1="295" y1="18" x2="295" y2="286" stroke="#4A3E31" strokeWidth="4" />
+                      <line x1="225" y1="28" x2="225" y2="298" stroke="#4A3E31" strokeWidth="3.5" />
+                      <line x1="335" y1="28" x2="335" y2="298" stroke="#4A3E31" strokeWidth="3.5" />
 
-                      {/* Top Wall with Doorway Opening (X: 217 to 243) */}
-                      <line x1="165" y1="18" x2="217" y2="18" stroke="#4A3E31" strokeWidth="4" />
-                      <line x1="243" y1="18" x2="295" y2="18" stroke="#4A3E31" strokeWidth="4" />
+                      {/* Top Wall with Doorway Opening (X: 268 to 292) */}
+                      <line x1="225" y1="28" x2="268" y2="28" stroke="#4A3E31" strokeWidth="3.5" />
+                      <line x1="292" y1="28" x2="335" y2="28" stroke="#4A3E31" strokeWidth="3.5" />
                       {/* Top Door Swing */}
-                      <path d="M 217 18 Q 217 38, 243 38" fill="none" stroke="#8C6D3F" strokeWidth="1" strokeDasharray="2,2" />
-                      <text x="230" y="12" fill="#8C6D3F" fontSize="8" fontWeight="bold" textAnchor="middle">▲ ประตูสู่ห้องถัดไป (3.2m)</text>
+                      <path d="M 268 28 Q 268 46, 292 46" fill="none" stroke="#8C6D3F" strokeWidth="1" strokeDasharray="2,2" />
+                      <text x="280" y="20" fill="#8C6D3F" fontSize="7.5" fontWeight="bold" textAnchor="middle">▲ ประตูสู่ห้องถัดไป</text>
 
-                      {/* Bottom Wall with Doorway Opening (X: 217 to 243) */}
-                      <line x1="165" y1="286" x2="217" y2="286" stroke="#4A3E31" strokeWidth="4" />
-                      <line x1="243" y1="286" x2="295" y2="286" stroke="#4A3E31" strokeWidth="4" />
+                      {/* Bottom Wall with Doorway Opening (X: 268 to 292) */}
+                      <line x1="225" y1="298" x2="268" y2="298" stroke="#4A3E31" strokeWidth="3.5" />
+                      <line x1="292" y1="298" x2="335" y2="298" stroke="#4A3E31" strokeWidth="3.5" />
                       {/* Bottom Door Swing */}
-                      <path d="M 217 286 Q 217 266, 243 266" fill="none" stroke="#8C6D3F" strokeWidth="1" strokeDasharray="2,2" />
-                      <text x="230" y="302" fill="#8C6D3F" fontSize="8" fontWeight="bold" textAnchor="middle">▼ ประตูทางเข้า (3.2m)</text>
+                      <path d="M 268 298 Q 268 280, 292 280" fill="none" stroke="#8C6D3F" strokeWidth="1" strokeDasharray="2,2" />
+                      <text x="280" y="312" fill="#8C6D3F" fontSize="7.5" fontWeight="bold" textAnchor="middle">▼ ประตูทางเข้า</text>
 
                       {/* 2 Central Gallery Benches (3.0m x 0.95m) */}
-                      <rect x="214" y="85" width="32" height="14" rx="2" fill="#3B2D1F" stroke="#8C6D3F" strokeWidth="1.2" />
-                      <text x="230" y="95" fill="#FFD98A" fontSize="6.5" fontFamily="monospace" fontWeight="bold" textAnchor="middle">BENCH 1</text>
+                      <rect x="266" y="95" width="28" height="13" rx="2" fill="#3B2D1F" stroke="#8C6D3F" strokeWidth="1" />
+                      <text x="280" y="104" fill="#FFD98A" fontSize="6" fontFamily="monospace" fontWeight="bold" textAnchor="middle">BENCH 1</text>
 
-                      <rect x="214" y="205" width="32" height="14" rx="2" fill="#3B2D1F" stroke="#8C6D3F" strokeWidth="1.2" />
-                      <text x="230" y="215" fill="#FFD98A" fontSize="6.5" fontFamily="monospace" fontWeight="bold" textAnchor="middle">BENCH 2</text>
+                      <rect x="266" y="215" width="28" height="13" rx="2" fill="#3B2D1F" stroke="#8C6D3F" strokeWidth="1" />
+                      <text x="280" y="224" fill="#FFD98A" fontSize="6" fontFamily="monospace" fontWeight="bold" textAnchor="middle">BENCH 2</text>
 
                       {/* 4 Corner Potted Plants */}
-                      <circle cx="177" cy="30" r="6" fill="#4A6B3C" opacity="0.85" />
-                      <circle cx="283" cy="30" r="6" fill="#4A6B3C" opacity="0.85" />
-                      <circle cx="177" cy="274" r="6" fill="#4A6B3C" opacity="0.85" />
-                      <circle cx="283" cy="274" r="6" fill="#4A6B3C" opacity="0.85" />
+                      <circle cx="236" cy="38" r="5" fill="#4A6B3C" opacity="0.85" />
+                      <circle cx="324" cy="38" r="5" fill="#4A6B3C" opacity="0.85" />
+                      <circle cx="236" cy="288" r="5" fill="#4A6B3C" opacity="0.85" />
+                      <circle cx="324" cy="288" r="5" fill="#4A6B3C" opacity="0.85" />
 
                       {/* 2 Pedestal Sculptures */}
-                      <rect x="248" y="55" width="10" height="10" rx="1.5" fill="#DEDBD4" stroke="#8A6A34" strokeWidth="1" />
-                      <text x="253" y="63" fontSize="6" textAnchor="middle">🏛️</text>
+                      <rect x="296" y="62" width="8" height="8" rx="1" fill="#DEDBD4" stroke="#8A6A34" strokeWidth="0.8" />
+                      <text x="300" y="69" fontSize="5" textAnchor="middle">🏛️</text>
 
-                      <rect x="202" y="239" width="10" height="10" rx="1.5" fill="#DEDBD4" stroke="#8A6A34" strokeWidth="1" />
-                      <text x="207" y="247" fontSize="6" textAnchor="middle">🏛️</text>
+                      <rect x="256" y="252" width="8" height="8" rx="1" fill="#DEDBD4" stroke="#8A6A34" strokeWidth="0.8" />
+                      <text x="260" y="259" fontSize="5" textAnchor="middle">🏛️</text>
 
-                      {/* Dimensions Dimension Annotations */}
-                      <line x1="165" y1="28" x2="295" y2="28" stroke="#A89F91" strokeWidth="0.8" strokeDasharray="3,2" />
-                      <text x="230" y="150" fill="#A89F91" fontSize="16" fontWeight="bold" opacity="0.15" textAnchor="middle">
+                      {/* Center Room Dimensions Watermark */}
+                      <text x="280" y="163" fill="#A89F91" fontSize="13" fontWeight="bold" opacity="0.2" textAnchor="middle">
                         14m × 32m
                       </text>
 
-                      {/* Left Wall Dimension Guide */}
-                      <line x1="140" y1="18" x2="140" y2="286" stroke="#A89F91" strokeWidth="0.8" />
-                      <text x="132" y="152" fill="#8C6D3F" fontSize="8" fontWeight="bold" textAnchor="middle" transform="rotate(-90 132 152)">
-                        ความยาว 32.0 เมตร
-                      </text>
+                      {/* Architectural Leader Lines and Pin Dots for 10 Rows */}
+                      {Array.from({ length: 10 }).map((_, row) => {
+                        const svgY = 46 + (9 - row) * 26.4;
+                        return (
+                          <g key={`leader-${row}`}>
+                            {/* Left Wall Leader Line & Pin Dot */}
+                            <line x1="198" y1={svgY} x2="225" y2={svgY} stroke="#C5A880" strokeWidth="0.9" strokeDasharray="2,2" />
+                            <circle cx="225" cy={svgY} r="2.5" fill="#8C6D3F" stroke="#FAF8F5" strokeWidth="0.8" />
+
+                            {/* Right Wall Leader Line & Pin Dot */}
+                            <line x1="335" y1={svgY} x2="362" y2={svgY} stroke="#C5A880" strokeWidth="0.9" strokeDasharray="2,2" />
+                            <circle cx="335" cy={svgY} r="2.5" fill="#8C6D3F" stroke="#FAF8F5" strokeWidth="0.8" />
+                          </g>
+                        );
+                      })}
                     </g>
                   )}
                 </svg>
 
-                {/* INTERACTIVE CLICKABLE 20 SLOTS BADGES & THUMBNAILS (Overlayed on Left & Right Walls) */}
+                {/* INTERACTIVE CLICKABLE 20 SLOTS BADGES & THUMBNAILS IN OUTER WINGS */}
                 {!currentRoom?.isCornerPavilion && currentRoom?.slots.map((slot, i) => {
                   const isSelected = selectedSlotIndex === slot.slotIndex;
                   const art = artworksList[slot.slotIndex];
-                  const side = i % 2 === 0 ? -1 : 1; // -1: Left Wall, 1: Right Wall
+                  const side = i % 2 === 0 ? -1 : 1; // -1: Left Wing, 1: Right Wing
                   const row = Math.floor(i / 2); // 0 to 9 from front to back
 
-                  // SVG container is 520px x 340px, SVG viewBox is 460 x 310
-                  const leftWallSvgX = 165;
-                  const rightWallSvgX = 295;
-                  const svgX = side === -1 ? leftWallSvgX : rightWallSvgX;
-                  
-                  // Row Y from top to bottom (Y: 42 to 262 in SVG)
-                  const svgY = 42 + (9 - row) * 24.4;
+                  // SVG container is 620px x 360px, SVG viewBox is 560 x 330
+                  // Card center in SVG: Left Wing X = 118, Right Wing X = 442
+                  const svgCardX = side === -1 ? 118 : 442;
+                  const svgY = 46 + (9 - row) * 26.4;
 
-                  const leftPx = (svgX / 460) * 520;
-                  const topPx = (svgY / 310) * 340;
+                  const leftPx = (svgCardX / 560) * 620;
+                  const topPx = (svgY / 330) * 360;
 
                   return (
                     <div
@@ -778,35 +784,76 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                       onClick={() => handleSlotClick(slot.slotIndex)}
                       style={{ left: `${leftPx}px`, top: `${topPx}px` }}
                       className={`absolute -translate-x-1/2 -translate-y-1/2 transition-all cursor-pointer z-30 group ${
-                        isSelected ? 'scale-115 z-40' : 'hover:scale-110'
+                        isSelected ? 'scale-105 z-40' : 'hover:scale-105'
                       }`}
                     >
-                      {showBlueprintThumbnails && art?.imageUrl ? (
-                        /* Visual Thumbnail Mode with Artwork Image */
+                      {showBlueprintThumbnails ? (
+                        /* Extended Visual Wing Card with Thumbnail, Badge & Title */
                         <div
-                          className={`flex items-center space-x-1 p-0.5 rounded-lg border shadow-md bg-white ${
+                          className={`w-[145px] h-[24px] px-1.5 py-0.5 rounded-lg border shadow-sm flex items-center justify-between text-[9px] transition-all bg-white ${
                             isSelected
-                              ? 'border-[#8C6D3F] ring-2 ring-[#8C6D3F]/60 bg-[#1E1D1B] text-white'
-                              : 'border-[#D5CFC4] hover:border-[#8C6D3F] text-[#1E1D1B]'
+                              ? 'border-[#8C6D3F] ring-2 ring-[#8C6D3F]/50 bg-[#1E1D1B] text-white shadow-md'
+                              : art
+                              ? 'border-[#DDD7CC] hover:border-[#8C6D3F] text-[#1E1D1B] hover:bg-[#FAF8F5]'
+                              : 'border-dashed border-[#D5CFC4] text-[#A59582] bg-white/70'
                           }`}
                         >
-                          <img
-                            src={art.imageUrl}
-                            alt={art.title}
-                            className="w-5 h-5 rounded object-cover shadow-inner"
-                          />
-                          <span className="text-[8px] font-mono font-bold px-1">
-                            #{slot.slotIndex + 1}
-                          </span>
+                          {side === -1 ? (
+                            /* Left Wall Slot Layout: [Thumbnail/Empty] [Title] [Badge #1] */
+                            <>
+                              <div className="flex items-center space-x-1.5 overflow-hidden">
+                                {art?.imageUrl ? (
+                                  <img
+                                    src={art.imageUrl}
+                                    alt={art.title}
+                                    className="w-4 h-4 rounded object-cover shrink-0 shadow-inner"
+                                  />
+                                ) : (
+                                  <div className="w-4 h-4 rounded border border-dashed border-[#C5A880] flex items-center justify-center shrink-0 text-[8px] text-[#A59582]">
+                                    +
+                                  </div>
+                                )}
+                                <span className="truncate max-w-[82px] font-medium leading-none">
+                                  {art?.title || 'ว่าง (Empty)'}
+                                </span>
+                              </div>
+                              <span className={`font-mono font-bold text-[8px] px-1 py-0.5 rounded ${isSelected ? 'bg-[#8C6D3F] text-white' : 'bg-[#F0ECE1] text-[#8C6D3F]'}`}>
+                                #{slot.slotIndex + 1}
+                              </span>
+                            </>
+                          ) : (
+                            /* Right Wall Slot Layout: [Badge #2] [Title] [Thumbnail/Empty] */
+                            <>
+                              <span className={`font-mono font-bold text-[8px] px-1 py-0.5 rounded ${isSelected ? 'bg-[#8C6D3F] text-white' : 'bg-[#F0ECE1] text-[#8C6D3F]'}`}>
+                                #{slot.slotIndex + 1}
+                              </span>
+                              <div className="flex items-center space-x-1.5 overflow-hidden justify-end">
+                                <span className="truncate max-w-[82px] font-medium leading-none text-right">
+                                  {art?.title || 'ว่าง (Empty)'}
+                                </span>
+                                {art?.imageUrl ? (
+                                  <img
+                                    src={art.imageUrl}
+                                    alt={art.title}
+                                    className="w-4 h-4 rounded object-cover shrink-0 shadow-inner"
+                                  />
+                                ) : (
+                                  <div className="w-4 h-4 rounded border border-dashed border-[#C5A880] flex items-center justify-center shrink-0 text-[8px] text-[#A59582]">
+                                    +
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       ) : (
-                        /* Compact Number Badge Mode */
+                        /* Compact Badge Mode */
                         <div
-                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-mono font-bold shadow-md ${
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-mono font-bold shadow-sm ${
                             isSelected
-                              ? 'bg-[#1E1D1B] text-[#FAF8F5] border-[#8C6D3F] ring-4 ring-[#8C6D3F]/50 scale-125 shadow-xl'
+                              ? 'bg-[#1E1D1B] text-[#FAF8F5] border-[#8C6D3F] ring-3 ring-[#8C6D3F]/50 scale-115'
                               : art
-                              ? 'bg-[#8C6D3F] text-white border-white hover:scale-120'
+                              ? 'bg-[#8C6D3F] text-white border-white hover:scale-115'
                               : 'bg-white text-[#7A756D] border-[#D5CFC4] hover:border-[#8C6D3F]'
                           }`}
                         >
@@ -816,21 +863,26 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
 
                       {/* Tooltip on Hover */}
                       <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex flex-col items-center z-50 whitespace-nowrap">
-                        <div className="bg-[#1A1918]/95 text-white p-2 rounded-xl border border-white/20 shadow-2xl flex items-center space-x-2">
+                        <div className="bg-[#1A1918]/95 text-white p-2.5 rounded-xl border border-white/20 shadow-2xl flex items-center space-x-2.5">
                           {art?.imageUrl && (
                             <img
                               src={art.imageUrl}
                               alt={art.title}
-                              className="w-8 h-8 rounded object-cover border border-white/20"
+                              className="w-10 h-10 rounded-lg object-cover border border-white/20 shadow-md"
                             />
                           )}
                           <div className="text-left">
                             <div className="text-[10px] font-bold text-[#FFD98A]">
-                              สล็อต #{slot.slotIndex + 1}: {art?.title || 'ช่องว่าง (Empty)'}
+                              สล็อต #{slot.slotIndex + 1}: {art?.title || 'ช่องว่าง (Empty Slot)'}
                             </div>
                             <div className="text-[9px] text-neutral-300">
                               {art?.artist?.name ? `ศิลปิน: ${art.artist.name}` : `${side === -1 ? 'ผนังฝั่งซ้าย' : 'ผนังฝั่งขวา'} แถวที่ ${row + 1}`}
                             </div>
+                            {art?.medium && (
+                              <div className="text-[8px] text-[#C5A880]">
+                                เทคนิค: {art.medium}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="w-2 h-2 bg-[#1A1918]/95 rotate-45 -mt-1 border-r border-b border-white/20" />
