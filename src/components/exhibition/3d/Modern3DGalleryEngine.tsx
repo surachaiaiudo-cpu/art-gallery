@@ -427,17 +427,17 @@ function RoomStructureMesh({
             <planeGeometry args={[DOOR_W, h - DOOR_H]} />
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          {/* Architectural Portal Archway (Clean Single Arch) */}
-          <mesh position={[-DOOR_W / 2 - 0.06, DOOR_H / 2, 0]}>
-            <boxGeometry args={[0.12, DOOR_H, 0.24]} />
+          {/* Architectural Portal Archway (Flush & Clean Single Arch) */}
+          <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
+            <boxGeometry args={[0.08, DOOR_H, 0.08]} />
             <primitive object={trimMat} attach="material" />
           </mesh>
-          <mesh position={[DOOR_W / 2 + 0.06, DOOR_H / 2, 0]}>
-            <boxGeometry args={[0.12, DOOR_H, 0.24]} />
+          <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
+            <boxGeometry args={[0.08, DOOR_H, 0.08]} />
             <primitive object={trimMat} attach="material" />
           </mesh>
-          <mesh position={[0, DOOR_H + 0.06, 0]}>
-            <boxGeometry args={[DOOR_W + 0.24, 0.12, 0.24]} />
+          <mesh position={[0, DOOR_H + 0.04, 0]}>
+            <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.08]} />
             <primitive object={trimMat} attach="material" />
           </mesh>
         </group>
