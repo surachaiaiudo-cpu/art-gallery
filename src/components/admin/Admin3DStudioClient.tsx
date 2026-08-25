@@ -84,6 +84,7 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
   const [artworksList, setArtworksList] = useState<Artwork[]>(
     selectedExhibition?.artworks || []
   );
+  const [showBlueprintThumbnails, setShowBlueprintThumbnails] = useState(true);
 
   // Sync state when switching exhibition
   React.useEffect(() => {
@@ -630,6 +631,30 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
           {projectionMode === 'floorplan' && (
             <div className="flex-1 flex flex-col justify-center items-center my-auto py-2">
               <div className="relative w-[520px] h-[340px] bg-[#FAF8F5] rounded-2xl border-2 border-[#D5CFC4] shadow-md p-2 flex items-center justify-center overflow-hidden select-none">
+                
+                {/* Blueprint Header Controls Overlay */}
+                <div className="absolute top-2.5 left-3 right-3 z-40 flex items-center justify-between pointer-events-auto">
+                  <div className="flex items-center space-x-1 bg-[#1E1D1B]/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 text-white shadow-sm">
+                    <Building className="w-3 h-3 text-[#D9B878] mr-1" />
+                    <span className="text-[10px] font-bold">
+                      {currentRoom?.isCornerPavilion
+                        ? 'โถงพักประติมากรรม (14×14 ม.)'
+                        : `ผังห้องจัดแสดง #${(currentRoom?.exhibitionRoomIndex ?? selectedRoomIndex) + 1} (14×32 ม.)`}
+                    </span>
+                  </div>
+
+                  {/* Thumbnail Preview Toggle Button */}
+                  {!currentRoom?.isCornerPavilion && (
+                    <button
+                      onClick={() => setShowBlueprintThumbnails(!showBlueprintThumbnails)}
+                      className="px-2 py-1 rounded-lg bg-white/90 hover:bg-white text-[#8C6D3F] border border-[#D5CFC4] text-[10px] font-bold flex items-center space-x-1 shadow-sm transition-all"
+                      title="สลับโหมดแสดงภาพตัวอย่าง / แสดงเฉพาะหมายเลข"
+                    >
+                      <span>{showBlueprintThumbnails ? '🖼️ แสดงรูปภาพ' : '🔢 เฉพาะตัวเลข'}</span>
+                    </button>
+                  )}
+                </div>
+
                 {/* SVG ARCHITECTURAL BLUEPRINT */}
                 <svg viewBox="0 0 460 310" className="w-full h-full">
                   {/* Grid background */}
@@ -715,22 +740,21 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                       <text x="207" y="247" fontSize="6" textAnchor="middle">🏛️</text>
 
                       {/* Dimensions Dimension Annotations */}
-                      {/* Width 14m Dimension at top */}
                       <line x1="165" y1="28" x2="295" y2="28" stroke="#A89F91" strokeWidth="0.8" strokeDasharray="3,2" />
                       <text x="230" y="150" fill="#A89F91" fontSize="16" fontWeight="bold" opacity="0.15" textAnchor="middle">
                         14m × 32m
                       </text>
 
                       {/* Left Wall Dimension Guide */}
-                      <line x1="150" y1="18" x2="150" y2="286" stroke="#A89F91" strokeWidth="0.8" />
-                      <text x="142" y="152" fill="#8C6D3F" fontSize="8" fontWeight="bold" textAnchor="middle" transform="rotate(-90 142 152)">
+                      <line x1="140" y1="18" x2="140" y2="286" stroke="#A89F91" strokeWidth="0.8" />
+                      <text x="132" y="152" fill="#8C6D3F" fontSize="8" fontWeight="bold" textAnchor="middle" transform="rotate(-90 132 152)">
                         ความยาว 32.0 เมตร
                       </text>
                     </g>
                   )}
                 </svg>
 
-                {/* INTERACTIVE CLICKABLE 20 SLOTS BADGES (Overlayed on Left & Right Walls) */}
+                {/* INTERACTIVE CLICKABLE 20 SLOTS BADGES & THUMBNAILS (Overlayed on Left & Right Walls) */}
                 {!currentRoom?.isCornerPavilion && currentRoom?.slots.map((slot, i) => {
                   const isSelected = selectedSlotIndex === slot.slotIndex;
                   const art = artworksList[slot.slotIndex];
@@ -738,7 +762,6 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                   const row = Math.floor(i / 2); // 0 to 9 from front to back
 
                   // SVG container is 520px x 340px, SVG viewBox is 460 x 310
-                  // Scale factors: sx = 520 / 460 = 1.13, sy = 340 / 310 = 1.096
                   const leftWallSvgX = 165;
                   const rightWallSvgX = 295;
                   const svgX = side === -1 ? leftWallSvgX : rightWallSvgX;
@@ -754,16 +777,64 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                       key={slot.slotIndex}
                       onClick={() => handleSlotClick(slot.slotIndex)}
                       style={{ left: `${leftPx}px`, top: `${topPx}px` }}
-                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center text-[8px] font-mono font-bold z-30 shadow-md ${
-                        isSelected
-                          ? 'bg-[#1E1D1B] text-[#FAF8F5] border-[#8C6D3F] ring-4 ring-[#8C6D3F]/50 scale-125 shadow-xl'
-                          : art
-                          ? 'bg-[#8C6D3F] text-white border-white hover:scale-120'
-                          : 'bg-white text-[#7A756D] border-[#D5CFC4] hover:border-[#8C6D3F]'
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 transition-all cursor-pointer z-30 group ${
+                        isSelected ? 'scale-115 z-40' : 'hover:scale-110'
                       }`}
-                      title={`สล็อต #${slot.slotIndex + 1}: ${art?.title || 'ช่องว่าง'} (${side === -1 ? 'ผนังซ้าย' : 'ผนังขวา'} #${row + 1})`}
                     >
-                      #{slot.slotIndex + 1}
+                      {showBlueprintThumbnails && art?.imageUrl ? (
+                        /* Visual Thumbnail Mode with Artwork Image */
+                        <div
+                          className={`flex items-center space-x-1 p-0.5 rounded-lg border shadow-md bg-white ${
+                            isSelected
+                              ? 'border-[#8C6D3F] ring-2 ring-[#8C6D3F]/60 bg-[#1E1D1B] text-white'
+                              : 'border-[#D5CFC4] hover:border-[#8C6D3F] text-[#1E1D1B]'
+                          }`}
+                        >
+                          <img
+                            src={art.imageUrl}
+                            alt={art.title}
+                            className="w-5 h-5 rounded object-cover shadow-inner"
+                          />
+                          <span className="text-[8px] font-mono font-bold px-1">
+                            #{slot.slotIndex + 1}
+                          </span>
+                        </div>
+                      ) : (
+                        /* Compact Number Badge Mode */
+                        <div
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-mono font-bold shadow-md ${
+                            isSelected
+                              ? 'bg-[#1E1D1B] text-[#FAF8F5] border-[#8C6D3F] ring-4 ring-[#8C6D3F]/50 scale-125 shadow-xl'
+                              : art
+                              ? 'bg-[#8C6D3F] text-white border-white hover:scale-120'
+                              : 'bg-white text-[#7A756D] border-[#D5CFC4] hover:border-[#8C6D3F]'
+                          }`}
+                        >
+                          #{slot.slotIndex + 1}
+                        </div>
+                      )}
+
+                      {/* Tooltip on Hover */}
+                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex flex-col items-center z-50 whitespace-nowrap">
+                        <div className="bg-[#1A1918]/95 text-white p-2 rounded-xl border border-white/20 shadow-2xl flex items-center space-x-2">
+                          {art?.imageUrl && (
+                            <img
+                              src={art.imageUrl}
+                              alt={art.title}
+                              className="w-8 h-8 rounded object-cover border border-white/20"
+                            />
+                          )}
+                          <div className="text-left">
+                            <div className="text-[10px] font-bold text-[#FFD98A]">
+                              สล็อต #{slot.slotIndex + 1}: {art?.title || 'ช่องว่าง (Empty)'}
+                            </div>
+                            <div className="text-[9px] text-neutral-300">
+                              {art?.artist?.name ? `ศิลปิน: ${art.artist.name}` : `${side === -1 ? 'ผนังฝั่งซ้าย' : 'ผนังฝั่งขวา'} แถวที่ ${row + 1}`}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="w-2 h-2 bg-[#1A1918]/95 rotate-45 -mt-1 border-r border-b border-white/20" />
+                      </div>
                     </div>
                   );
                 })}
