@@ -1183,7 +1183,7 @@ export function Modern3DGalleryEngine({
   };
 
   return (
-    <div className="relative w-full h-[calc(100dvh-64px)] overflow-hidden bg-[#F4F3EE] select-none text-slate-800">
+    <div className="relative w-full h-[calc(100dvh-64px)] overflow-hidden bg-[#0D0C0B] select-none text-slate-100">
       {/* 3D WebGL Canvas */}
       <Canvas
         camera={{ position: [0, 1.8, ROOM_D / 2 - 3], fov: 60 }}
@@ -1197,19 +1197,19 @@ export function Modern3DGalleryEngine({
         }}
         className="w-full h-full"
       >
-        <color attach="background" args={['#161514']} />
+        <color attach="background" args={['#0D0C0B']} />
         <Suspense fallback={null}>
           <LightingRig
             preset={activeLightPreset}
-            activeRoomZ={currentRoomConfig.center.z}
+            activeRoomCenter={currentRoomConfig.center}
             inspectLightAngle={inspectLightAngle}
             inspectLightIntensity={inspectLightIntensity}
             isInspectActive={!!focusedArtwork}
           />
 
-          {/* Render All Connected World-Space Rooms with Visibility Culling (currentRoomIndex ± 1) */}
+          {/* Render All Connected World-Space Rooms with Visibility Culling (currentRoomIndex ± 2) */}
           {roomConfigs.map((rConfig) => {
-            const isVisible = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 1;
+            const isVisible = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 2;
             if (!isVisible) return null;
 
             return (
