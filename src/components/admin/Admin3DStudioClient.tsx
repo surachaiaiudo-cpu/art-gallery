@@ -626,164 +626,147 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
             </div>
           )}
 
-          {/* ---------------- PROJECTION MODE: DYNAMIC ARCHITECTURAL FLOOR PLAN ---------------- */}
+          {/* ---------------- PROJECTION MODE: ACCURATE ARCHITECTURAL 2D FLOOR PLAN ---------------- */}
           {projectionMode === 'floorplan' && (
             <div className="flex-1 flex flex-col justify-center items-center my-auto py-2">
-              <div className="relative w-[520px] h-[330px] bg-[#FAF8F5] rounded-2xl border-2 border-[#D5CFC4] shadow-md p-3 flex items-center justify-center overflow-hidden">
-                {/* 1. CIRCULAR BLUEPRINT */}
-                {currentRoom?.shape === 'CIRCULAR' && (
-                  <div className="relative w-[280px] h-[280px] rounded-full border-4 border-[#8C6D3F] bg-[#F2EFE9] flex items-center justify-center shadow-lg">
-                    <div className="absolute inset-0 rounded-full border border-dashed border-[#8C6D3F]/30" />
-                    <div className="absolute w-full h-px bg-[#8C6D3F]/30" />
-                    <div className="absolute h-full w-px bg-[#8C6D3F]/30" />
+              <div className="relative w-[520px] h-[340px] bg-[#FAF8F5] rounded-2xl border-2 border-[#D5CFC4] shadow-md p-2 flex items-center justify-center overflow-hidden select-none">
+                {/* SVG ARCHITECTURAL BLUEPRINT */}
+                <svg viewBox="0 0 460 310" className="w-full h-full">
+                  {/* Grid background */}
+                  <defs>
+                    <pattern id="archGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#EAE5DC" strokeWidth="0.8" />
+                    </pattern>
+                  </defs>
+                  <rect width="460" height="310" fill="url(#archGrid)" />
 
-                    {/* Central Circular Bench */}
-                    <div className="w-16 h-16 rounded-full bg-[#3B2D1F] border-2 border-[#8C6D3F] flex items-center justify-center text-[8px] font-mono text-amber-200 font-bold z-10 shadow-md">
-                      BENCH R=2m
+                  {/* 1. CORNER PAVILION BLUEPRINT (14x14m) */}
+                  {currentRoom?.isCornerPavilion ? (
+                    <g transform="translate(135, 60)">
+                      {/* Floor */}
+                      <rect x="0" y="0" width="190" height="190" fill="#F4EFE6" stroke="#8C6D3F" strokeWidth="3" rx="4" />
+                      
+                      {/* Central Skylight & Sculpture Pedestal */}
+                      <rect x="65" y="65" width="60" height="60" fill="#EDE6DA" stroke="#D9B878" strokeWidth="1.5" strokeDasharray="3,3" rx="4" />
+                      <rect x="80" y="80" width="30" height="30" fill="#3B2D1F" stroke="#D9B878" strokeWidth="1.5" rx="3" />
+                      <text x="95" y="98" fill="#FFD98A" fontSize="9" fontWeight="bold" textAnchor="middle">🏛️</text>
+
+                      {/* Plants at corners */}
+                      <circle cx="20" cy="20" r="10" fill="#4A6B3C" opacity="0.8" />
+                      <circle cx="20" cy="170" r="10" fill="#4A6B3C" opacity="0.8" />
+
+                      {/* Front Entrance Door (Bottom) */}
+                      <rect x="75" y="186" width="40" height="8" fill="#FAF8F5" stroke="#FAF8F5" strokeWidth="2" />
+                      <path d="M 75 190 Q 75 165, 115 165" fill="none" stroke="#8C6D3F" strokeWidth="1.2" strokeDasharray="2,2" />
+                      <text x="95" y="206" fill="#8C6D3F" fontSize="8" fontWeight="bold" textAnchor="middle">▼ ทางเข้า (Entrance)</text>
+
+                      {/* Right Exit Door (Right wall - 90 deg turn) */}
+                      <rect x="186" y="75" width="8" height="40" fill="#FAF8F5" stroke="#FAF8F5" strokeWidth="2" />
+                      <path d="M 190 75 Q 165 75, 165 115" fill="none" stroke="#8C6D3F" strokeWidth="1.2" strokeDasharray="2,2" />
+                      <text x="210" y="98" fill="#8C6D3F" fontSize="8" fontWeight="bold">▶ เลี้ยวขวา (Next Hall)</text>
+
+                      {/* Room Label */}
+                      <text x="95" y="45" fill="#68635B" fontSize="10" fontWeight="bold" textAnchor="middle">
+                        โถงพักเชื่อมมุมอาคาร (14×14 ม.)
+                      </text>
+                    </g>
+                  ) : (
+                    /* 2. STANDARD EXHIBITION GALLERY HALL (14x32m, 20 Slots) */
+                    <g>
+                      {/* Room Floor (X: 165 to 295, Y: 18 to 286) */}
+                      <rect x="165" y="18" width="130" height="268" fill="#F4EFE6" rx="4" />
+
+                      {/* Left & Right Structural Walls */}
+                      <line x1="165" y1="18" x2="165" y2="286" stroke="#4A3E31" strokeWidth="4" />
+                      <line x1="295" y1="18" x2="295" y2="286" stroke="#4A3E31" strokeWidth="4" />
+
+                      {/* Top Wall with Doorway Opening (X: 217 to 243) */}
+                      <line x1="165" y1="18" x2="217" y2="18" stroke="#4A3E31" strokeWidth="4" />
+                      <line x1="243" y1="18" x2="295" y2="18" stroke="#4A3E31" strokeWidth="4" />
+                      {/* Top Door Swing */}
+                      <path d="M 217 18 Q 217 38, 243 38" fill="none" stroke="#8C6D3F" strokeWidth="1" strokeDasharray="2,2" />
+                      <text x="230" y="12" fill="#8C6D3F" fontSize="8" fontWeight="bold" textAnchor="middle">▲ ประตูสู่ห้องถัดไป (3.2m)</text>
+
+                      {/* Bottom Wall with Doorway Opening (X: 217 to 243) */}
+                      <line x1="165" y1="286" x2="217" y2="286" stroke="#4A3E31" strokeWidth="4" />
+                      <line x1="243" y1="286" x2="295" y2="286" stroke="#4A3E31" strokeWidth="4" />
+                      {/* Bottom Door Swing */}
+                      <path d="M 217 286 Q 217 266, 243 266" fill="none" stroke="#8C6D3F" strokeWidth="1" strokeDasharray="2,2" />
+                      <text x="230" y="302" fill="#8C6D3F" fontSize="8" fontWeight="bold" textAnchor="middle">▼ ประตูทางเข้า (3.2m)</text>
+
+                      {/* 2 Central Gallery Benches (3.0m x 0.95m) */}
+                      <rect x="214" y="85" width="32" height="14" rx="2" fill="#3B2D1F" stroke="#8C6D3F" strokeWidth="1.2" />
+                      <text x="230" y="95" fill="#FFD98A" fontSize="6.5" fontFamily="monospace" fontWeight="bold" textAnchor="middle">BENCH 1</text>
+
+                      <rect x="214" y="205" width="32" height="14" rx="2" fill="#3B2D1F" stroke="#8C6D3F" strokeWidth="1.2" />
+                      <text x="230" y="215" fill="#FFD98A" fontSize="6.5" fontFamily="monospace" fontWeight="bold" textAnchor="middle">BENCH 2</text>
+
+                      {/* 4 Corner Potted Plants */}
+                      <circle cx="177" cy="30" r="6" fill="#4A6B3C" opacity="0.85" />
+                      <circle cx="283" cy="30" r="6" fill="#4A6B3C" opacity="0.85" />
+                      <circle cx="177" cy="274" r="6" fill="#4A6B3C" opacity="0.85" />
+                      <circle cx="283" cy="274" r="6" fill="#4A6B3C" opacity="0.85" />
+
+                      {/* 2 Pedestal Sculptures */}
+                      <rect x="248" y="55" width="10" height="10" rx="1.5" fill="#DEDBD4" stroke="#8A6A34" strokeWidth="1" />
+                      <text x="253" y="63" fontSize="6" textAnchor="middle">🏛️</text>
+
+                      <rect x="202" y="239" width="10" height="10" rx="1.5" fill="#DEDBD4" stroke="#8A6A34" strokeWidth="1" />
+                      <text x="207" y="247" fontSize="6" textAnchor="middle">🏛️</text>
+
+                      {/* Dimensions Dimension Annotations */}
+                      {/* Width 14m Dimension at top */}
+                      <line x1="165" y1="28" x2="295" y2="28" stroke="#A89F91" strokeWidth="0.8" strokeDasharray="3,2" />
+                      <text x="230" y="150" fill="#A89F91" fontSize="16" fontWeight="bold" opacity="0.15" textAnchor="middle">
+                        14m × 32m
+                      </text>
+
+                      {/* Left Wall Dimension Guide */}
+                      <line x1="150" y1="18" x2="150" y2="286" stroke="#A89F91" strokeWidth="0.8" />
+                      <text x="142" y="152" fill="#8C6D3F" fontSize="8" fontWeight="bold" textAnchor="middle" transform="rotate(-90 142 152)">
+                        ความยาว 32.0 เมตร
+                      </text>
+                    </g>
+                  )}
+                </svg>
+
+                {/* INTERACTIVE CLICKABLE 20 SLOTS BADGES (Overlayed on Left & Right Walls) */}
+                {!currentRoom?.isCornerPavilion && currentRoom?.slots.map((slot, i) => {
+                  const isSelected = selectedSlotIndex === slot.slotIndex;
+                  const art = artworksList[slot.slotIndex];
+                  const side = i % 2 === 0 ? -1 : 1; // -1: Left Wall, 1: Right Wall
+                  const row = Math.floor(i / 2); // 0 to 9 from front to back
+
+                  // SVG container is 520px x 340px, SVG viewBox is 460 x 310
+                  // Scale factors: sx = 520 / 460 = 1.13, sy = 340 / 310 = 1.096
+                  const leftWallSvgX = 165;
+                  const rightWallSvgX = 295;
+                  const svgX = side === -1 ? leftWallSvgX : rightWallSvgX;
+                  
+                  // Row Y from top to bottom (Y: 42 to 262 in SVG)
+                  const svgY = 42 + (9 - row) * 24.4;
+
+                  const leftPx = (svgX / 460) * 520;
+                  const topPx = (svgY / 310) * 340;
+
+                  return (
+                    <div
+                      key={slot.slotIndex}
+                      onClick={() => handleSlotClick(slot.slotIndex)}
+                      style={{ left: `${leftPx}px`, top: `${topPx}px` }}
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center text-[8px] font-mono font-bold z-30 shadow-md ${
+                        isSelected
+                          ? 'bg-[#1E1D1B] text-[#FAF8F5] border-[#8C6D3F] ring-4 ring-[#8C6D3F]/50 scale-125 shadow-xl'
+                          : art
+                          ? 'bg-[#8C6D3F] text-white border-white hover:scale-120'
+                          : 'bg-white text-[#7A756D] border-[#D5CFC4] hover:border-[#8C6D3F]'
+                      }`}
+                      title={`สล็อต #${slot.slotIndex + 1}: ${art?.title || 'ช่องว่าง'} (${side === -1 ? 'ผนังซ้าย' : 'ผนังขวา'} #${row + 1})`}
+                    >
+                      #{slot.slotIndex + 1}
                     </div>
-
-                    {/* 20 Radial Slots */}
-                    {currentRoom.slots.map((slot, i) => {
-                      const angle = i * ((Math.PI * 2) / 20) - Math.PI / 2;
-                      const radius = 118; // px
-                      const left = 140 + radius * Math.cos(angle);
-                      const top = 140 + radius * Math.sin(angle);
-                      const isSelected = selectedSlotIndex === slot.slotIndex;
-                      const art = artworksList[slot.slotIndex];
-
-                      return (
-                        <div
-                          key={slot.slotIndex}
-                          onClick={() => handleSlotClick(slot.slotIndex)}
-                          style={{ left: `${left}px`, top: `${top}px` }}
-                          className={`absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center text-[8px] font-mono font-bold z-20 ${
-                            isSelected
-                              ? 'bg-[#1E1D1B] text-[#FAF8F5] border-[#8C6D3F] ring-4 ring-[#8C6D3F]/50 scale-125 shadow-lg'
-                              : art
-                              ? 'bg-[#8C6D3F] text-white border-white hover:scale-115 shadow-md'
-                              : 'bg-white text-[#7A756D] border-[#D5CFC4] hover:border-[#8C6D3F]'
-                          }`}
-                          title={`Slot #${slot.slotIndex + 1}: ${art?.title || 'ช่องว่าง'}`}
-                        >
-                          #{slot.slotIndex + 1}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* 2. L-SHAPE BLUEPRINT */}
-                {currentRoom?.shape === 'L_SHAPE' && (
-                  <div className="relative w-[400px] h-[280px] bg-[#F2EFE9] border-2 border-[#8C6D3F] rounded-xl p-2 flex items-center justify-center">
-                    <svg viewBox="0 0 240 200" className="w-full h-full">
-                      <polygon
-                        points="10,10 140,10 140,80 230,80 230,190 10,190"
-                        fill="#FAF8F5"
-                        stroke="#8C6D3F"
-                        strokeWidth="3"
-                      />
-                      <rect x="50" y="90" width="40" height="25" rx="4" fill="#3B2D1F" stroke="#8C6D3F" strokeWidth="1.5" />
-                      <text x="70" y="106" fill="#F9F8F6" fontSize="8" fontFamily="monospace" textAnchor="middle">BENCH</text>
-                    </svg>
-
-                    {/* 20 Slots */}
-                    {currentRoom.slots.map((slot) => {
-                      const isSelected = selectedSlotIndex === slot.slotIndex;
-                      const art = artworksList[slot.slotIndex];
-                      const left = ((slot.position.x + 12) / 24) * 360 + 20;
-                      const top = ((slot.position.z + 10) / 20) * 240 + 20;
-
-                      return (
-                        <div
-                          key={slot.slotIndex}
-                          onClick={() => handleSlotClick(slot.slotIndex)}
-                          style={{ left: `${left}px`, top: `${top}px` }}
-                          className={`absolute -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center text-[7px] font-mono font-bold z-20 ${
-                            isSelected
-                              ? 'bg-[#1E1D1B] text-[#FAF8F5] border-[#8C6D3F] ring-4 ring-[#8C6D3F]/50 scale-125 shadow-lg'
-                              : art
-                              ? 'bg-[#8C6D3F] text-white border-white hover:scale-115 shadow-md'
-                              : 'bg-white text-[#7A756D] border-[#D5CFC4] hover:border-[#8C6D3F]'
-                          }`}
-                          title={`Slot #${slot.slotIndex + 1}: ${art?.title || 'ช่องว่าง'}`}
-                        >
-                          #{slot.slotIndex + 1}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* 3. RECTANGLE BLUEPRINT (30x16m) */}
-                {currentRoom?.shape === 'RECTANGLE' && (
-                  <div className="relative w-[440px] h-[230px] bg-[#F2EFE9] border-4 border-[#8C6D3F] rounded-xl flex items-center justify-around p-3 shadow-md">
-                    <div className="w-20 h-10 rounded-lg bg-[#3B2D1F] border border-[#8C6D3F] flex items-center justify-center text-[8px] font-mono text-amber-200 font-bold">
-                      BENCH 1
-                    </div>
-                    <div className="w-20 h-10 rounded-lg bg-[#3B2D1F] border border-[#8C6D3F] flex items-center justify-center text-[8px] font-mono text-amber-200 font-bold">
-                      BENCH 2
-                    </div>
-
-                    {currentRoom.slots.map((slot) => {
-                      const isSelected = selectedSlotIndex === slot.slotIndex;
-                      const art = artworksList[slot.slotIndex];
-                      const left = ((slot.position.x + 15) / 30) * 400 + 20;
-                      const top = ((slot.position.z + 8) / 16) * 190 + 20;
-
-                      return (
-                        <div
-                          key={slot.slotIndex}
-                          onClick={() => handleSlotClick(slot.slotIndex)}
-                          style={{ left: `${left}px`, top: `${top}px` }}
-                          className={`absolute -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center text-[7px] font-mono font-bold z-20 ${
-                            isSelected
-                              ? 'bg-[#1E1D1B] text-[#FAF8F5] border-[#8C6D3F] ring-4 ring-[#8C6D3F]/50 scale-125 shadow-lg'
-                              : art
-                              ? 'bg-[#8C6D3F] text-white border-white hover:scale-115 shadow-md'
-                              : 'bg-white text-[#7A756D] border-[#D5CFC4] hover:border-[#8C6D3F]'
-                          }`}
-                          title={`Slot #${slot.slotIndex + 1}: ${art?.title || 'ช่องว่าง'}`}
-                        >
-                          #{slot.slotIndex + 1}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* 4. SQUARE BLUEPRINT (22x22m) */}
-                {currentRoom?.shape === 'SQUARE' && (
-                  <div className="relative w-[280px] h-[280px] bg-[#F2EFE9] border-4 border-[#8C6D3F] rounded-xl flex items-center justify-center p-3 shadow-md">
-                    <div className="w-22 h-11 rounded-lg bg-[#3B2D1F] border-2 border-[#8C6D3F] flex items-center justify-center text-[9px] font-mono text-amber-200 font-bold">
-                      BENCH 3.2m
-                    </div>
-
-                    {currentRoom.slots.map((slot) => {
-                      const isSelected = selectedSlotIndex === slot.slotIndex;
-                      const art = artworksList[slot.slotIndex];
-                      const left = ((slot.position.x + 11) / 22) * 240 + 20;
-                      const top = ((slot.position.z + 11) / 22) * 240 + 20;
-
-                      return (
-                        <div
-                          key={slot.slotIndex}
-                          onClick={() => handleSlotClick(slot.slotIndex)}
-                          style={{ left: `${left}px`, top: `${top}px` }}
-                          className={`absolute -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center text-[7px] font-mono font-bold z-20 ${
-                            isSelected
-                              ? 'bg-[#1E1D1B] text-[#FAF8F5] border-[#8C6D3F] ring-4 ring-[#8C6D3F]/50 scale-125 shadow-lg'
-                              : art
-                              ? 'bg-[#8C6D3F] text-white border-white hover:scale-115 shadow-md'
-                              : 'bg-white text-[#7A756D] border-[#D5CFC4] hover:border-[#8C6D3F]'
-                          }`}
-                          title={`Slot #${slot.slotIndex + 1}: ${art?.title || 'ช่องว่าง'}`}
-                        >
-                          #{slot.slotIndex + 1}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                  );
+                })}
               </div>
             </div>
           )}
