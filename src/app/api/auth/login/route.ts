@@ -9,9 +9,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { password } = body;
 
-    const expectedPassword = getAdminPassword();
+    const inputPassword = typeof password === 'string' ? password.trim() : '';
+    const expectedPassword = getAdminPassword().trim();
 
-    if (!password || password !== expectedPassword) {
+    if (!inputPassword || inputPassword !== expectedPassword) {
       return NextResponse.json(
         { error: 'รหัสผ่านไม่ถูกต้อง (Invalid password)' },
         { status: 401 }

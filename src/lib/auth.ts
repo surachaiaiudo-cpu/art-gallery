@@ -7,12 +7,32 @@ export const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days
 export const DEFAULT_DEV_AUTH_SECRET = 'artvara_secret_local_dev_key_32_chars_long_min';
 export const DEFAULT_DEV_ADMIN_PASSWORD = 'admin1234';
 
+export function getEnvValue(key: string): string | undefined {
+  try {
+    const symbol = Symbol.for('__cloudflare-request-context__');
+    const ctx = (globalThis as any)[symbol];
+    if (ctx?.env && typeof ctx.env[key] === 'string' && ctx.env[key].trim()) {
+      return ctx.env[key].trim();
+    }
+  } catch {}
+
+  if (typeof (globalThis as any)[key] === 'string' && (globalThis as any)[key].trim()) {
+    return (globalThis as any)[key].trim();
+  }
+
+  if (typeof process !== 'undefined' && process.env && typeof process.env[key] === 'string' && process.env[key].trim()) {
+    return process.env[key].trim();
+  }
+
+  return undefined;
+}
+
 export function getAdminSecret(): string {
-  return process.env.AUTH_SECRET || DEFAULT_DEV_AUTH_SECRET;
+  return getEnvValue('AUTH_SECRET') || DEFAULT_DEV_AUTH_SECRET;
 }
 
 export function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD || DEFAULT_DEV_ADMIN_PASSWORD;
+  return getEnvValue('ADMIN_PASSWORD') || DEFAULT_DEV_ADMIN_PASSWORD;
 }
 
 // Convert string to BufferSource
