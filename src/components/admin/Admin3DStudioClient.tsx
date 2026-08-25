@@ -498,11 +498,13 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
           <div className="flex items-center justify-between text-xs text-[#68635B] pb-1.5 border-b border-[#DCD5C9]">
             <div className="flex items-center space-x-2">
               <span className="font-mono text-[#8C6D3F] font-bold uppercase tracking-wider text-[11px]">
-                BLUEPRINT • {currentRoom?.shape}
+                {projectionMode === 'elevation' ? 'ELEVATION (รูปด้านผนัง)' : 'BLUEPRINT (แปลนพื้น)'}
               </span>
               <span>|</span>
               <span className="font-medium text-xs truncate max-w-[280px]">
-                {projectionMode === 'elevation' ? activeWall?.name : 'แปลนพื้นสถาปัตยกรรม (Top-Down Floorplan)'}
+                {projectionMode === 'elevation'
+                  ? `${activeWall?.name} (${activeWall?.slots.length || 0} ผลงาน)`
+                  : 'แปลนพื้นสถาปัตยกรรม (Top-Down Floorplan)'}
               </span>
             </div>
 
@@ -533,22 +535,28 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
           {projectionMode === 'elevation' && (
             <div className="flex-1 flex flex-col justify-center my-auto py-2 overflow-hidden">
               {/* Wall Frame Schematic Border */}
-              <div className="relative w-full h-[320px] bg-[#FAF8F5] rounded-2xl border-2 border-[#D5CFC4] shadow-md p-3.5 flex flex-col justify-between overflow-hidden">
+              <div className="relative w-full h-[330px] bg-[#FAF8F5] rounded-2xl border-2 border-[#D5CFC4] shadow-md p-3.5 flex flex-col justify-between overflow-hidden">
                 {/* Ceiling Line */}
-                <div className="flex items-center justify-between text-[9px] font-mono text-[#8C857B] border-b border-[#E2DDD3] pb-1">
-                  <span>▲ เพดาน ATRIUM (CEILING 8.5m)</span>
-                  <span>รางไฟสปอตไลต์ 35° TRACK LIGHTS</span>
+                <div className="flex items-center justify-between text-[9px] font-mono text-[#8C857B] border-b border-[#E2DDD3] pb-1 shrink-0">
+                  <span className="flex items-center space-x-2">
+                    <span className="font-bold text-[#8C6D3F]">▲ เพดานแกลเลอรี (CEILING 8.5m)</span>
+                    <span className="text-[#A59582]">◀ ทางเข้าห้อง (Entrance)</span>
+                  </span>
+                  <span className="flex items-center space-x-2">
+                    <span className="text-[#A59582]">ทางออกสู่ห้องถัดไป (Exit) ▶</span>
+                    <span>รางไฟสปอตไลต์ 35° TRACK LIGHTS</span>
+                  </span>
                 </div>
 
                 {/* Eye Level Guide Line (Y = 2.2m) */}
                 <div className="absolute top-1/2 left-0 right-0 h-px bg-[#8C6D3F]/30 border-t border-dashed border-[#8C6D3F]/50 pointer-events-none z-0">
-                  <span className="absolute -top-3 left-4 text-[9px] font-mono text-[#8C6D3F] uppercase font-bold">
+                  <span className="absolute -top-3 left-6 text-[9px] font-mono text-[#8C6D3F] uppercase font-bold">
                     ── เส้นระดับสายตามาตรฐาน (EYE-LEVEL 2.2m) ──
                   </span>
                 </div>
 
-                {/* Artwork Slots on the Wall */}
-                <div className="relative z-10 flex items-center justify-around h-full px-2 gap-2.5">
+                {/* 10 Artwork Slots along the 32m Wall (Horizontal Panorama) */}
+                <div className="relative z-10 flex items-center h-full px-2 gap-3 overflow-x-auto overflow-y-hidden py-1">
                   {activeWall?.slots.map((slot) => {
                     const isSelected = selectedSlotIndex === slot.slotIndex;
                     const isSwapTarget = swapTargetIndex === slot.slotIndex;
@@ -558,12 +566,12 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                       <div
                         key={slot.slotIndex}
                         onClick={() => handleSlotClick(slot.slotIndex)}
-                        className={`relative flex-1 max-w-[155px] h-[215px] rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between p-2 ${
+                        className={`relative w-[138px] shrink-0 h-[220px] rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between p-2 shadow-sm ${
                           isSwapTarget
                             ? 'bg-amber-100 border-amber-500 ring-4 ring-amber-400 shadow-xl scale-105'
                             : isSelected
                             ? 'bg-[#FAF6EE] border-[#8C6D3F] shadow-lg ring-2 ring-[#8C6D3F]/60 scale-102'
-                            : 'bg-white border-[#DDD7CC] hover:border-[#8C6D3F] hover:bg-[#FBF9F6] shadow-sm'
+                            : 'bg-white border-[#DDD7CC] hover:border-[#8C6D3F] hover:bg-[#FBF9F6]'
                         }`}
                       >
                         {/* Slot Badge */}
@@ -571,8 +579,8 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                           <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#1E1D1B] text-[#FAF8F5]">
                             #{slot.slotIndex + 1}
                           </span>
-                          <span className="text-[8px] text-[#7A756D] font-mono font-medium">
-                            {art ? (art.dimensions?.split(' ')[0] || '100cm') : 'EMPTY'}
+                          <span className="text-[8px] text-[#7A756D] font-mono font-medium truncate max-w-[70px]">
+                            {art ? (art.dimensions?.split(' ')[0] || '100cm') : 'ว่าง (Empty)'}
                           </span>
                         </div>
 
@@ -619,8 +627,9 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                 </div>
 
                 {/* Floor Line */}
-                <div className="flex items-center justify-between text-[9px] font-mono text-[#8C857B] border-t border-[#E2DDD3] pt-1">
+                <div className="flex items-center justify-between text-[9px] font-mono text-[#8C857B] border-t border-[#E2DDD3] pt-1 shrink-0">
                   <span>▼ พื้นหินขัด TERRAZZO (Y = 0.0m)</span>
+                  <span className="text-[#8C6D3F] font-bold">ความยาวผนัง: 32.0 เมตร (10 สล็อต)</span>
                   <span>บัวเชิงผนัง (0.15m)</span>
                 </div>
               </div>

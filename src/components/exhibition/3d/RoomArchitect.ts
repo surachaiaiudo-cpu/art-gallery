@@ -144,7 +144,7 @@ export function calculateRoomSlots(
     const worldZ = roomCenter.z + rot.z;
     const worldRotY = localRotY + roomRotationY;
 
-    const wallName = side === -1 ? `ผนังฝั่งซ้าย (Left Wall #${row + 1})` : `ผนังฝั่งขวา (Right Wall #${row + 1})`;
+    const wallName = side === -1 ? 'ผนังฝั่งซ้าย (Left Wall)' : 'ผนังฝั่งขวา (Right Wall)';
 
     slots.push({
       slotIndex: globalIdx,
