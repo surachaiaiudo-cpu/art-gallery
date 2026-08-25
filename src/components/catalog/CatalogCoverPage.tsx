@@ -40,9 +40,6 @@ export function CatalogCoverPage({
             <img
               src={bannerUrl}
               alt={exhibition.title}
-              crossOrigin="anonymous"
-              loading="lazy"
-              decoding="async"
               className="max-h-full max-w-full object-contain"
             />
           </div>

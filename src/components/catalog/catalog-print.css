@@ -26,12 +26,6 @@
   letter-spacing: 0em !important;
 }
 
-/* Performance: Content visibility for offscreen A4 plates in continuous view */
-.catalog-a4-page {
-  content-visibility: auto;
-  contain-intrinsic-size: 210mm 297mm;
-}
-
 @media print {
   @page {
     size: 210mm 297mm;
@@ -66,7 +60,6 @@
     background: #ffffff !important;
   }
   .catalog-a4-page {
-    content-visibility: visible !important;
     width: 210mm !important;
     height: 297mm !important;
     min-height: 297mm !important;

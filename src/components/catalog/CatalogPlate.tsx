@@ -45,6 +45,8 @@ export function CatalogPlate({
     ? getOptimizedImageUrl(resolvedPhotoUrl, { width: 160, quality: 80 })
     : '';
 
+  const flagUrl = getFlagImageUrl(artist?.country);
+
   return (
     <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border">
       <div>
@@ -53,9 +55,6 @@ export function CatalogPlate({
           <img
             src={optimizedArtworkUrl}
             alt={artwork.title}
-            crossOrigin="anonymous"
-            loading="lazy"
-            decoding="async"
             className="max-h-full max-w-full object-contain"
           />
         </div>
@@ -64,16 +63,15 @@ export function CatalogPlate({
         <div className="relative z-10 flex flex-row items-start gap-5 pt-1">
           <div className="shrink-0 w-20 flex flex-col items-start">
             {/* Flag */}
-            <div className="relative w-9 h-5 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-sm mb-2 bg-[#F5F5F5]">
-              <img
-                src={getFlagImageUrl(artist?.country)}
-                alt={artist?.country || 'Flag'}
-                crossOrigin="anonymous"
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover"
-              />
-            </div>
+            {flagUrl && (
+              <div className="relative w-9 h-5 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-sm mb-2 bg-[#F5F5F5]">
+                <img
+                  src={flagUrl}
+                  alt={artist?.country || 'Flag'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
 
             {/* Artist Photo */}
             {hasRealPhoto ? (
@@ -81,9 +79,6 @@ export function CatalogPlate({
                 <img
                   src={optimizedPhotoUrl}
                   alt={artist?.name || 'Artist'}
-                  crossOrigin="anonymous"
-                  loading="lazy"
-                  decoding="async"
                   className={`w-full h-full ${isAvatarFallback ? 'object-cover opacity-80' : 'object-cover'}`}
                 />
                 {isAvatarFallback && (

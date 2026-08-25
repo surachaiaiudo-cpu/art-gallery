@@ -48,6 +48,7 @@ export function CatalogStatementPage({
                 width: 160,
                 quality: 80,
               });
+              const flagUrl = getFlagImageUrl(reviewer.country);
 
               return (
                 <div
@@ -59,9 +60,6 @@ export function CatalogStatementPage({
                       <img
                         src={avatarUrl}
                         alt={reviewer.name}
-                        crossOrigin="anonymous"
-                        loading="lazy"
-                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -75,15 +73,15 @@ export function CatalogStatementPage({
 
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <div className="flex items-center gap-1.5">
-                      <div className="relative w-4 h-2.5 rounded-[1px] overflow-hidden border border-[#D0D0D0] shrink-0 bg-[#F5F5F5]">
-                        <img
-                          src={getFlagImageUrl(reviewer.country)}
-                          alt={reviewer.country || 'Flag'}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                      {flagUrl && (
+                        <div className="relative w-4 h-2.5 rounded-[1px] overflow-hidden border border-[#D0D0D0] shrink-0 bg-[#F5F5F5]">
+                          <img
+                            src={flagUrl}
+                            alt={reviewer.country || 'Flag'}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
                       <span className="catalog-heading-th text-[10px] font-bold text-[#8C6D3F] uppercase truncate">
                         {reviewer.role || 'กรรมการผู้ทรงคุณวุฒิ'}
                       </span>
