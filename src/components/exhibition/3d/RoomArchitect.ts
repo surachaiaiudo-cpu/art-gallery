@@ -24,8 +24,11 @@ export interface RoomPathNode {
 
 /**
  * Calculates world-space connected path for N rooms.
- * If N <= 3: Straight corridor along -Z.
- * If N > 3: 3-legged U-SHAPE (Leg 1: -Z -> Leg 2: +X -> Leg 3: +Z)
+ * Modular Circuit: Turns right 90 degrees every 3 rooms.
+ * - Rooms 1-3: Heading North (-Z)
+ * - Rooms 4-6: Heading East (+X)
+ * - Rooms 7-9: Heading South (+Z)
+ * - Rooms 10-12: Heading West (-X)
  * Connecting doorways match seamlessly at wall boundaries.
  */
 export function buildRoomPath(count: number): Array<{
@@ -36,79 +39,55 @@ export function buildRoomPath(count: number): Array<{
   doorways: { front: boolean; back: boolean };
 }> {
   const nodes = [];
+  const legDirections = [
+    { forward: { x: 0, z: -1 }, rotY: 0 },              // Leg 0: North (-Z)
+    { forward: { x: 1, z: 0 }, rotY: -Math.PI / 2 },    // Leg 1: East (+X)
+    { forward: { x: 0, z: 1 }, rotY: Math.PI },          // Leg 2: South (+Z)
+    { forward: { x: -1, z: 0 }, rotY: Math.PI / 2 },    // Leg 3: West (-X)
+  ];
 
-  // Straight line for 1 to 3 rooms
-  if (count <= 3) {
-    for (let i = 0; i < count; i++) {
-      nodes.push({
-        roomIndex: i,
-        center: { x: 0, y: 0, z: -i * ROOM_D },
-        rotationY: 0,
-        forward: { x: 0, z: -1 },
-        doorways: {
-          front: i > 0,
-          back: i < count - 1,
-        },
-      });
+  let curCenter = { x: 0, y: 0, z: 0 };
+  let curForward = legDirections[0].forward;
+  let curRotY = legDirections[0].rotY;
+
+  for (let i = 0; i < count; i++) {
+    const legIdx = Math.floor(i / 3) % 4;
+    const posInLeg = i % 3;
+    const legInfo = legDirections[legIdx];
+
+    if (i === 0) {
+      curCenter = { x: 0, y: 0, z: 0 };
+      curForward = legInfo.forward;
+      curRotY = legInfo.rotY;
+    } else if (posInLeg === 0) {
+      // Start of a new leg: turn right 90 degrees!
+      const prevForward = curForward;
+      curForward = legInfo.forward;
+      curRotY = legInfo.rotY;
+
+      // Connect entrance of new room to exit of previous room
+      curCenter = {
+        x: curCenter.x + (prevForward.x + curForward.x) * (ROOM_D / 2),
+        y: 0,
+        z: curCenter.z + (prevForward.z + curForward.z) * (ROOM_D / 2),
+      };
+    } else {
+      // Continue along the same straight leg
+      curCenter = {
+        x: curCenter.x + curForward.x * ROOM_D,
+        y: 0,
+        z: curCenter.z + curForward.z * ROOM_D,
+      };
     }
-    return nodes;
-  }
 
-  // 3-Legged U-SHAPE Layout for N > 3:
-  // Leg 1: Rooms heading -Z (West Wing)
-  // Leg 2: Rooms heading +X (North Cross Gallery)
-  // Leg 3: Rooms heading +Z (East Wing returning south)
-  const leg1Count = Math.max(1, Math.ceil(count / 3));
-  const leg2Count = Math.max(1, Math.floor((count - leg1Count) / 2));
-  const leg3Count = count - leg1Count - leg2Count;
-
-  // 1. Build Leg 1 (Heading -Z)
-  for (let i = 0; i < leg1Count; i++) {
     nodes.push({
       roomIndex: i,
-      center: { x: 0, y: 0, z: -i * ROOM_D },
-      rotationY: 0,
-      forward: { x: 0, z: -1 },
+      center: { ...curCenter },
+      rotationY: curRotY,
+      forward: { ...curForward },
       doorways: {
         front: i > 0,
-        back: true,
-      },
-    });
-  }
-
-  const leg1EndZ = -(leg1Count - 1) * ROOM_D;
-  const leg2Z = leg1EndZ - ROOM_D / 2;
-
-  // 2. Build Leg 2 (Rotated -90 deg, heading +X)
-  for (let i = 0; i < leg2Count; i++) {
-    const rIdx = leg1Count + i;
-    const leg2X = (i + 0.5) * ROOM_D;
-    nodes.push({
-      roomIndex: rIdx,
-      center: { x: leg2X, y: 0, z: leg2Z },
-      rotationY: -Math.PI / 2,
-      forward: { x: 1, z: 0 },
-      doorways: {
-        front: true,
-        back: true,
-      },
-    });
-  }
-
-  const leg2EndX = leg2Count * ROOM_D;
-
-  // 3. Build Leg 3 (Rotated 180 deg, heading +Z)
-  for (let i = 0; i < leg3Count; i++) {
-    const rIdx = leg1Count + leg2Count + i;
-    const leg3Z = leg1EndZ + i * ROOM_D;
-    nodes.push({
-      roomIndex: rIdx,
-      center: { x: leg2EndX, y: 0, z: leg3Z },
-      rotationY: Math.PI,
-      forward: { x: 0, z: 1 },
-      doorways: {
-        front: true,
-        back: i < leg3Count - 1,
+        back: i < count - 1,
       },
     });
   }
