@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Exhibition, is3DEnabled, PeerReviewer, getExhibitionPeerReviewers } from '@/types/exhibition';
 import { useLanguage } from '@/context/LanguageContext';
 import { formatDateRange } from '@/lib/utils';
+import { getOptimizedImageUrl } from '@/lib/imagekit';
 import {
   Plus,
   Layers,
@@ -845,7 +846,7 @@ export function AdminExhibitionsManagerClient({
                             {reviewer.avatarUrl ? (
                               <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[#D5CEC0] shadow-sm group/photo bg-[#1A1918]">
                                 <img
-                                  src={reviewer.avatarUrl}
+                                  src={getOptimizedImageUrl(reviewer.avatarUrl, { width: 160, quality: 75 })}
                                   alt={reviewer.name || 'Reviewer'}
                                   className="w-full h-full object-cover"
                                 />

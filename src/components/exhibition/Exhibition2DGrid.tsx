@@ -12,6 +12,7 @@ import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, 
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 import { formatDateRange, formatDimensionsInCm } from '@/lib/utils';
+import { getOptimizedImageUrl } from '@/lib/imagekit';
 
 interface Exhibition2DGridProps {
   exhibition: Exhibition;
@@ -157,8 +158,10 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                       {reviewer.avatarUrl ? (
                         <div className="relative w-12 h-12 rounded-full overflow-hidden border border-[#D5CEC0] shrink-0 shadow-sm bg-[#1A1918]">
                           <img
-                            src={reviewer.avatarUrl}
+                            src={getOptimizedImageUrl(reviewer.avatarUrl, { width: 160, quality: 75 })}
                             alt={reviewer.name}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover"
                           />
                         </div>

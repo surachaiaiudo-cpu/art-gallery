@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
+import { getOptimizedImageUrl } from '@/lib/imagekit';
 
 interface ArtistAvatarProps {
   name?: string | null;
@@ -36,9 +36,16 @@ export function ArtistAvatar({
     !avatarUrl.includes('unsplash.com/photo-1507003211169') &&
     !avatarUrl.includes('unsplash.com/photo-1534528741775')
   ) {
+    const optimizedUrl = getOptimizedImageUrl(avatarUrl, { width: 160, quality: 75 });
     return (
       <div className={`relative rounded-full overflow-hidden shrink-0 bg-[#26201B] ${sizeClass} ${className}`}>
-        <Image src={avatarUrl} alt={cleanName} fill className="object-cover" />
+        <img
+          src={optimizedUrl}
+          alt={cleanName}
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover"
+        />
       </div>
     );
   }
