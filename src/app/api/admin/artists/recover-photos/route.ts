@@ -31,14 +31,14 @@ async function executePhotoRecovery() {
       }, { status: 400 });
     }
 
-    const authHeader = `Basic ${Buffer.from(`${imageKitPrivateKey}:`).toString('base64')}`;
+    const authHeader = `Basic ${btoa(`${imageKitPrivateKey}:`)}`;
 
     // 1. Fetch files from ImageKit in /artvara-artists folder (and root as fallback)
     let files: any[] = [];
 
     // Try fetching from /artvara-artists folder
     try {
-      const res = await fetch('https://api.imagekit.io/v1/files?path=%2Fartvara-artists&limit=100', {
+      const res = await fetch('https://api.imagekit.io/v1/files?path=%2Fartvara-artists&limit=200', {
         headers: { Authorization: authHeader },
       });
       if (res.ok) {
@@ -51,7 +51,7 @@ async function executePhotoRecovery() {
 
     // Also fetch general recent files from ImageKit
     try {
-      const res = await fetch('https://api.imagekit.io/v1/files?limit=100&sort=DESC_CREATED', {
+      const res = await fetch('https://api.imagekit.io/v1/files?limit=200&sort=DESC_CREATED', {
         headers: { Authorization: authHeader },
       });
       if (res.ok) {
@@ -75,6 +75,7 @@ async function executePhotoRecovery() {
         success: true,
         message: 'No files found in ImageKit storage',
         recoveredCount: 0,
+        clearedDeadLinksCount: 0,
         recoveredArtists: [],
       });
     }
@@ -84,26 +85,32 @@ async function executePhotoRecovery() {
     const artists = allUsers.filter((u: any) => u.role !== 'curator');
 
     let recoveredCount = 0;
-    const recoveredArtists: Array<{ id: string; name: string; avatarUrl: string; matchedFile: string }> = [];
+    let clearedDeadLinksCount = 0;
+    const recoveredArtists: Array<{ id: string; name: string; avatarUrl: string; matchedFile: string; action: string }> = [];
 
-    const UNSPLASH_PLACEHOLDERS = [
-      'unsplash.com/photo-1507003211169',
-      'unsplash.com/photo-1534528741775',
-    ];
+    const existingFileNames = new Set(
+      files.map((f: any) => (f.name || '').toLowerCase())
+    );
 
     for (const artist of artists) {
-      // Check if artist already has a real custom photo
-      const hasRealPhoto =
-        artist.avatarUrl &&
-        artist.avatarUrl.trim().length > 0 &&
-        !UNSPLASH_PLACEHOLDERS.some((p) => artist.avatarUrl.includes(p));
-
-      if (hasRealPhoto) continue;
-
       const artistTokens = getNameTokens(artist.name);
-      if (artistTokens.length === 0) continue;
+      const rawUrl = (artist.avatarUrl || '').trim();
+      const isIkUrl = rawUrl.includes('ik.imagekit.io');
 
-      // Match against files in ImageKit
+      // Check if existing ImageKit avatar URL exists in active ImageKit files
+      let isExistingUrlValid = false;
+      if (isIkUrl) {
+        const urlFileName = rawUrl.split('?')[0].split('/').pop()?.toLowerCase() || '';
+        if (existingFileNames.has(urlFileName)) {
+          isExistingUrlValid = true;
+        }
+      }
+
+      if (isExistingUrlValid) {
+        continue;
+      }
+
+      // If current avatar is broken (404) or missing, find best match in ImageKit
       let bestMatch: any = null;
       let highestMatchScore = 0;
 
@@ -149,6 +156,22 @@ async function executePhotoRecovery() {
           name: artist.name,
           avatarUrl: bestMatch.url,
           matchedFile: bestMatch.name,
+          action: 'matched_active_file',
+        });
+      } else if (isIkUrl && !isExistingUrlValid) {
+        // Clear dead 404 URL from DB so it falls back to initial badge without console 404 errors
+        await db
+          .update(schema.users)
+          .set({ avatarUrl: '' })
+          .where(eq(schema.users.id, artist.id));
+
+        clearedDeadLinksCount++;
+        recoveredArtists.push({
+          id: artist.id,
+          name: artist.name,
+          avatarUrl: '',
+          matchedFile: 'dead_file_cleaned',
+          action: 'cleared_dead_404',
         });
       }
     }
@@ -156,6 +179,7 @@ async function executePhotoRecovery() {
     return NextResponse.json({
       success: true,
       recoveredCount,
+      clearedDeadLinksCount,
       totalImageKitFilesScanned: files.length,
       recoveredArtists,
     });
