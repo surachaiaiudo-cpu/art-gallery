@@ -28,84 +28,26 @@ export interface RoomPathNode {
  * If N > 3: 3-legged U-SHAPE (Leg 1: -Z -> Leg 2: +X -> Leg 3: +Z)
  * Connecting doorways match seamlessly at wall boundaries.
  */
-export function buildRoomPath(numRooms: number): RoomPathNode[] {
-  const count = Math.max(1, numRooms);
-  const nodes: RoomPathNode[] = [];
-
-  // 1. Straight Line (N <= 3)
-  if (count <= 3) {
-    for (let i = 0; i < count; i++) {
-      nodes.push({
-        roomIndex: i,
-        center: { x: 0, y: 0, z: -i * ROOM_D },
-        rotationY: 0,
-        forward: { x: 0, z: -1 },
-        doorways: {
-          front: i > 0,
-          back: i < count - 1,
-        },
-      });
-    }
-    return nodes;
-  }
-
-  // 2. U-SHAPE Layout (N > 3)
-  // Leg 1: -Z, Leg 2: +X, Leg 3: +Z
-  const legSize = Math.ceil(count / 3);
-  let curCenter = { x: 0, y: 0, z: 0 };
-  let curForward = { x: 0, z: -1 };
-  let curRotY = 0;
-
+export function buildRoomPath(count: number): Array<{
+  roomIndex: number;
+  center: { x: number; y: number; z: number };
+  rotationY: number;
+  forward: { x: number; z: number };
+  doorways: { front: boolean; back: boolean };
+}> {
+  const nodes = [];
   for (let i = 0; i < count; i++) {
-    let nextForward = { x: 0, z: -1 };
-    let nextRotY = 0;
-
-    if (i < legSize) {
-      // Leg 1: traveling in -Z
-      nextForward = { x: 0, z: -1 };
-      nextRotY = 0;
-    } else if (i < 2 * legSize) {
-      // Leg 2: turn +90 deg -> traveling in +X
-      nextForward = { x: 1, z: 0 };
-      nextRotY = -Math.PI / 2;
-    } else {
-      // Leg 3: turn another +90 deg -> traveling in +Z
-      nextForward = { x: 0, z: 1 };
-      nextRotY = Math.PI;
-    }
-
-    if (i === 0) {
-      curCenter = { x: 0, y: 0, z: 0 };
-      curForward = nextForward;
-      curRotY = nextRotY;
-    } else {
-      // Calculate seamless connection pivot between room (i-1) and room (i)
-      const prevForward = curForward;
-      curForward = nextForward;
-      curRotY = nextRotY;
-
-      // Exit of prev room = prevCenter + prevForward * (ROOM_D / 2)
-      // Entry of cur room = curCenter - curForward * (ROOM_D / 2)
-      // Thus: curCenter = prevCenter + (prevForward + curForward) * (ROOM_D / 2)
-      curCenter = {
-        x: curCenter.x + (prevForward.x + curForward.x) * (ROOM_D / 2),
-        y: 0,
-        z: curCenter.z + (prevForward.z + curForward.z) * (ROOM_D / 2),
-      };
-    }
-
     nodes.push({
       roomIndex: i,
-      center: { ...curCenter },
-      rotationY: curRotY,
-      forward: { ...curForward },
+      center: { x: 0, y: 0, z: -i * ROOM_SPACING_Z },
+      rotationY: 0,
+      forward: { x: 0, z: -1 },
       doorways: {
         front: i > 0,
         back: i < count - 1,
       },
     });
   }
-
   return nodes;
 }
 
