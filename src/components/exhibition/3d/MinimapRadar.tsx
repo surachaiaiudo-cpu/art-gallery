@@ -6,6 +6,8 @@ import { Compass, MapPin } from 'lucide-react';
 
 interface MinimapRadarProps {
   roomConfig: RoomGeometryConfig;
+  roomConfigs?: RoomGeometryConfig[];
+  currentRoomIndex?: number;
   cameraPos: { x: number; z: number };
   cameraRotationY: number;
   onWarpToPosition: (x: number, z: number) => void;
@@ -14,12 +16,15 @@ interface MinimapRadarProps {
 
 export function MinimapRadar({
   roomConfig,
+  roomConfigs = [],
+  currentRoomIndex = 0,
   cameraPos,
   cameraRotationY,
   onWarpToPosition,
   onSelectArtwork,
 }: MinimapRadarProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const allConfigs = roomConfigs.length > 0 ? roomConfigs : [roomConfig];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -31,125 +36,88 @@ export function MinimapRadar({
     const height = canvas.height;
     ctx.clearRect(0, 0, width, height);
 
-    // Padding
+    // Compute bounding box across all rooms
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    allConfigs.forEach((r) => {
+      const halfW = (r.width || 14) / 2 + 2;
+      const halfD = (r.depth || 32) / 2 + 2;
+      minX = Math.min(minX, r.center.x - halfW);
+      maxX = Math.max(maxX, r.center.x + halfW);
+      minZ = Math.min(minZ, r.center.z - halfD);
+      maxZ = Math.max(maxZ, r.center.z + halfD);
+    });
+
+    const spanX = Math.max(maxX - minX, 10);
+    const spanZ = Math.max(maxZ - minZ, 10);
     const pad = 12;
-    const drawW = width - pad * 2;
-    const drawH = height - pad * 2;
+    const scale = Math.min((width - pad * 2) / spanX, (height - pad * 2) / spanZ);
 
-    const roomW = roomConfig.width || 22;
-    const roomD = roomConfig.depth || 22;
-    const centerZ = roomConfig.center.z;
-
-    // Coordinate conversion function from 3D world to Minimap pixel coords
-    const worldToCanvas = (x: number, z: number) => {
-      const relZ = z - centerZ;
-      if (roomConfig.shape === 'CIRCULAR') {
-        const radiusCanvas = Math.min(drawW, drawH) / 2;
-        const px = width / 2 + (x / 12) * radiusCanvas;
-        const py = height / 2 + (relZ / 12) * radiusCanvas;
-        return { px, py };
-      }
-      const px = pad + ((x + roomW / 2) / roomW) * drawW;
-      const py = pad + ((relZ + roomD / 2) / roomD) * drawH;
+    const worldToCanvas = (wx: number, wz: number) => {
+      const px = width / 2 + (wx - (minX + maxX) / 2) * scale;
+      const py = height / 2 + (wz - (minZ + maxZ) / 2) * scale;
       return { px, py };
     };
 
-    // 1. Draw Room Architectural Boundary
-    ctx.fillStyle = '#F1EFE9';
-    ctx.strokeStyle = '#C5A059';
-    ctx.lineWidth = 2;
+    // 1. Draw Connected Rooms Floorplans
+    allConfigs.forEach((r) => {
+      const isCur = r.roomIndex === currentRoomIndex;
+      ctx.save();
+      const c = worldToCanvas(r.center.x, r.center.z);
+      ctx.translate(c.px, c.py);
+      ctx.rotate(r.rotationY);
 
-    if (roomConfig.shape === 'CIRCULAR') {
-      const radiusCanvas = Math.min(drawW, drawH) / 2;
+      const rW = (r.width || 14) * scale;
+      const rD = (r.depth || 32) * scale;
+
+      ctx.fillStyle = isCur ? 'rgba(217, 184, 120, 0.22)' : 'rgba(255, 255, 255, 0.06)';
+      ctx.strokeStyle = isCur ? '#FFD98A' : 'rgba(217, 184, 120, 0.35)';
+      ctx.lineWidth = isCur ? 1.8 : 1.0;
+
       ctx.beginPath();
-      ctx.arc(width / 2, height / 2, radiusCanvas, 0, Math.PI * 2);
+      ctx.rect(-rW / 2, -rD / 2, rW, rD);
       ctx.fill();
       ctx.stroke();
 
-      // Central circular bench
-      ctx.fillStyle = '#D6CEBE';
-      ctx.beginPath();
-      ctx.arc(width / 2, height / 2, 7, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (roomConfig.shape === 'L_SHAPE') {
-      ctx.beginPath();
-      // Draw L-shape polygon
-      const p1 = worldToCanvas(-12, -10 + centerZ);
-      const p2 = worldToCanvas(2, -10 + centerZ);
-      const p3 = worldToCanvas(2, 2 + centerZ);
-      const p4 = worldToCanvas(12, 2 + centerZ);
-      const p5 = worldToCanvas(12, 10 + centerZ);
-      const p6 = worldToCanvas(-12, 10 + centerZ);
+      // Room Letter Label
+      ctx.fillStyle = isCur ? '#FFD98A' : 'rgba(255, 255, 255, 0.6)';
+      ctx.font = 'bold 9px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String.fromCharCode(65 + r.roomIndex), 0, 0);
 
-      ctx.moveTo(p1.px, p1.py);
-      ctx.lineTo(p2.px, p2.py);
-      ctx.lineTo(p3.px, p3.py);
-      ctx.lineTo(p4.px, p4.py);
-      ctx.lineTo(p5.px, p5.py);
-      ctx.lineTo(p6.px, p6.py);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      // Square or Rectangle
-      const topLeft = worldToCanvas(-roomW / 2, -roomD / 2 + centerZ);
-      const botRight = worldToCanvas(roomW / 2, roomD / 2 + centerZ);
-      const rectW = botRight.px - topLeft.px;
-      const rectH = botRight.py - topLeft.py;
+      // Artwork ticks on walls
+      r.slots.forEach((slot) => {
+        const lx = slot.position.x * scale;
+        const lz = slot.position.z * scale;
+        ctx.fillStyle = slot.artwork ? '#FFD98A' : 'rgba(255, 255, 255, 0.2)';
+        ctx.beginPath();
+        ctx.arc(lx, lz, 2.0, 0, Math.PI * 2);
+        ctx.fill();
+      });
 
-      ctx.fillRect(topLeft.px, topLeft.py, rectW, rectH);
-      ctx.strokeRect(topLeft.px, topLeft.py, rectW, rectH);
-    }
-
-    // 2. Draw Artwork Markers on Walls
-    roomConfig.slots.forEach((slot) => {
-      const pos = worldToCanvas(slot.position.x, slot.position.z);
-      ctx.fillStyle = slot.artwork ? '#D97706' : '#94A3B8';
-      ctx.beginPath();
-      ctx.arc(pos.px, pos.py, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.restore();
     });
 
-    // 3. Draw Camera Position & FOV Radar Cone
-    const cam = worldToCanvas(cameraPos.x, cameraPos.z);
+    // 2. Draw Player Position & Direction Arrow
+    const p = worldToCanvas(cameraPos.x, cameraPos.z);
+    ctx.save();
+    ctx.translate(p.px, p.py);
+    ctx.rotate(cameraRotationY);
 
-    // FOV Radar Cone
-    const fovAngle = Math.PI / 3.5; // ~50 degrees
-    const viewDist = 32;
-    const angle = cameraRotationY + Math.PI / 2;
-
-    const leftAngle = angle - fovAngle / 2;
-    const rightAngle = angle + fovAngle / 2;
-
-    const pLeftX = cam.px + Math.cos(leftAngle) * viewDist;
-    const pLeftY = cam.py + Math.sin(leftAngle) * viewDist;
-    const pRightX = cam.px + Math.cos(rightAngle) * viewDist;
-    const pRightY = cam.py + Math.sin(rightAngle) * viewDist;
-
-    const grad = ctx.createRadialGradient(cam.px, cam.py, 2, cam.px, cam.py, viewDist);
-    grad.addColorStop(0, 'rgba(225, 29, 72, 0.45)');
-    grad.addColorStop(1, 'rgba(225, 29, 72, 0.0)');
-
-    ctx.fillStyle = grad;
+    ctx.fillStyle = '#FFD98A';
     ctx.beginPath();
-    ctx.moveTo(cam.px, cam.py);
-    ctx.lineTo(pLeftX, pLeftY);
-    ctx.arc(cam.px, cam.py, viewDist, leftAngle, rightAngle);
+    ctx.moveTo(0, -7);
+    ctx.lineTo(4.5, 4.5);
+    ctx.lineTo(0, 2);
+    ctx.lineTo(-4.5, 4.5);
     ctx.closePath();
     ctx.fill();
 
-    // Camera Center Dot
-    ctx.fillStyle = '#E11D48';
-    ctx.beginPath();
-    ctx.arc(cam.px, cam.py, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
     ctx.stroke();
-  }, [roomConfig, cameraPos, cameraRotationY]);
+    ctx.restore();
+  }, [allConfigs, currentRoomIndex, cameraPos, cameraRotationY]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -158,78 +126,55 @@ export function MinimapRadar({
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    allConfigs.forEach((r) => {
+      const halfW = (r.width || 14) / 2 + 2;
+      const halfD = (r.depth || 32) / 2 + 2;
+      minX = Math.min(minX, r.center.x - halfW);
+      maxX = Math.max(maxX, r.center.x + halfW);
+      minZ = Math.min(minZ, r.center.z - halfD);
+      maxZ = Math.max(maxZ, r.center.z + halfD);
+    });
+
+    const spanX = Math.max(maxX - minX, 10);
+    const spanZ = Math.max(maxZ - minZ, 10);
     const pad = 12;
-    const drawW = canvas.width - pad * 2;
-    const drawH = canvas.height - pad * 2;
+    const scale = Math.min((canvas.width - pad * 2) / spanX, (canvas.height - pad * 2) / spanZ);
 
-    const roomW = roomConfig.width || 22;
-    const roomD = roomConfig.depth || 22;
-    const centerZ = roomConfig.center.z;
-
-    let targetX = 0;
-    let targetZ = centerZ;
-
-    if (roomConfig.shape === 'CIRCULAR') {
-      const radiusCanvas = Math.min(drawW, drawH) / 2;
-      const relPx = clickX - canvas.width / 2;
-      const relPy = clickY - canvas.height / 2;
-      targetX = (relPx / radiusCanvas) * 12;
-      targetZ = (relPy / radiusCanvas) * 12 + centerZ;
-    } else {
-      const normX = (clickX - pad) / drawW;
-      const normY = (clickY - pad) / drawH;
-      targetX = normX * roomW - roomW / 2;
-      targetZ = normY * roomD - roomD / 2 + centerZ;
-    }
-
-    // Check click near artwork
-    for (const slot of roomConfig.slots) {
-      const dx = slot.position.x - targetX;
-      const dz = slot.position.z - targetZ;
-      if (Math.sqrt(dx * dx + dz * dz) < 2.0) {
-        if (onSelectArtwork) onSelectArtwork(slot);
-        return;
-      }
-    }
+    const targetX = (clickX - canvas.width / 2) / scale + (minX + maxX) / 2;
+    const targetZ = (clickY - canvas.height / 2) / scale + (minZ + maxZ) / 2;
 
     onWarpToPosition(targetX, targetZ);
   };
 
-  const shapeNames: Record<string, string> = {
-    SQUARE: 'ทรงจัตุรัส (Square)',
-    RECTANGLE: 'ทรงผืนผ้า (Rectangle)',
-    L_SHAPE: 'ทรงตัว L (L-Shape)',
-    CIRCULAR: 'ทรงกลม (Rotunda)',
-  };
-
   return (
-    <div className="bg-white/90 backdrop-blur-md p-3 rounded-2xl border border-white/80 shadow-xl pointer-events-auto">
+    <div className="bg-[#161310]/20 backdrop-blur-2xl p-3 rounded-2xl border border-[#D9B878]/30 shadow-[0_8px_32px_rgba(0,0,0,0.35)] pointer-events-auto text-white">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-bold text-slate-800 tracking-wider flex items-center">
-          <Compass className="w-3.5 h-3.5 text-amber-600 mr-1.5" />
-          ผังห้อง ({shapeNames[roomConfig.shape] || 'Standard'})
+        <span className="text-[11px] font-bold text-[#F4F3EE] tracking-wider flex items-center">
+          <Compass className="w-3.5 h-3.5 text-[#D9B878] mr-1.5" />
+          ผังนิทรรศการ ({allConfigs.length} ห้อง)
         </span>
-        <span className="text-[9px] text-amber-800 font-mono font-bold px-1.5 py-0.5 bg-amber-50 rounded-full border border-amber-200">
-          Room #{roomConfig.roomIndex + 1}
+        <span className="text-[9px] text-[#FFD98A] font-mono font-bold px-2 py-0.5 bg-[#D9B878]/15 rounded-full border border-[#D9B878]/30">
+          ห้อง {String.fromCharCode(65 + currentRoomIndex)}
         </span>
       </div>
 
-      <div className="relative w-40 h-32 bg-[#E9E6DE] rounded-xl border border-slate-300/80 overflow-hidden shadow-inner flex items-center justify-center cursor-crosshair">
+      <div className="relative w-44 h-32 bg-black/15 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden shadow-inner flex items-center justify-center cursor-crosshair">
         <canvas
           ref={canvasRef}
-          width={160}
+          width={176}
           height={128}
           onClick={handleCanvasClick}
           className="w-full h-full"
         />
       </div>
 
-      <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1.5 px-1 font-medium">
+      <div className="flex items-center justify-between text-[10px] text-[#C5A880] mt-1.5 px-1 font-medium">
         <span className="flex items-center">
-          <span className="w-2 h-2 rounded-full bg-amber-600 mr-1"></span> จุดแขวนภาพ
+          <span className="w-2 h-2 rounded-full bg-[#D9B878] mr-1"></span> ภาพ
         </span>
         <span className="flex items-center">
-          <span className="w-2 h-2 rounded-full bg-rose-600 mr-1"></span> คุณอยู่ที่นี่
+          <span className="w-2 h-2 rounded-full bg-[#FFD98A] mr-1"></span> คุณอยู่ที่นี่
         </span>
       </div>
     </div>

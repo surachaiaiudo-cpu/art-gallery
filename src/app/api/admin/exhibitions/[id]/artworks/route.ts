@@ -78,6 +78,20 @@ export async function PUT(
       return NextResponse.json({ error: 'Artworks array is required' }, { status: 400 });
     }
 
+    // Resolve exhibition ID if slug was passed
+    let targetExhibitionId = params.id;
+    try {
+      const exhRow = await db
+        .select({ id: schema.exhibitions.id })
+        .from(schema.exhibitions)
+        .where(or(eq(schema.exhibitions.id, params.id), eq(schema.exhibitions.slug, params.id)))
+        .limit(1);
+
+      if (exhRow && exhRow.length > 0) {
+        targetExhibitionId = exhRow[0].id;
+      }
+    } catch (e) {}
+
     for (const item of artworks) {
       await db
         .update(schema.exhibitionArtworks)
@@ -87,13 +101,16 @@ export async function PUT(
         })
         .where(
           and(
-            eq(schema.exhibitionArtworks.exhibitionId, params.id),
+            or(
+              eq(schema.exhibitionArtworks.exhibitionId, targetExhibitionId),
+              eq(schema.exhibitionArtworks.exhibitionId, params.id)
+            ),
             eq(schema.exhibitionArtworks.artworkId, item.artworkId)
           )
         );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, count: artworks.length });
   } catch (error) {
     console.error('Error updating exhibition artworks:', error);
     return NextResponse.json({ error: 'Failed to update exhibition artworks' }, { status: 500 });

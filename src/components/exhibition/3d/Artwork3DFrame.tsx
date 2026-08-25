@@ -225,6 +225,7 @@ export function Artwork3DFrame({
       ref={groupRef}
       position={[slot.position.x, slot.position.y, slot.position.z]}
       rotation={[0, slot.rotationY, 0]}
+      userData={{ artwork, slot }}
       onClick={(e) => {
         e.stopPropagation();
         onInspect(artwork);
@@ -350,15 +351,6 @@ export function Artwork3DFrame({
           <cylinderGeometry args={[0.005, 0.005, 5.0, 12]} />
           <meshStandardMaterial color="#D1CCC0" roughness={0.2} metalness={0.9} />
         </mesh>
-
-        {/* Continuous Museum Dedicated Spotlight Beam (Shining on artwork at all times) */}
-        <pointLight
-          position={[0, 0.9, 1.3]}
-          intensity={isFocused ? 9.0 : hovered ? 5.5 : 3.2}
-          color="#FFF6E8"
-          distance={4.8}
-          decay={1.8}
-        />
       </group>
 
       {/* 8. Hover Floating Prompt */}

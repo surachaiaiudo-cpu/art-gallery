@@ -2,319 +2,215 @@ import { Artwork } from '@/types/exhibition';
 import { RoomShape, CalculatedArtworkSlot, RoomGeometryConfig } from './types';
 
 export const ARTWORKS_PER_ROOM = 20;
-export const CEILING_HEIGHT = 8.5;
-export const EYE_LEVEL_Y = 2.2;
-export const ROOM_SPACING_Z = 34;
+export const ROOM_W = 14;
+export const ROOM_H = 5;
+export const ROOM_D = 32;
+export const DOOR_W = 2.8;
+export const DOOR_H = 3.2;
+export const CEILING_HEIGHT = ROOM_H;
+export const EYE_LEVEL_Y = 2.0;
+export const ROOM_SPACING_Z = ROOM_D;
+
+export interface RoomPathNode {
+  roomIndex: number;
+  center: { x: number; y: number; z: number };
+  rotationY: number;
+  forward: { x: number; z: number };
+  doorways: {
+    front: boolean;
+    back: boolean;
+  };
+}
 
 /**
- * Calculates slot positions and orientations for any given room shape
- * with STRICT mathematical enforcement of circular inward normals and balanced distribution.
+ * Calculates world-space connected path for N rooms.
+ * If N <= 3: Straight corridor along -Z.
+ * If N > 3: 3-legged U-SHAPE (Leg 1: -Z -> Leg 2: +X -> Leg 3: +Z)
+ * Connecting doorways match seamlessly at wall boundaries.
+ */
+export function buildRoomPath(numRooms: number): RoomPathNode[] {
+  const count = Math.max(1, numRooms);
+  const nodes: RoomPathNode[] = [];
+
+  // 1. Straight Line (N <= 3)
+  if (count <= 3) {
+    for (let i = 0; i < count; i++) {
+      nodes.push({
+        roomIndex: i,
+        center: { x: 0, y: 0, z: -i * ROOM_D },
+        rotationY: 0,
+        forward: { x: 0, z: -1 },
+        doorways: {
+          front: i > 0,
+          back: i < count - 1,
+        },
+      });
+    }
+    return nodes;
+  }
+
+  // 2. U-SHAPE Layout (N > 3)
+  // Leg 1: -Z, Leg 2: +X, Leg 3: +Z
+  const legSize = Math.ceil(count / 3);
+  let curCenter = { x: 0, y: 0, z: 0 };
+  let curForward = { x: 0, z: -1 };
+  let curRotY = 0;
+
+  for (let i = 0; i < count; i++) {
+    let nextForward = { x: 0, z: -1 };
+    let nextRotY = 0;
+
+    if (i < legSize) {
+      // Leg 1: traveling in -Z
+      nextForward = { x: 0, z: -1 };
+      nextRotY = 0;
+    } else if (i < 2 * legSize) {
+      // Leg 2: turn +90 deg -> traveling in +X
+      nextForward = { x: 1, z: 0 };
+      nextRotY = -Math.PI / 2;
+    } else {
+      // Leg 3: turn another +90 deg -> traveling in +Z
+      nextForward = { x: 0, z: 1 };
+      nextRotY = Math.PI;
+    }
+
+    if (i === 0) {
+      curCenter = { x: 0, y: 0, z: 0 };
+      curForward = nextForward;
+      curRotY = nextRotY;
+    } else {
+      // Calculate seamless connection pivot between room (i-1) and room (i)
+      const prevForward = curForward;
+      curForward = nextForward;
+      curRotY = nextRotY;
+
+      // Exit of prev room = prevCenter + prevForward * (ROOM_D / 2)
+      // Entry of cur room = curCenter - curForward * (ROOM_D / 2)
+      // Thus: curCenter = prevCenter + (prevForward + curForward) * (ROOM_D / 2)
+      curCenter = {
+        x: curCenter.x + (prevForward.x + curForward.x) * (ROOM_D / 2),
+        y: 0,
+        z: curCenter.z + (prevForward.z + curForward.z) * (ROOM_D / 2),
+      };
+    }
+
+    nodes.push({
+      roomIndex: i,
+      center: { ...curCenter },
+      rotationY: curRotY,
+      forward: { ...curForward },
+      doorways: {
+        front: i > 0,
+        back: i < count - 1,
+      },
+    });
+  }
+
+  return nodes;
+}
+
+function rotatePointY(x: number, z: number, angleRad: number) {
+  const cos = Math.cos(angleRad);
+  const sin = Math.sin(angleRad);
+  return {
+    x: x * cos + z * sin,
+    z: -x * sin + z * cos,
+  };
+}
+
+/**
+ * Calculates slot positions and orientations for standard gallery hall with world-space transformation.
  */
 export function calculateRoomSlots(
   roomShape: RoomShape,
   roomIndex: number,
-  artworksForThisRoom: Artwork[] = []
+  artworksForThisRoom: Artwork[] = [],
+  roomCenter: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
+  roomRotationY: number = 0
 ): CalculatedArtworkSlot[] {
-  // Always center active room slots around local origin (0, 0, 0)
-  const roomCenterZ = 0;
-  const wallY = EYE_LEVEL_Y;
-  const wallOffset = 0.14;
   const slots: CalculatedArtworkSlot[] = [];
-
-  // Filter valid artworks
   const validArtworks = artworksForThisRoom.filter(Boolean);
-  const totalArtCount = Math.max(validArtworks.length, 1);
-  const isBalancedMode = totalArtCount < ARTWORKS_PER_ROOM;
+  const totalArtCount = Math.min(ARTWORKS_PER_ROOM, Math.max(validArtworks.length, 1));
+  const wallY = EYE_LEVEL_Y;
 
-  // -------------------------------------------------------------
-  // 1. CIRCULAR ROTUNDA (Strict Inward Normal & Angular Geometry)
-  // -------------------------------------------------------------
-  if (roomShape === 'CIRCULAR') {
-    const radius = 12 - wallOffset;
-    const numSlots = isBalancedMode ? totalArtCount : ARTWORKS_PER_ROOM;
+  for (let k = 0; k < totalArtCount; k++) {
+    const art = validArtworks[k] || null;
+    const globalIdx = roomIndex * ARTWORKS_PER_ROOM + k;
+    const side = k % 2 === 0 ? -1 : 1; // -1: Left wall, 1: Right wall
+    const row = Math.floor(k / 2);
+    
+    // Spaced along room depth
+    const rowStep = (ROOM_D - 6.4) / (ARTWORKS_PER_ROOM / 2 - 1);
+    const pzRel = ROOM_D / 2 - 3.2 - row * rowStep;
 
-    for (let i = 0; i < numSlots; i++) {
-      const art = validArtworks[i] || null;
-      // Equiangular distribution clockwise around 360°
-      const angle = i * ((Math.PI * 2) / numSlots);
-      const posX = Math.sin(angle) * radius;
-      const posZ = -Math.cos(angle) * radius;
+    const localX = side * (ROOM_W / 2 - 0.02);
+    const localY = wallY;
+    const localZ = pzRel;
+    const localRotY = side === -1 ? Math.PI / 2 : -Math.PI / 2;
 
-      // Mathematically guaranteed inward normal pointing to room center (0, 0)
-      const rotY = Math.atan2(-posX, -posZ);
+    // Transform local coords to world coords
+    const rot = rotatePointY(localX, localZ, roomRotationY);
+    const worldX = roomCenter.x + rot.x;
+    const worldY = localY;
+    const worldZ = roomCenter.z + rot.z;
+    const worldRotY = localRotY + roomRotationY;
 
-      const deg = Math.round((angle * 180) / Math.PI);
-      const wallName = `ส่วนโค้งวงกลม ${deg}° (Rotunda Ring Slot #${i + 1})`;
+    const wallName = side === -1 ? `ผนังฝั่งซ้าย (Left Wall #${row + 1})` : `ผนังฝั่งขวา (Right Wall #${row + 1})`;
 
-      slots.push({
-        slotIndex: roomIndex * ARTWORKS_PER_ROOM + i,
-        roomIndex: roomIndex,
-        wallIndex: Math.floor((angle / (Math.PI * 2)) * 4), // 4 quadrant index
-        wallName: wallName,
-        position: { x: posX, y: wallY, z: posZ },
-        rotationY: rotY,
-        artwork: art,
-      });
-    }
-
-    return slots;
-  }
-
-  // -------------------------------------------------------------
-  // 2. SQUARE PAVILION (22 x 22m - Balanced across 4 walls)
-  // -------------------------------------------------------------
-  if (roomShape === 'SQUARE') {
-    const w = 22;
-    const d = 22;
-    const wallDefinitions = [
-      { name: 'ผนังฝั่งทิศเหนือ (North Wall)', length: w, normal: 0, index: 0 },
-      { name: 'ผนังฝั่งตะวันออก (East Wall)', length: d, normal: -Math.PI / 2, index: 1 },
-      { name: 'ผนังฝั่งทิศใต้ (South Wall)', length: w, normal: Math.PI, index: 2 },
-      { name: 'ผนังฝั่งตะวันตก (West Wall)', length: d, normal: Math.PI / 2, index: 3 },
-    ];
-
-    const wallCounts = [0, 0, 0, 0];
-    const totalToPlace = isBalancedMode ? totalArtCount : ARTWORKS_PER_ROOM;
-
-    for (let i = 0; i < totalToPlace; i++) {
-      wallCounts[i % 4]++;
-    }
-
-    let placedCount = 0;
-    wallDefinitions.forEach((wallDef, wallIdx) => {
-      const k = wallCounts[wallIdx];
-      for (let j = 0; j < k; j++) {
-        const globalIdx = roomIndex * ARTWORKS_PER_ROOM + placedCount;
-        const art = validArtworks[placedCount] || null;
-        const t = (j + 1) / (k + 1);
-        let posX = 0;
-        let posZ = 0;
-
-        if (wallIdx === 0) {
-          // North
-          posX = -w / 2 + t * w;
-          posZ = -d / 2 + wallOffset;
-        } else if (wallIdx === 1) {
-          // East
-          posX = w / 2 - wallOffset;
-          posZ = -d / 2 + t * d;
-        } else if (wallIdx === 2) {
-          // South
-          posX = w / 2 - t * w;
-          posZ = d / 2 - wallOffset;
-        } else {
-          // West
-          posX = -w / 2 + wallOffset;
-          posZ = d / 2 - t * d;
-        }
-
-        slots.push({
-          slotIndex: globalIdx,
-          roomIndex: roomIndex,
-          wallIndex: wallDef.index,
-          wallName: wallDef.name,
-          position: { x: posX, y: wallY, z: posZ },
-          rotationY: wallDef.normal,
-          artwork: art,
-        });
-
-        placedCount++;
-      }
+    slots.push({
+      slotIndex: globalIdx,
+      roomIndex: roomIndex,
+      wallIndex: side === -1 ? 3 : 1,
+      wallName: wallName,
+      position: { x: localX, y: localY, z: localZ },
+      worldPosition: { x: worldX, y: worldY, z: worldZ },
+      rotationY: localRotY,
+      worldRotationY: worldRotY,
+      artwork: art,
     });
-
-    return slots;
   }
-
-  // -------------------------------------------------------------
-  // 3. RECTANGLE GALLERY (30 x 16m - Proportional Balanced Spacing)
-  // -------------------------------------------------------------
-  if (roomShape === 'RECTANGLE') {
-    const w = 30;
-    const d = 16;
-    const totalToPlace = isBalancedMode ? totalArtCount : ARTWORKS_PER_ROOM;
-
-    const weights = [30, 16, 30, 16];
-    const totalWeight = 92;
-    const wallCounts = [0, 0, 0, 0];
-
-    let remaining = totalToPlace;
-    for (let i = 0; i < 4; i++) {
-      wallCounts[i] = Math.max(1, Math.round((weights[i] / totalWeight) * totalToPlace));
-      remaining -= wallCounts[i];
-    }
-    let adjustIdx = 0;
-    while (remaining > 0) {
-      wallCounts[adjustIdx % 4]++;
-      remaining--;
-      adjustIdx++;
-    }
-    while (remaining < 0) {
-      const maxIdx = wallCounts.indexOf(Math.max(...wallCounts));
-      if (wallCounts[maxIdx] > 1) {
-        wallCounts[maxIdx]--;
-        remaining++;
-      } else break;
-    }
-
-    let placedCount = 0;
-    const wallDefs = [
-      { name: 'ผนังฝั่งทิศเหนือ (North Wall)', length: w, normal: 0, index: 0 },
-      { name: 'ผนังฝั่งตะวันออก (East Wall)', length: d, normal: -Math.PI / 2, index: 1 },
-      { name: 'ผนังฝั่งทิศใต้ (South Wall)', length: w, normal: Math.PI, index: 2 },
-      { name: 'ผนังฝั่งตะวันตก (West Wall)', length: d, normal: Math.PI / 2, index: 3 },
-    ];
-
-    wallDefs.forEach((wallDef, wallIdx) => {
-      const k = wallCounts[wallIdx];
-      for (let j = 0; j < k; j++) {
-        const globalIdx = roomIndex * ARTWORKS_PER_ROOM + placedCount;
-        const art = validArtworks[placedCount] || null;
-        const t = (j + 1) / (k + 1);
-
-        let posX = 0;
-        let posZ = 0;
-
-        if (wallIdx === 0) {
-          posX = -w / 2 + t * w;
-          posZ = -d / 2 + wallOffset;
-        } else if (wallIdx === 1) {
-          posX = w / 2 - wallOffset;
-          posZ = -d / 2 + t * d;
-        } else if (wallIdx === 2) {
-          posX = w / 2 - t * w;
-          posZ = d / 2 - wallOffset;
-        } else {
-          posX = -w / 2 + wallOffset;
-          posZ = d / 2 - t * d;
-        }
-
-        slots.push({
-          slotIndex: globalIdx,
-          roomIndex: roomIndex,
-          wallIndex: wallDef.index,
-          wallName: wallDef.name,
-          position: { x: posX, y: wallY, z: posZ },
-          rotationY: wallDef.normal,
-          artwork: art,
-        });
-
-        placedCount++;
-      }
-    });
-
-    return slots;
-  }
-
-  // -------------------------------------------------------------
-  // 4. L_SHAPE GALLERY (6 Segments - Balanced Distribution)
-  // -------------------------------------------------------------
-  const segDefs = [
-    { name: 'ผนังฝั่งตะวันตกด้านนอก (Outer West)', length: 20, normal: Math.PI / 2, index: 0 },
-    { name: 'ผนังฝั่งเหนือหลัก (North Main)', length: 14, normal: 0, index: 1 },
-    { name: 'ผนังมุมหักใน (Inner Corner)', length: 12, normal: -Math.PI / 2, index: 2 },
-    { name: 'ผนังปีกขวา (East Wing)', length: 10, normal: 0, index: 3 },
-    { name: 'ผนังฝั่งตะวันออกสุด (Far East)', length: 8, normal: -Math.PI / 2, index: 4 },
-    { name: 'ผนังฝั่งใต้เชื่อมต่อ (South Return)', length: 24, normal: Math.PI, index: 5 },
-  ];
-
-  const totalToPlace = isBalancedMode ? totalArtCount : ARTWORKS_PER_ROOM;
-  const segCounts = [0, 0, 0, 0, 0, 0];
-  for (let i = 0; i < totalToPlace; i++) {
-    segCounts[i % 6]++;
-  }
-
-  let placedCount = 0;
-  segDefs.forEach((seg, sIdx) => {
-    const k = segCounts[sIdx];
-    for (let j = 0; j < k; j++) {
-      const globalIdx = roomIndex * ARTWORKS_PER_ROOM + placedCount;
-      const art = validArtworks[placedCount] || null;
-      const t = (j + 1) / (k + 1);
-
-      let posX = 0;
-      let posZ = 0;
-
-      if (sIdx === 0) {
-        posX = -12 + wallOffset;
-        posZ = 10 - t * 20;
-      } else if (sIdx === 1) {
-        posX = -12 + t * 14;
-        posZ = -10 + wallOffset;
-      } else if (sIdx === 2) {
-        posX = 2 - wallOffset;
-        posZ = -10 + t * 12;
-      } else if (sIdx === 3) {
-        posX = 2 + t * 10;
-        posZ = 2 + wallOffset;
-      } else if (sIdx === 4) {
-        posX = 12 - wallOffset;
-        posZ = 2 + t * 8;
-      } else {
-        posX = 12 - t * 24;
-        posZ = 10 - wallOffset;
-      }
-
-      slots.push({
-        slotIndex: globalIdx,
-        roomIndex: roomIndex,
-        wallIndex: seg.index,
-        wallName: seg.name,
-        position: { x: posX, y: wallY, z: posZ },
-        rotationY: seg.normal,
-        artwork: art,
-      });
-
-      placedCount++;
-    }
-  });
 
   return slots;
 }
 
 /**
- * Calculates complete multi-room configurations
+ * Calculates complete multi-room configurations in world coordinates.
  */
 export function buildMultiRoomConfigs(
   artworks: Artwork[],
-  roomShapes: RoomShape[]
+  roomShapes: RoomShape[] = []
 ): RoomGeometryConfig[] {
   const totalArtworks = Math.max(artworks.length, 1);
-  const totalRooms = Math.max(
-    1,
-    Math.max(roomShapes.length, Math.ceil(totalArtworks / ARTWORKS_PER_ROOM))
-  );
+  const totalRooms = Math.max(1, Math.ceil(totalArtworks / ARTWORKS_PER_ROOM));
+  const pathNodes = buildRoomPath(totalRooms);
 
   const configs: RoomGeometryConfig[] = [];
 
   for (let r = 0; r < totalRooms; r++) {
-    const shape = roomShapes[r] || 'SQUARE';
+    const shape = roomShapes[r] || 'RECTANGLE';
     const startIdx = r * ARTWORKS_PER_ROOM;
     const endIdx = startIdx + ARTWORKS_PER_ROOM;
     const roomArtworks = artworks.slice(startIdx, endIdx);
+    const node = pathNodes[r];
 
-    let width = 22;
-    let depth = 22;
-    if (shape === 'RECTANGLE') {
-      width = 30;
-      depth = 16;
-    } else if (shape === 'L_SHAPE') {
-      width = 24;
-      depth = 20;
-    } else if (shape === 'CIRCULAR') {
-      width = 24;
-      depth = 24;
-    }
-
-    const slots = calculateRoomSlots(shape, r, roomArtworks);
+    const slots = calculateRoomSlots(
+      shape,
+      r,
+      roomArtworks,
+      node.center,
+      node.rotationY
+    );
 
     configs.push({
       shape,
       roomIndex: r,
-      center: { x: 0, y: 0, z: 0 },
-      width,
-      depth,
-      height: CEILING_HEIGHT,
+      center: node.center,
+      rotationY: node.rotationY,
+      width: ROOM_W,
+      depth: ROOM_D,
+      height: ROOM_H,
       slots,
+      doorways: node.doorways,
     });
   }
 

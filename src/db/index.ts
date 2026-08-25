@@ -38,22 +38,17 @@ export function getDb() {
   }
 
   // Fallback to local SQLite when running locally
-  if (typeof process !== 'undefined' && process.cwd) {
-    if (!localLibsqlDb) {
-      try {
-        const dbPath = process.cwd() + '/art_gallery.sqlite';
-        const client = createClient({
-          url: `file:${dbPath}`,
-        });
-        localLibsqlDb = drizzleLibsql(client, { schema });
-      } catch (err) {
-        console.warn('Local SQLite init error:', err);
-      }
+  if (!localLibsqlDb) {
+    try {
+      const client = createClient({
+        url: 'file:art_gallery.sqlite',
+      });
+      localLibsqlDb = drizzleLibsql(client, { schema });
+    } catch (err) {
+      console.warn('Local SQLite init error:', err);
     }
-    return localLibsqlDb;
   }
-
-  return null;
+  return localLibsqlDb;
 }
 
 // Safe Dynamic Proxy

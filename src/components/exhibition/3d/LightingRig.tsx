@@ -75,66 +75,25 @@ export function LightingRig({
 
   return (
     <group position={[0, 0, activeRoomZ]}>
-      {/* 1. Skylight Natural Daylight Simulation (Hemisphere Light) */}
+      {/* 1. Soft Skylight Daylight Simulation */}
       <hemisphereLight
-        args={[config.skyColor, config.groundColor, config.skyIntensity]}
+        args={[config.skyColor, config.groundColor, config.skyIntensity * 0.35]}
         position={[0, 20, 0]}
       />
 
       {/* 2. Soft Ambient Light Fill */}
-      <ambientLight color={config.ambientColor} intensity={config.ambientIntensity * 1.3} />
+      <ambientLight color={config.ambientColor} intensity={config.ambientIntensity * 0.3} />
 
       {/* 3. Central Ceiling Skylight Directional Downlight with Attached Target */}
       <primitive object={dirTarget.current} position={[0, 0, 0]} />
       <directionalLight
         position={[0, 15, 0]}
         target={dirTarget.current}
-        intensity={0.8}
+        intensity={0.4}
         color={config.skyColor}
       />
 
-      {/* 4. Ceiling Spot Track Lights Array around Room with Explicit Targets */}
-      <primitive object={spotTargets.current[0]} position={[-8, 2.2, -8]} />
-      <spotLight
-        position={[-5, 7.5, -5]}
-        target={spotTargets.current[0]}
-        intensity={config.spotlightIntensity * 1.2}
-        angle={0.8}
-        penumbra={0.8}
-        color={config.spotlightColor}
-      />
-
-      <primitive object={spotTargets.current[1]} position={[8, 2.2, -8]} />
-      <spotLight
-        position={[5, 7.5, -5]}
-        target={spotTargets.current[1]}
-        intensity={config.spotlightIntensity * 1.2}
-        angle={0.8}
-        penumbra={0.8}
-        color={config.spotlightColor}
-      />
-
-      <primitive object={spotTargets.current[2]} position={[-8, 2.2, 8]} />
-      <spotLight
-        position={[-5, 7.5, 5]}
-        target={spotTargets.current[2]}
-        intensity={config.spotlightIntensity * 1.2}
-        angle={0.8}
-        penumbra={0.8}
-        color={config.spotlightColor}
-      />
-
-      <primitive object={spotTargets.current[3]} position={[8, 2.2, 8]} />
-      <spotLight
-        position={[5, 7.5, 5]}
-        target={spotTargets.current[3]}
-        intensity={config.spotlightIntensity * 1.2}
-        angle={0.8}
-        penumbra={0.8}
-        color={config.spotlightColor}
-      />
-
-      {/* 5. Interactive Studio Light for Inspection Mode */}
+      {/* 4. Interactive Studio Light for Inspection Mode */}
       {isInspectActive && (
         <pointLight
           position={[inspectX, 3.0, inspectZ]}
