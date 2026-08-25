@@ -63,6 +63,8 @@ export interface ExhibitionThemeConfig {
   enable3D?: boolean;
   catalogFooterText?: string;
   catalogPlateFooterText?: string;
+  footerGraphicType?: 'wave_gold' | 'wave_mono' | 'line_gold' | 'custom_image' | 'none';
+  customFooterImageUrl?: string;
   peerReviewers?: PeerReviewer[];
 }
 

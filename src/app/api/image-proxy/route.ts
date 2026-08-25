@@ -3,12 +3,38 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+const ALLOWED_IMAGE_DOMAINS = [
+  'ik.imagekit.io',
+  'res.cloudinary.com',
+  'images.unsplash.com',
+  'upload.wikimedia.org',
+  'flagcdn.com',
+];
+
+function isAllowedDomain(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    return ALLOWED_IMAGE_DOMAINS.some(
+      (domain) => parsed.hostname === domain || parsed.hostname.endsWith('.' + domain)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const imageUrl = searchParams.get('url');
 
   if (!imageUrl) {
     return new NextResponse('Missing url parameter', { status: 400 });
+  }
+
+  if (!isAllowedDomain(imageUrl)) {
+    return NextResponse.json(
+      { error: 'Domain not allowed (โดเมนไม่อยู่ในรายการที่อนุญาต)' },
+      { status: 400 }
+    );
   }
 
   try {

@@ -183,6 +183,12 @@ export async function PUT(req: NextRequest) {
     if (catalogPlateFooterText !== undefined) {
       updatedTheme.catalogPlateFooterText = catalogPlateFooterText;
     }
+    if (body.footerGraphicType !== undefined) {
+      updatedTheme.footerGraphicType = body.footerGraphicType;
+    }
+    if (body.customFooterImageUrl !== undefined) {
+      updatedTheme.customFooterImageUrl = body.customFooterImageUrl;
+    }
     if (peerReviewers !== undefined) {
       updatedTheme.peerReviewers = Array.isArray(peerReviewers) ? peerReviewers : [];
     }

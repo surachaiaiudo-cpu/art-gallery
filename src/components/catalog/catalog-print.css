@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;600;700&family=Maitree:wght@300;400;500;600;700&display=swap');
+
+@font-face {
+  font-family: 'CatalogHeading';
+  src: local('Sukhumvit Set'), local('SukhumvitSet'), local('Sukhumvit Set Bold');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.catalog-a4-page,
+.catalog-a4-page * {
+  font-kerning: none !important;
+  -webkit-font-feature-settings: "kern" 0 !important;
+  font-feature-settings: "kern" 0, "liga" 0, "clig" 0 !important;
+  text-rendering: optimizeSpeed !important;
+}
+
+.catalog-heading-th {
+  font-family: 'CatalogHeading', 'Noto Sans Thai', 'Helvetica Neue', sans-serif !important;
+  letter-spacing: 0em !important;
+}
+
+.catalog-body-th {
+  font-family: 'Maitree', 'Noto Sans Thai', Georgia, serif !important;
+  letter-spacing: 0em !important;
+}
+
+/* Performance: Content visibility for offscreen A4 plates in continuous view */
+.catalog-a4-page {
+  content-visibility: auto;
+  contain-intrinsic-size: 210mm 297mm;
+}
+
+@media print {
+  @page {
+    size: 210mm 297mm;
+    margin: 0mm !important;
+  }
+  *, *::before, *::after {
+    box-sizing: border-box !important;
+  }
+  html, body {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .no-print, header, footer, nav {
+    display: none !important;
+  }
+  .print-hide-this-page {
+    display: none !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 210mm !important;
+    width: 210mm !important;
+    background: #ffffff !important;
+  }
+  .catalog-a4-page {
+    content-visibility: visible !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+    box-sizing: border-box !important;
+    page-break-before: auto !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    border: none !important;
+    box-shadow: none !important;
+    background-color: #ffffff !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+}
