@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq, inArray } from 'drizzle-orm';
 import { normalizeArtistName, getNameTokens, findMatchingArtist } from '@/lib/artistMatcher';
+import { invalidateDataCache } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,6 +139,7 @@ async function executeArtistDeduplication() {
     const remainingUsers = await db.select().from(schema.users);
     const cleanArtists = remainingUsers.filter((u: any) => u.role !== 'curator');
 
+    invalidateDataCache();
     return NextResponse.json({
       success: true,
       mergedCount,

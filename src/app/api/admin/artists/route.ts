@@ -2,7 +2,7 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq, inArray } from 'drizzle-orm';
-import { getAllArtistsWithStats } from '@/lib/data';
+import { getAllArtistsWithStats, invalidateDataCache } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -191,6 +191,7 @@ export async function PUT(req: NextRequest) {
         // 3. Delete the duplicate artist record cleanly
         await db.delete(schema.users).where(eq(schema.users.id, id));
 
+        invalidateDataCache();
         return NextResponse.json({
           success: true,
           merged: true,
@@ -218,6 +219,7 @@ export async function PUT(req: NextRequest) {
       })
       .where(eq(schema.users.id, id));
 
+    invalidateDataCache();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating artist:', error);
@@ -232,37 +234,53 @@ export async function DELETE(req: NextRequest) {
     const queryId = searchParams.get('id');
     const queryIds = searchParams.get('ids');
 
-    let targetIds: string[] = [];
+    let idsToDelete: string[] = [];
 
     if (queryId) {
-      targetIds.push(queryId);
+      idsToDelete = [queryId];
     } else if (queryIds) {
-      targetIds = queryIds.split(',').map((s) => s.trim()).filter(Boolean);
+      idsToDelete = queryIds.split(',').map((s) => s.trim()).filter(Boolean);
     } else {
-      try {
-        const body = await req.json();
-        if (body.ids && Array.isArray(body.ids)) {
-          targetIds = body.ids;
-        } else if (body.id) {
-          targetIds = [body.id];
+      const body = await req.json().catch(() => ({}));
+      if (body.id) idsToDelete = [body.id];
+      else if (Array.isArray(body.ids)) idsToDelete = body.ids;
+    }
+
+    if (idsToDelete.length === 0) {
+      return NextResponse.json({ error: 'No artist ID(s) provided' }, { status: 400 });
+    }
+
+    // 1. Fetch artist avatarUrls for cleanup
+    const artists = await db
+      .select({ id: schema.users.id, avatarUrl: schema.users.avatarUrl })
+      .from(schema.users)
+      .where(inArray(schema.users.id, idsToDelete));
+
+    // 2. Clean up images from ImageKit
+    const symbol = Symbol.for('__cloudflare-request-context__');
+    const ctx = (globalThis as any)[symbol];
+    const imageKitPrivateKey =
+      ctx?.env?.IMAGEKIT_PRIVATE_KEY ||
+      ctx?.env?.IMAGEKIT_KEY ||
+      process.env.IMAGEKIT_PRIVATE_KEY ||
+      process.env.IMAGEKIT_KEY;
+
+    if (imageKitPrivateKey) {
+      for (const artist of artists) {
+        if (artist.avatarUrl && artist.avatarUrl.includes('ik.imagekit.io')) {
+          await deleteFromImageKit(artist.avatarUrl, imageKitPrivateKey);
         }
-      } catch {}
+      }
     }
 
-    if (targetIds.length === 0) {
-      return NextResponse.json({ error: 'Artist ID or IDs are required' }, { status: 400 });
-    }
+    // 3. Delete artist records
+    await db.delete(schema.users).where(inArray(schema.users.id, idsToDelete));
 
-    // Delete artist profiles from users table only (do not delete artworks)
-    const CHUNK_SIZE = 50;
-    for (let i = 0; i < targetIds.length; i += CHUNK_SIZE) {
-      const chunk = targetIds.slice(i, i + CHUNK_SIZE);
-      await db.delete(schema.users).where(inArray(schema.users.id, chunk));
-    }
-
+    invalidateDataCache();
     return NextResponse.json({
       success: true,
-      deletedArtistsCount: targetIds.length,
+      deletedCount: idsToDelete.length,
+      deletedIds: idsToDelete,
     });
   } catch (error) {
     console.error('Error deleting artist(s):', error);

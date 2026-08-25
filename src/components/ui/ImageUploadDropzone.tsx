@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { UploadCloud, Image as ImageIcon, CheckCircle2, AlertCircle, X, Link as LinkIcon, Loader2, RefreshCw } from 'lucide-react';
+import { getOptimizedImageUrl } from '@/lib/imagekit';
 
 interface ImageUploadDropzoneProps {
   value: string;
@@ -170,7 +171,11 @@ export function ImageUploadDropzone({
                       : 'w-24 h-24 sm:w-28 sm:h-28 rounded-xl border border-[#D5CFC3]'
                   } overflow-hidden bg-[#1A1918] shrink-0 shadow-md`}
                 >
-                  <Image src={value} alt="Preview" fill className="object-cover" />
+                  <img
+                    src={getOptimizedImageUrl(value, { width: 240, quality: 80 })}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold">
