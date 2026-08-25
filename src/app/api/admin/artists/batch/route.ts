@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 import { cleanEmail, cleanText } from '@/lib/utils';
+import { findMatchingArtist } from '@/lib/artistMatcher';
+import { getCountryFlagEmoji } from '@/lib/countryUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,68 +28,73 @@ export async function POST(req: NextRequest) {
     const inserted: string[] = [];
     const skipped: string[] = [];
 
+    const existingUsers = await db.select().from(schema.users);
+    const candidateArtists = existingUsers.filter((u: any) => u.role !== 'curator');
+
     for (let i = 0; i < artists.length; i++) {
       const item: ArtistImportRow = artists[i];
       const cleanName = cleanText(item.name || '');
       const cleanE = cleanEmail(item.email || '');
       const cleanCountry = cleanText(item.country || 'Thailand');
 
-      if (!cleanName || !cleanE) {
+      if (!cleanName) {
         skipped.push(item.name || `Row #${i + 1}`);
         continue;
       }
 
-      // Check if user with this email already exists
-      const existing = await db
-        .select()
-        .from(schema.users)
-        .where(eq(schema.users.email, cleanE))
-        .limit(1);
+      // Smart match against existing artists
+      const matchedArtist = findMatchingArtist(candidateArtists, {
+        name: cleanName,
+        email: cleanE,
+        country: cleanCountry,
+      });
 
-      if (existing.length > 0) {
-        // Update existing artist info
-        await db
-          .update(schema.users)
-          .set({
-            name: cleanName,
-            country: cleanCountry,
-            role: 'artist',
-          })
-          .where(eq(schema.users.email, cleanE));
+      if (matchedArtist) {
+        // Update existing artist info if new details are provided
+        const updateData: any = {};
+        if (cleanCountry && (!matchedArtist.country || matchedArtist.country === 'Thailand')) {
+          updateData.country = cleanCountry;
+          updateData.flagEmoji = getCountryFlagEmoji(cleanCountry);
+        }
+        if (cleanE && (!matchedArtist.email || matchedArtist.email.includes('@artvara'))) {
+          updateData.email = cleanE;
+        }
+        if (item.avatarUrl && !matchedArtist.avatarUrl) {
+          updateData.avatarUrl = item.avatarUrl;
+        }
+        if (item.bio && !matchedArtist.bio) {
+          updateData.bio = item.bio;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await db
+            .update(schema.users)
+            .set(updateData)
+            .where(eq(schema.users.id, matchedArtist.id));
+        }
+
         inserted.push(cleanName);
         continue;
       }
 
       const newId = `artist-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`;
-      let flag = '🌐';
-      const cLower = cleanCountry.toLowerCase();
-      if (cLower.includes('thai')) flag = '🇹🇭';
-      else if (cLower.includes('japan')) flag = '🇯🇵';
-      else if (cLower.includes('ital')) flag = '🇮🇹';
-      else if (cLower.includes('france')) flag = '🇫🇷';
-      else if (cLower.includes('austr')) flag = '🇦🇺';
-      else if (cLower.includes('chin')) flag = '🇨🇳';
-      else if (cLower.includes('indones')) flag = '🇮🇩';
-      else if (cLower.includes('kurd')) flag = '☀️';
-      else if (cLower.includes('malay')) flag = '🇲🇾';
-      else if (cLower.includes('mexic')) flag = '🇲🇽';
-      else if (cLower.includes('singap')) flag = '🇸🇬';
-      else if (cLower.includes('taiwan')) flag = '🇹🇼';
-      else if (cLower.includes('unit') || cLower.includes('king') || cLower.includes('uk')) flag = '🇬🇧';
-      else if (cLower.includes('viet')) flag = '🇻🇳';
-      else if (cLower.includes('us') || cLower.includes('america')) flag = '🇺🇸';
+      const fallbackEmail = cleanE || `artist.${Date.now()}.${i}@artvara.gallery`;
+      const flag = getCountryFlagEmoji(cleanCountry);
 
-      await db.insert(schema.users).values({
+      const newArtist = {
         id: newId,
         name: cleanName,
-        email: cleanE,
+        email: fallbackEmail,
         role: 'artist',
         country: cleanCountry,
         flagEmoji: flag,
         bio: item.bio || '',
         avatarUrl: item.avatarUrl || '',
         socialLinks: JSON.stringify({}),
-      });
+      };
+
+      await db.insert(schema.users).values(newArtist);
+      candidateArtists.push(newArtist);
 
       inserted.push(cleanName);
     }

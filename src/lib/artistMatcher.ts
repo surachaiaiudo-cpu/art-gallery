@@ -1,16 +1,18 @@
-﻿import { getCountryFlagEmoji } from './countryUtils';
-
 /**
  * Cleans and normalizes an artist name for robust comparison
- * e.g. "Akamol  Rojanajiranan" -> "akamol rojanajiranan"
- * e.g. "(Andrew) Chong Boon Pok" -> "andrew chong boon pok"
- * e.g. "Pietro  Lo Casto" -> "pietro lo casto"
+ * Handles academic titles, honorifics, Thai/English parentheses, multiple spaces
+ * e.g. "Asst. Prof. Bundit Inkong" -> "bundit inkong"
+ * e.g. "ผศ. บัณฑิต อินคง (Bundit Inkong)" -> "บัณฑิต อินคง bundit inkong"
  */
 export function normalizeArtistName(name?: string | null): string {
   if (!name) return '';
   return name
     .toLowerCase()
-    .replace(/[()[\]"''`]/g, ' ')
+    .replace(
+      /\b(asst\.\s*prof\.|assoc\.\s*prof\.|prof\.|dr\.|mr\.|mrs\.|ms\.|ph\.d\.|ผศ\.\s*ดร\.|รศ\.\s*ดร\.|ศ\.\s*ดร\.|ผศ\.|รศ\.|ศ\.|ดร\.|อาจารย์|อ\.|นาย|นาง|นางสาว|คุณ)\b/gi,
+      ' '
+    )
+    .replace(/[()[\]"''`{}]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

@@ -2,7 +2,7 @@ export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq, inArray } from 'drizzle-orm';
-import { normalizeArtistName, getNameTokens } from '@/lib/artistMatcher';
+import { normalizeArtistName, getNameTokens, findMatchingArtist } from '@/lib/artistMatcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,34 +19,63 @@ async function executeArtistDeduplication() {
     const allUsers = await db.select().from(schema.users);
     const artists = allUsers.filter((u: any) => u.role !== 'curator');
 
-    // Group artists by normalized key
-    const groups = new Map<string, any[]>();
+    // Smart Multi-Pass Grouping
+    const groups: any[][] = [];
 
     for (const artist of artists) {
-      const normKey = normalizeArtistName(artist.name);
-      if (!normKey) continue;
+      let matchedGroup: any[] | null = null;
 
-      if (!groups.has(normKey)) {
-        groups.set(normKey, []);
+      for (const group of groups) {
+        const leader = group[0];
+        const match = findMatchingArtist([leader], {
+          name: artist.name,
+          email: artist.email,
+          country: artist.country,
+        });
+
+        if (match) {
+          matchedGroup = group;
+          break;
+        }
+
+        // Also check if normalized names or tokens match any member in group
+        const normArtist = normalizeArtistName(artist.name);
+        const normLeader = normalizeArtistName(leader.name);
+        if (normArtist && normLeader && (normArtist === normLeader || normArtist.includes(normLeader) || normLeader.includes(normArtist))) {
+          matchedGroup = group;
+          break;
+        }
+
+        // Check email username prefix match (e.g. bunditinkong@...)
+        const aEmailPrefix = (artist.email || '').split('@')[0]?.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const lEmailPrefix = (leader.email || '').split('@')[0]?.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (aEmailPrefix && lEmailPrefix && aEmailPrefix.length >= 5 && aEmailPrefix === lEmailPrefix) {
+          matchedGroup = group;
+          break;
+        }
       }
-      groups.get(normKey)!.push(artist);
+
+      if (matchedGroup) {
+        matchedGroup.push(artist);
+      } else {
+        groups.push([artist]);
+      }
     }
 
     let mergedCount = 0;
     const deletedArtistIds: string[] = [];
 
-    const groupList = Array.from(groups.values());
-    for (const group of groupList) {
+    for (const group of groups) {
       if (group.length > 1) {
         // Pick canonical artist: prefer one with real email, avatarUrl, or bio
         group.sort((a: any, b: any) => {
-          const aHasRealEmail = a.email && !a.email.includes('@artvara-artists.com');
-          const bHasRealEmail = b.email && !b.email.includes('@artvara-artists.com');
+          const aHasRealEmail = a.email && !a.email.includes('@artvara-artists.com') && !a.email.includes('@artvara.gallery');
+          const bHasRealEmail = b.email && !b.email.includes('@artvara-artists.com') && !b.email.includes('@artvara.gallery');
           if (aHasRealEmail && !bHasRealEmail) return -1;
           if (!aHasRealEmail && bHasRealEmail) return 1;
 
-          const aScore = (a.avatarUrl ? 2 : 0) + (a.country ? 1 : 0) + (a.bio ? 1 : 0);
-          const bScore = (b.avatarUrl ? 2 : 0) + (b.country ? 1 : 0) + (b.bio ? 1 : 0);
+          const aScore = (a.avatarUrl ? 3 : 0) + (a.country ? 1 : 0) + (a.bio ? 1 : 0);
+          const bScore = (b.avatarUrl ? 3 : 0) + (b.country ? 1 : 0) + (b.bio ? 1 : 0);
           return bScore - aScore;
         });
 
@@ -54,6 +83,34 @@ async function executeArtistDeduplication() {
         const duplicates = group.slice(1);
 
         for (const dup of duplicates) {
+          // Merge metadata if canonical is missing it
+          const updateFields: any = {};
+          if (!canonical.avatarUrl && dup.avatarUrl) {
+            canonical.avatarUrl = dup.avatarUrl;
+            updateFields.avatarUrl = dup.avatarUrl;
+          }
+          if ((!canonical.email || canonical.email.includes('@artvara')) && dup.email && !dup.email.includes('@artvara')) {
+            canonical.email = dup.email;
+            updateFields.email = dup.email;
+          }
+          if (!canonical.bio && dup.bio) {
+            canonical.bio = dup.bio;
+            updateFields.bio = dup.bio;
+          }
+          if (!canonical.country && dup.country) {
+            canonical.country = dup.country;
+            canonical.flagEmoji = dup.flagEmoji;
+            updateFields.country = dup.country;
+            updateFields.flagEmoji = dup.flagEmoji;
+          }
+
+          if (Object.keys(updateFields).length > 0) {
+            await db
+              .update(schema.users)
+              .set(updateFields)
+              .where(eq(schema.users.id, canonical.id));
+          }
+
           // Re-link artworks from duplicate artist to canonical artist
           const dupArtworks = await db
             .select({ id: schema.artworks.id })
