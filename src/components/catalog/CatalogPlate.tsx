@@ -38,11 +38,11 @@ export function CatalogPlate({
 
   const optimizedArtworkUrl = getOptimizedImageUrl(artwork.imageUrl, {
     width: isReaderModal ? 1200 : 800,
-    quality: isReaderModal ? 85 : 80,
+    quality: isReaderModal ? 85 : 75,
   });
 
   const optimizedPhotoUrl = hasRealPhoto
-    ? getOptimizedImageUrl(resolvedPhotoUrl, { width: 160, quality: 80 })
+    ? getOptimizedImageUrl(resolvedPhotoUrl, { width: 160, quality: 75 })
     : '';
 
   const flagUrl = getFlagImageUrl(artist?.country);
@@ -55,6 +55,8 @@ export function CatalogPlate({
           <img
             src={optimizedArtworkUrl}
             alt={artwork.title}
+            loading={isReaderModal ? 'eager' : 'lazy'}
+            decoding="async"
             className="max-h-full max-w-full object-contain"
           />
         </div>
@@ -68,6 +70,8 @@ export function CatalogPlate({
                 <img
                   src={flagUrl}
                   alt={artist?.country || 'Flag'}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -79,6 +83,8 @@ export function CatalogPlate({
                 <img
                   src={optimizedPhotoUrl}
                   alt={artist?.name || 'Artist'}
+                  loading="lazy"
+                  decoding="async"
                   className={`w-full h-full ${isAvatarFallback ? 'object-cover opacity-80' : 'object-cover'}`}
                 />
                 {isAvatarFallback && (
@@ -134,7 +140,7 @@ export function CatalogPlate({
       {/* Footer Graphic Preset */}
       {footerGraphicType === 'custom_image' && customFooterImageUrl ? (
         <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 flex items-end justify-center px-4 pb-2">
-          <img src={customFooterImageUrl} alt="Footer Banner" className="max-h-full max-w-full object-contain" />
+          <img src={customFooterImageUrl} alt="Footer Banner" loading="lazy" className="max-h-full max-w-full object-contain" />
         </div>
       ) : footerGraphicType === 'wave_mono' ? (
         <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
