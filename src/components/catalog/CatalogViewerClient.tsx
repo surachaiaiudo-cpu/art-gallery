@@ -78,7 +78,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
 
   // Print engine hook
-  const { isPrinting, handlePrintSinglePage, handleSaveVectorPDF100Percent } = usePrintEngine(exhibition);
+  const { handlePrintSinglePage, handleSaveVectorPDF100Percent } = usePrintEngine(exhibition);
 
   // Auto-export trigger if URL param ?export=pdf is present
   useEffect(() => {
@@ -268,21 +268,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             {/* Save Vector PDF 100% Button */}
             <button
               onClick={handleSaveVectorPDF100Percent}
-              disabled={isPrinting}
-              className="flex items-center space-x-2 px-4 py-2 bg-[#8C6D3F] hover:bg-[#735831] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              className="flex items-center space-x-2 px-4 py-2 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
               title="บันทึกสูจิบัตรทั้งเล่มเป็นไฟล์ PDF Vector A4 คมชัด 100%"
             >
-              {isPrinting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>กำลังเตรียมพิมพ์...</span>
-                </>
-              ) : (
-                <>
-                  <Printer className="w-4 h-4" />
-                  <span>บันทึกเป็น PDF (ทั้งเล่ม)</span>
-                </>
-              )}
+              <Printer className="w-4 h-4" />
+              <span>บันทึกเป็น PDF (ทั้งเล่ม)</span>
             </button>
           </div>
         </div>
@@ -509,47 +499,45 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         />
       )}
 
-      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4 - Rendered when in Full Mode or when Printing) */}
-      {(activeViewMode === 'full' || isPrinting) && (
-        <main className={`w-full max-w-[210mm] mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16 ${activeViewMode === 'grid3' ? 'hidden print:block' : 'block'}`}>
-          {/* Cover Page */}
-          <PlateErrorBoundary pageNumber={1}>
-            <CatalogCoverPage
+      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4) */}
+      <main className={`w-full max-w-[210mm] mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16 ${activeViewMode === 'grid3' ? 'hidden print:block' : 'block'}`}>
+        {/* Cover Page */}
+        <PlateErrorBoundary pageNumber={1}>
+          <CatalogCoverPage
+            exhibition={exhibition}
+            curator={curator}
+            coverFooter={coverFooter}
+          />
+        </PlateErrorBoundary>
+
+        {/* Statement & Peer Reviewers Page */}
+        {hasReviewers && (
+          <PlateErrorBoundary pageNumber={2}>
+            <CatalogStatementPage
               exhibition={exhibition}
               curator={curator}
-              coverFooter={coverFooter}
+              peerReviewersList={peerReviewersList}
+              plateFooter={plateFooter}
             />
           </PlateErrorBoundary>
+        )}
 
-          {/* Statement & Peer Reviewers Page */}
-          {hasReviewers && (
-            <PlateErrorBoundary pageNumber={2}>
-              <CatalogStatementPage
-                exhibition={exhibition}
-                curator={curator}
-                peerReviewersList={peerReviewersList}
+        {/* Artwork Plates */}
+        {artworks.map((art, idx) => {
+          const pageNum = (hasReviewers ? idx + 2 : idx + 1) + 1;
+          return (
+            <PlateErrorBoundary key={art.id} pageNumber={pageNum}>
+              <CatalogPlate
+                artwork={art}
+                pageNumber={pageNum}
                 plateFooter={plateFooter}
+                footerGraphicType={footerGraphicType}
+                customFooterImageUrl={customFooterImageUrl}
               />
             </PlateErrorBoundary>
-          )}
-
-          {/* Artwork Plates */}
-          {artworks.map((art, idx) => {
-            const pageNum = (hasReviewers ? idx + 2 : idx + 1) + 1;
-            return (
-              <PlateErrorBoundary key={art.id} pageNumber={pageNum}>
-                <CatalogPlate
-                  artwork={art}
-                  pageNumber={pageNum}
-                  plateFooter={plateFooter}
-                  footerGraphicType={footerGraphicType}
-                  customFooterImageUrl={customFooterImageUrl}
-                />
-              </PlateErrorBoundary>
-            );
-          })}
-        </main>
-      )}
+          );
+        })}
+      </main>
 
       {/* Modals */}
       <FooterEditorModal
