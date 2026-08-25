@@ -227,7 +227,9 @@ export function RoomCuratorStudioModal({
                 >
                   {roomConfigs.map((r, i) => (
                     <option key={i} value={i} className="bg-[#161310] text-white">
-                      ห้อง #{i + 1} ({r.shape})
+                      {r.isCornerPavilion
+                        ? `🏛️ โถงพักเชื่อมมุม ${r.pavilionTitle || String.fromCharCode(65 + i)}`
+                        : `ห้องจัดแสดง #${(r.exhibitionRoomIndex ?? i) + 1} • ${r.slots.filter(s => s.artwork).length} ผลงาน`}
                     </option>
                   ))}
                 </select>
@@ -462,7 +464,11 @@ export function RoomCuratorStudioModal({
         {/* Footer */}
         <div className="pt-4 border-t border-white/10 flex items-center justify-between">
           <div className="text-xs text-[#C5A880]">
-            ห้องปัจจุบัน: <span className="font-semibold text-[#FFD98A]">ห้อง #{currentRoomIndex + 1} ({currentRoom?.shape})</span>
+            ห้องปัจจุบัน: <span className="font-semibold text-[#FFD98A]">
+              {currentRoom?.isCornerPavilion
+                ? `🏛️ โถงพักเชื่อมมุม (${currentRoom.pavilionTitle || 'ประติมากรรม'})`
+                : `ห้องจัดแสดง #${(currentRoom?.exhibitionRoomIndex ?? currentRoomIndex) + 1} • ${currentRoom?.slots?.filter(s => s.artwork).length || 0} ผลงาน`}
+            </span>
           </div>
 
           <button

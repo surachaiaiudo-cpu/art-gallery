@@ -406,9 +406,13 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
                 }}
                 className="bg-transparent text-[#1E1D1B] font-bold focus:outline-none cursor-pointer text-xs"
               >
-                {roomConfigs.map((r, i) => r.isCornerPavilion ? null : (
+                {roomConfigs.map((r, i) => r.isCornerPavilion ? (
+                  <option key={i} value={i} disabled className="bg-neutral-100 text-neutral-400">
+                    🏛️ โถงพักเชื่อมมุม {r.pavilionTitle || String.fromCharCode(65 + i)}
+                  </option>
+                ) : (
                   <option key={i} value={i}>
-                    ห้อง #{(r.exhibitionRoomIndex ?? i) + 1} ({shapeLabels[r.shape] || r.shape}) • {r.slots.filter(s => s.artwork).length} ภาพ
+                    ห้องจัดแสดง #{(r.exhibitionRoomIndex ?? i) + 1} • {r.slots.filter(s => s.artwork).length} ผลงาน
                   </option>
                 ))}
               </select>
@@ -420,33 +424,16 @@ export function Admin3DStudioClient({ initialExhibitions }: Admin3DStudioClientP
 
           <div className="h-4 w-px bg-[#DDD7CC] mx-1" />
 
-          {/* Shape Dropdown */}
+          {/* Architecture Layout Badge */}
           <div className="relative group">
-            <div className="flex items-center space-x-1.5 text-xs">
-              <span className="text-[#68635B] font-medium text-[11px]">รูปทรง:</span>
-              <select
-                value={currentRoom?.shape}
-                onChange={(e) => {
-                  const updated = [...roomShapes];
-                  // Write to the exhibition room index (excluding pavilions),
-                  // NOT the config-array index — otherwise shapes land on the wrong room
-                  // once corner pavilions exist (61+ artworks).
-                  const exhRoomIdx = currentRoom?.exhibitionRoomIndex ?? selectedRoomIndex;
-                  if (exhRoomIdx >= 0) updated[exhRoomIdx] = e.target.value as RoomShape;
-                  setRoomShapes(updated);
-                  setSelectedWallIndex(0);
-                  setSelectedSlotIndex(null);
-                }}
-                className="bg-white text-[#8C6D3F] font-bold px-2 py-0.5 rounded-lg border border-[#D5CFC4] focus:outline-none cursor-pointer shadow-sm text-xs"
-              >
-                <option value="SQUARE">ทรงจัตุรัส (Square 22x22m)</option>
-                <option value="RECTANGLE">ทรงผืนผ้า (Rectangle 30x16m)</option>
-                <option value="L_SHAPE">ทรงตัว L (L-Shape Gallery)</option>
-                <option value="CIRCULAR">ทรงกลม (Rotunda R=12m)</option>
-              </select>
+            <div className="flex items-center space-x-1.5 text-xs bg-white px-2.5 py-1 rounded-xl border border-[#DDD7CC] shadow-sm">
+              <span className="text-[#68635B] font-medium text-[11px]">ผังห้อง:</span>
+              <span className="text-[#8C6D3F] font-bold text-xs">
+                แกลเลอรีมาตรฐาน (14×32ม.)
+              </span>
             </div>
             <span className="pointer-events-none absolute -bottom-8 left-0 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
-              เลือกสถาปัตยกรรมรูปทรงของห้องนี้
+              สถาปัตยกรรมแกลเลอรีเชื่อมต่อแบบวนขวาทุก 3 ห้อง (Modular Cloister Circuit)
             </span>
           </div>
 
