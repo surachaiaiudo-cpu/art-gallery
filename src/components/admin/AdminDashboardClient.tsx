@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Exhibition, Artwork, User, Inquiry } from '@/types/exhibition';
 import { useLanguage } from '@/context/LanguageContext';
-import { Eye, Box, FileText, Layers, Inbox, Palette, Users, Sparkles, ExternalLink, Trash2, CheckCircle2 } from 'lucide-react';
+import { Eye, Box, FileText, Layers, Inbox, Palette, Users, Sparkles, ExternalLink, Trash2, CheckCircle2, LogOut, Loader2 } from 'lucide-react';
 import { formatDateRange } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
@@ -24,9 +24,32 @@ export function AdminDashboardClient({
   const { lang, t } = useLanguage();
   const router = useRouter();
   const [clearing, setClearing] = React.useState(false);
+  const [loggingOut, setLoggingOut] = React.useState(false);
   const [notification, setNotification] = React.useState<string | null>(null);
 
   const activeExh = exhibitions.find((e) => e.status === 'active') || exhibitions[0];
+
+  const handleLogout = async () => {
+    const confirmMsg =
+      lang === 'th'
+        ? 'คุณต้องการออกจากระบบผู้ดูแล (Admin Logout) ใช่หรือไม่?'
+        : 'Are you sure you want to log out of the admin panel?';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/login');
+      router.refresh();
+      window.location.href = '/login';
+    } catch (err) {
+      console.error('Logout error:', err);
+      window.location.href = '/login';
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   const handleClearMockupData = async () => {
     const confirmMsg =
@@ -142,6 +165,20 @@ export function AdminDashboardClient({
               <ExternalLink className="w-3.5 h-3.5 text-[#8C6D3F]" />
             </Link>
           )}
+
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-rose-900 text-neutral-200 hover:text-white border border-neutral-700 hover:border-rose-500/50 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-95"
+            title={lang === 'th' ? 'ออกจากระบบผู้ดูแล' : 'Log out of admin'}
+          >
+            {loggingOut ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-400" />
+            ) : (
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            )}
+            <span>{loggingOut ? (lang === 'th' ? 'กำลังออก...' : 'Logging out...') : (lang === 'th' ? 'ออกจากระบบ' : 'Log Out')}</span>
+          </button>
         </div>
       </div>
 

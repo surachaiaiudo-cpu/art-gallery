@@ -1,9 +1,25 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Palette, Eye, Inbox, FileText, ArrowLeft, Layers, Sparkles, Users, Award, Box, FileSpreadsheet } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  LayoutDashboard,
+  Palette,
+  Eye,
+  Inbox,
+  FileText,
+  ArrowLeft,
+  Layers,
+  Sparkles,
+  Users,
+  Award,
+  Box,
+  FileSpreadsheet,
+  LogOut,
+  ShieldCheck,
+  Loader2,
+} from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function AdminLayout({
@@ -13,7 +29,31 @@ export default function AdminLayout({
 }) {
   const { lang, setLang, t } = useLanguage();
   const pathname = usePathname();
+  const router = useRouter();
   const is3DStudio = pathname === '/admin/3d-studio';
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    const confirmMsg =
+      lang === 'th'
+        ? 'คุณต้องการออกจากระบบผู้ดูแล (Admin Logout) ใช่หรือไม่?'
+        : 'Are you sure you want to log out of the admin panel?';
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/login');
+      router.refresh();
+      window.location.href = '/login';
+    } catch (err) {
+      console.error('Logout error:', err);
+      window.location.href = '/login';
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <div className="h-screen w-full flex flex-col md:flex-row bg-[#F3EFE9] text-[#1E1D1B] overflow-hidden">
@@ -130,13 +170,44 @@ export default function AdminLayout({
           </nav>
         </div>
 
-        {/* Back to Public Gallery */}
-        <div className="pt-6 border-t border-[#33302C]">
+        {/* Footer Actions: Session & Logout */}
+        <div className="pt-5 border-t border-[#33302C] space-y-3">
+          {/* Admin Identity Badge */}
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="font-semibold text-neutral-200">
+                {lang === 'th' ? 'ผู้ดูแลระบบ' : 'Admin'}
+              </span>
+            </div>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Active session" />
+          </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider text-rose-400 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-500/30 hover:border-rose-500/60 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            {loggingOut ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-rose-400" />
+                <span>{lang === 'th' ? 'กำลังออกจากระบบ...' : 'Logging out...'}</span>
+              </>
+            ) : (
+              <>
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span>{lang === 'th' ? 'ออกจากระบบ (Log Out)' : 'Log Out'}</span>
+              </>
+            )}
+          </button>
+
+          {/* Back to Public Gallery */}
           <Link
             href="/"
-            className="flex items-center gap-2 text-xs font-semibold text-[#8C8578] hover:text-white transition-colors"
+            className="flex items-center justify-center gap-2 text-xs font-semibold text-[#8C8578] hover:text-white transition-colors pt-1"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-3.5 h-3.5" />
             <span>{t.admin.returnGallery}</span>
           </Link>
         </div>
