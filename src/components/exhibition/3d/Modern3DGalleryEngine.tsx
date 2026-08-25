@@ -55,6 +55,8 @@ import {
   RotateCw,
   MapPin,
   HelpCircle,
+  Gamepad2,
+  MousePointer,
   X,
 } from 'lucide-react';
 import { museumAudio } from './MuseumSoundscape';
@@ -731,6 +733,7 @@ interface CameraControllerProps {
   onClearWarp: () => void;
   onAimArtwork: (artwork: Artwork | null, slot: CalculatedArtworkSlot | null) => void;
   onMarkViewed: (artworkId: string) => void;
+  onTogglePointerLock?: (locked: boolean) => void;
 }
 
 function CameraController({
@@ -748,6 +751,7 @@ function CameraController({
   onClearWarp,
   onAimArtwork,
   onMarkViewed,
+  onTogglePointerLock,
 }: CameraControllerProps) {
   const { camera, raycaster, scene, gl } = useThree();
   const targetCamPos = useRef(new THREE.Vector3(0, 1.8, ROOM_D / 2 - 3));
@@ -791,40 +795,68 @@ function CameraController({
     }
   }, [warpTarget, onClearWarp, camera]);
 
-  // Mouse / Pointer / Touch Drag Look-Around (Left, Right, Up, Down)
+  // Mouse / Pointer Lock & Drag Look-Around (Left, Right, Up, Down)
   useEffect(() => {
     const dom = gl.domElement;
     if (!dom) return;
 
     dom.style.cursor = 'grab';
 
+    const handlePointerLockChange = () => {
+      const isLocked = document.pointerLockElement === dom;
+      if (onTogglePointerLock) {
+        onTogglePointerLock(isLocked);
+      }
+      dom.style.cursor = isLocked ? 'crosshair' : 'grab';
+    };
+
     const onPointerDown = (e: PointerEvent) => {
+      if (document.pointerLockElement === dom) return;
       isPointerDown.current = true;
       pointerStart.current = { x: e.clientX, y: e.clientY };
       dom.style.cursor = 'grabbing';
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      if (!isPointerDown.current) return;
-      const dx = e.clientX - pointerStart.current.x;
-      const dy = e.clientY - pointerStart.current.y;
-      pointerStart.current = { x: e.clientX, y: e.clientY };
+      const isLocked = document.pointerLockElement === dom;
 
-      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-        if (focusedArtwork || focusedSlot) {
-          onClearFocus();
+      if (isLocked) {
+        // 🎮 FPS Game Mode: Move mouse directly without clicking!
+        const dx = e.movementX || 0;
+        const dy = e.movementY || 0;
+
+        if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
+          if (focusedArtwork || focusedSlot) {
+            onClearFocus();
+          }
         }
-      }
 
-      // Smooth mouse drag sensitivity: dx for Yaw (left/right), dy for Pitch (up/down)
-      const sensitivity = 0.0034;
-      targetYaw.current -= dx * sensitivity;
-      targetPitch.current = Math.max(-1.3, Math.min(1.3, targetPitch.current - dy * sensitivity));
+        const sensitivity = 0.0022;
+        targetYaw.current -= dx * sensitivity;
+        targetPitch.current = Math.max(-1.3, Math.min(1.3, targetPitch.current - dy * sensitivity));
+      } else if (isPointerDown.current) {
+        // 🖱️ Classic Mode: Click & Drag to look around
+        const dx = e.clientX - pointerStart.current.x;
+        const dy = e.clientY - pointerStart.current.y;
+        pointerStart.current = { x: e.clientX, y: e.clientY };
+
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+          if (focusedArtwork || focusedSlot) {
+            onClearFocus();
+          }
+        }
+
+        const sensitivity = 0.0034;
+        targetYaw.current -= dx * sensitivity;
+        targetPitch.current = Math.max(-1.3, Math.min(1.3, targetPitch.current - dy * sensitivity));
+      }
     };
 
     const onPointerUp = () => {
       isPointerDown.current = false;
-      dom.style.cursor = 'grab';
+      if (document.pointerLockElement !== dom) {
+        dom.style.cursor = 'grab';
+      }
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -834,18 +866,20 @@ function CameraController({
       }
     };
 
+    document.addEventListener('pointerlockchange', handlePointerLockChange);
     dom.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
     dom.addEventListener('wheel', onWheel, { passive: true });
 
     return () => {
+      document.removeEventListener('pointerlockchange', handlePointerLockChange);
       dom.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       dom.removeEventListener('wheel', onWheel);
     };
-  }, [gl, camera, focusedArtwork, focusedSlot, onClearFocus]);
+  }, [gl, camera, focusedArtwork, focusedSlot, onClearFocus, onTogglePointerLock]);
 
   useFrame((state, delta) => {
     // 0. Raycast center screen to detect aimed artwork & track viewed progress
@@ -1119,6 +1153,20 @@ export function Modern3DGalleryEngine({
   const [focusedArtwork, setFocusedArtwork] = useState<Artwork | null>(null);
   const [focusedSlot, setFocusedSlot] = useState<CalculatedArtworkSlot | null>(null);
   const [isCuratorStudioOpen, setIsCuratorStudioOpen] = useState(false);
+
+  // State: Pointer Lock (FPS Game Mode)
+  const [isPointerLocked, setIsPointerLocked] = useState(false);
+
+  const handleTogglePointerLock = () => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+
+    if (document.pointerLockElement === canvas) {
+      document.exitPointerLock?.();
+    } else {
+      canvas.requestPointerLock?.();
+    }
+  };
 
   // State: Milestone 3 UI Layer & Interaction Progress
   const [currentAim, setCurrentAim] = useState<{ artwork: Artwork; slot: CalculatedArtworkSlot } | null>(null);
@@ -1546,6 +1594,7 @@ export function Modern3DGalleryEngine({
               setCurrentAim(art && slot ? { artwork: art, slot } : null);
             }}
             onMarkViewed={handleMarkViewed}
+            onTogglePointerLock={setIsPointerLocked}
           />
         </Suspense>
       </Canvas>
@@ -1555,12 +1604,26 @@ export function Modern3DGalleryEngine({
         className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none transition-all duration-150 z-20 ${
           currentAim
             ? 'w-3 h-3 bg-[#FFD98A] shadow-[0_0_14px_rgba(255,217,138,0.95)] scale-150 ring-2 ring-[#D9B878]/50'
+            : isPointerLocked
+            ? 'w-2 h-2 bg-[#FFD98A] shadow-[0_0_8px_rgba(255,217,138,0.8)] ring-1 ring-black/40'
             : 'w-1.5 h-1.5 bg-white/80 shadow-[0_0_6px_rgba(0,0,0,0.8)]'
         }`}
       />
 
+      {/* Floating Game Mode Active Notification Pill */}
+      {isPointerLocked && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-40 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="px-4 sm:px-5 py-2 rounded-2xl bg-[#161310]/85 backdrop-blur-2xl border border-[#FFD98A]/50 shadow-[0_8px_32px_rgba(0,0,0,0.5)] text-center flex items-center gap-2 sm:gap-2.5">
+            <Gamepad2 className="w-4 h-4 text-[#FFD98A] animate-pulse shrink-0" />
+            <span className="text-xs text-white font-medium">
+              <strong className="text-[#FFD98A]">🎮 โหมดเกมเปิดใช้งาน:</strong> ขยับเมาส์เพื่อหันหน้า • กด <kbd className="px-1.5 py-0.5 bg-white/20 rounded font-mono text-[10px] text-white">ESC</kbd> ปลดล็อกเมาส์
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Floating Room Entry Toast Notification */}
-      {toastMessage && (
+      {toastMessage && !isPointerLocked && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-40 pointer-events-none animate-in fade-in zoom-in-95 duration-300">
           <div className="px-6 py-2.5 rounded-2xl bg-[#161310]/25 backdrop-blur-2xl border border-[#D9B878]/40 shadow-[0_8px_32px_rgba(0,0,0,0.35)] text-center">
             <div className="text-[11px] tracking-[0.3em] uppercase text-[#D9B878] font-bold">
@@ -1723,6 +1786,26 @@ export function Modern3DGalleryEngine({
 
         {/* Right Header Buttons */}
         <div className="flex items-center space-x-2 pointer-events-auto">
+          {/* FPS Game Mode Toggle */}
+          <div className="relative group">
+            <button
+              onClick={handleTogglePointerLock}
+              className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1 sm:space-x-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.25)] border transition-all active:scale-95 ${
+                isPointerLocked
+                  ? 'bg-[#FFD98A] text-black border-[#FFD98A] font-bold ring-2 ring-[#D9B878]/60 shadow-[0_0_16px_rgba(255,217,138,0.5)]'
+                  : 'bg-[#161310]/25 backdrop-blur-xl hover:bg-[#221C16]/50 text-[#FFD98A] border-[#D9B878]/30 hover:border-[#D9B878]'
+              }`}
+            >
+              <Gamepad2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">
+                {isPointerLocked ? 'โหมดเกม (เปิดอยู่)' : 'โหมดเกม'}
+              </span>
+            </button>
+            <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              {isPointerLocked ? 'กด ESC เพื่อปลดล็อกเมาส์' : 'เปิดโหมดหมุนเมาส์แบบเกม FPS (ไม่ต้องกดคลิกค้าง)'}
+            </span>
+          </div>
+
           {/* Help Button (H) */}
           <button
             onClick={() => setIsHelpOpen(true)}
@@ -1799,9 +1882,13 @@ export function Modern3DGalleryEngine({
               การควบคุมในหอศิลป์ 3D
             </h3>
             <div className="space-y-2.5 text-xs text-neutral-200">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[#FFD98A]/10 border border-[#FFD98A]/30">
+                <span className="font-semibold text-white">🎮 โหมดเกม (FPS Look)</span>
+                <span className="text-[#FFD98A] font-medium">ขยับเมาส์หันหน้าได้ทันที ไม่ต้องคลิกค้าง</span>
+              </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                <span>🖱️ ลากเมาส์ (Click & Drag)</span>
-                <span className="font-semibold text-[#FFD98A]">หันหน้า ซ้าย-ขวา-ก้ม-เงย 360°</span>
+                <span>🖱️ โหมดปกติ (Click & Drag)</span>
+                <span className="text-[#FFD98A]">คลิกซ้ายค้างแล้วลากเพื่อหมุนหันหน้า 360°</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
                 <span>🔍 เลื่อนล้อเมาส์ (Wheel)</span>
@@ -1837,7 +1924,7 @@ export function Modern3DGalleryEngine({
                 <kbd className="px-2.5 py-0.5 bg-black/40 rounded border border-[#D9B878]/30 font-mono text-[#FFD98A]">H</kbd>
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                <span>ปิดหน้าต่าง / ปลดล็อกเมาส์</span>
+                <span>ปลดล็อกเมาส์ / ปิดหน้าต่าง</span>
                 <kbd className="px-2.5 py-0.5 bg-black/40 rounded border border-[#D9B878]/30 font-mono text-[#FFD98A]">ESC</kbd>
               </div>
             </div>
