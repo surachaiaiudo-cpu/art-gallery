@@ -184,46 +184,152 @@ export function AdminDashboardClient({
         </div>
       </div>
 
-      {/* Active Exhibition Highlight & Quick Actions */}
-      {activeExh && (
-        <div className="bg-[#FAF8F5] border border-[#DDD6C8] rounded-2xl p-6 sm:p-8 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E8E2D6] pb-5 mb-6">
-            <div>
-              <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold">
-                {t.admin.activeShowcase}
-              </span>
-              <h2 className="font-serif text-2xl font-bold text-[#1A1918] mt-1">
-                {activeExh.title}
-              </h2>
-              <p className="text-xs text-[#6B655B] mt-0.5">
-                {formatDateRange(activeExh.startDate, activeExh.endDate)}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href={`/admin/exhibitions/${activeExh.id}`}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
-              >
-                <Layers className="w-3.5 h-3.5 text-[#C5A880]" />
-                <span>{t.admin.openWallBuilder}</span>
-              </Link>
-
-              <Link
-                href={`/catalog/${activeExh.slug}`}
-                className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-[#F3EFE9] text-[#2C2925] border border-[#D0CABE] rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
-              >
-                <FileText className="w-3.5 h-3.5 text-[#8C6D3F]" />
-                <span>{t.admin.catalogEngine}</span>
-              </Link>
-            </div>
+      {/* All Exhibitions Showcase & Quick Actions */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-xs uppercase tracking-widest text-[#8C6D3F] font-bold">
+              {lang === 'th' ? 'รายการนิทรรศการในระบบ' : 'Exhibitions Showcase'} ({exhibitions.length})
+            </span>
+            <h2 className="font-serif text-2xl font-bold text-[#1A1918]">
+              {lang === 'th' ? 'นิทรรศการทั้งหมด' : 'All Exhibitions'}
+            </h2>
           </div>
-
-          <div className="text-xs text-[#524D43] leading-relaxed line-clamp-3 font-serif italic">
-            "{activeExh.curatorNote}"
-          </div>
+          <Link
+            href="/admin/exhibitions"
+            className="text-xs font-semibold text-[#8C6D3F] hover:text-[#5c4627] hover:underline uppercase tracking-wider flex items-center gap-1"
+          >
+            <span>{lang === 'th' ? 'จัดการนิทรรศการทั้งหมด' : 'Manage All Exhibitions'}</span>
+            <span>&rarr;</span>
+          </Link>
         </div>
-      )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {exhibitions.map((exh) => {
+            const artworksCount = exh.artworks?.length || 0;
+            const artistsCount = new Set(exh.artworks?.map((a) => a.artistId).filter(Boolean)).size || 0;
+
+            return (
+              <div
+                key={exh.id}
+                className="bg-[#FAF8F5] border border-[#DDD6C8] hover:border-[#8C6D3F]/50 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between transition-all duration-200"
+              >
+                <div>
+                  {/* Banner Preview if available */}
+                  {exh.bannerUrl && (
+                    <div className="relative w-full h-36 rounded-xl overflow-hidden mb-4 border border-[#DDD6C8] bg-black/5">
+                      <img
+                        src={exh.bannerUrl}
+                        alt={exh.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${
+                            exh.status === 'active'
+                              ? 'bg-emerald-600/90 text-white backdrop-blur-md'
+                              : exh.status === 'upcoming'
+                              ? 'bg-blue-600/90 text-white backdrop-blur-md'
+                              : 'bg-neutral-600/90 text-white backdrop-blur-md'
+                          }`}
+                        >
+                          {exh.status === 'active'
+                            ? lang === 'th' ? '● เปิดแสดง' : 'Active'
+                            : exh.status === 'upcoming'
+                            ? lang === 'th' ? 'เร็วๆ นี้' : 'Upcoming'
+                            : lang === 'th' ? 'จัดแสดงแล้ว' : 'Archived'}
+                        </span>
+                      </div>
+                      <div className="absolute bottom-2 left-2 flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-md text-[10px] text-white font-medium">
+                          🎨 {artworksCount} ผลงาน
+                        </span>
+                        {artistsCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-md text-[10px] text-[#FFD98A] font-medium">
+                            👥 {artistsCount} ศิลปิน
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="font-serif text-xl font-bold text-[#1A1918] line-clamp-1">
+                        {exh.title}
+                      </h3>
+                      <p className="text-xs text-[#6B655B] mt-0.5 flex items-center gap-1">
+                        <span>📅</span>
+                        <span>{formatDateRange(exh.startDate, exh.endDate)}</span>
+                      </p>
+                    </div>
+
+                    {!exh.bannerUrl && (
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                          exh.status === 'active'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-neutral-200 text-neutral-800'
+                        }`}
+                      >
+                        {exh.status === 'active'
+                          ? lang === 'th' ? 'กำลังจัดแสดง' : 'Active'
+                          : exh.status}
+                      </span>
+                    )}
+                  </div>
+
+                  {exh.curatorNote && (
+                    <p className="text-xs text-[#524D43] leading-relaxed line-clamp-2 font-serif italic mt-3">
+                      "{exh.curatorNote}"
+                    </p>
+                  )}
+                </div>
+
+                {/* Action Buttons Grid */}
+                <div className="mt-5 pt-4 border-t border-[#E8E2D6] flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/admin/exhibitions/${exh.id}`}
+                    className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>{t.admin.openWallBuilder}</span>
+                  </Link>
+
+                  <Link
+                    href={`/admin/3d-studio?exhibitionId=${exh.id}`}
+                    className="flex-1 min-w-[110px] flex items-center justify-center gap-1.5 px-3 py-2 bg-[#8C6D3F] hover:bg-[#735832] text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
+                  >
+                    <Box className="w-3.5 h-3.5" />
+                    <span>3D Studio</span>
+                  </Link>
+
+                  <Link
+                    href={`/catalog/${exh.slug}`}
+                    target="_blank"
+                    className="flex items-center justify-center gap-1 px-3 py-2 bg-white hover:bg-[#F3EFE9] text-[#2C2925] border border-[#D0CABE] rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
+                    title="เปิดสูจิบัตร PDF"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#8C6D3F]" />
+                    <span>PDF</span>
+                  </Link>
+
+                  <Link
+                    href={`/exhibitions/${exh.slug}?mode=3d`}
+                    target="_blank"
+                    className="flex items-center justify-center gap-1 px-3 py-2 bg-white hover:bg-[#F3EFE9] text-[#2C2925] border border-[#D0CABE] rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
+                    title="ชมห้อง 3D เสมือนจริง"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>3D</span>
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Recent Inquiries List */}
       <div className="bg-white rounded-xl border border-[#E0D9CD] shadow-sm overflow-hidden">
