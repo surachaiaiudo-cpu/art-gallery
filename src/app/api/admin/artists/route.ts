@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 async function deleteFromImageKit(imageUrl: string, privateKey?: string) {
   if (!privateKey || !imageUrl || !imageUrl.includes('ik.imagekit.io')) return;
   try {
-    const authHeader = `Basic ${Buffer.from(`${privateKey}:`).toString('base64')}`;
+    const authHeader = `Basic ${btoa(`${privateKey}:`)}`;
     const cleanUrl = imageUrl.split('?')[0];
     const parts = cleanUrl.split('/');
     const filename = parts[parts.length - 1];
@@ -49,7 +49,7 @@ export async function GET() {
   }
 }
 
-// POST: Create a new artist
+// POST: Create a new artist (or update if email exists)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -65,8 +65,6 @@ export async function POST(req: NextRequest) {
       cleanEmail = `${slug}@artvara.gallery`;
     }
 
-    const newId = `artist-${Date.now()}`;
-
     // Auto flag emoji detection if not provided
     let flag = flagEmoji;
     if (!flag) {
@@ -80,6 +78,26 @@ export async function POST(req: NextRequest) {
       else if (cLower.includes('uk') || cLower.includes('brit')) flag = '🇬🇧';
       else flag = '🌐';
     }
+
+    // Check if artist with this email already exists
+    const existing = await db.select().from(schema.users).where(eq(schema.users.email, cleanEmail)).limit(1);
+    if (existing.length > 0) {
+      const targetId = existing[0].id;
+      await db
+        .update(schema.users)
+        .set({
+          name: name.trim(),
+          country: country ? country.trim() : existing[0].country,
+          flagEmoji: flag || existing[0].flagEmoji,
+          bio: bio !== undefined ? bio.trim() : existing[0].bio,
+          avatarUrl: avatarUrl || existing[0].avatarUrl,
+          socialLinks: typeof socialLinks === 'string' ? socialLinks : JSON.stringify(socialLinks || {}),
+        })
+        .where(eq(schema.users.id, targetId));
+      return NextResponse.json({ success: true, id: targetId, updated: true });
+    }
+
+    const newId = `artist-${Date.now()}`;
 
     await db.insert(schema.users).values({
       id: newId,
@@ -100,7 +118,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT: Update artist details
+// PUT: Update artist details (with seamless auto-merge on email collision)
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -137,6 +155,51 @@ export async function PUT(req: NextRequest) {
       finalEmail = existing[0].email || `${(name || existing[0].name).toLowerCase().replace(/[^a-z0-9]/g, '')}@artvara.gallery`;
     }
 
+    // Check if the new email belongs to ANOTHER existing artist -> Auto Merge!
+    if (finalEmail !== existing[0].email) {
+      const emailConflict = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.email, finalEmail))
+        .limit(1);
+
+      if (emailConflict.length > 0 && emailConflict[0].id !== id) {
+        const targetArtist = emailConflict[0];
+
+        // 1. Re-link all artworks from current artist to target artist
+        await db
+          .update(schema.artworks)
+          .set({ artistId: targetArtist.id })
+          .where(eq(schema.artworks.artistId, id));
+
+        // 2. Update target artist with any new information provided
+        const targetUpdate: any = {};
+        if (name && (!targetArtist.name || targetArtist.name.length < name.length)) targetUpdate.name = name.trim();
+        if (country) targetUpdate.country = country.trim();
+        if (flagEmoji) targetUpdate.flagEmoji = flagEmoji;
+        if (bio) targetUpdate.bio = bio.trim();
+        if (avatarUrl) targetUpdate.avatarUrl = avatarUrl;
+        if (socialLinks) targetUpdate.socialLinks = typeof socialLinks === 'string' ? socialLinks : JSON.stringify(socialLinks);
+
+        if (Object.keys(targetUpdate).length > 0) {
+          await db
+            .update(schema.users)
+            .set(targetUpdate)
+            .where(eq(schema.users.id, targetArtist.id));
+        }
+
+        // 3. Delete the duplicate artist record cleanly
+        await db.delete(schema.users).where(eq(schema.users.id, id));
+
+        return NextResponse.json({
+          success: true,
+          merged: true,
+          message: 'อีเมลซ้ำกับศิลปินที่มีอยู่ ระบบได้ทำการผสานรวมผลงานและข้อมูลเข้าด้วยกันเรียบร้อยแล้ว',
+        });
+      }
+    }
+
+    // Normal update
     await db
       .update(schema.users)
       .set({
@@ -158,7 +221,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating artist:', error);
-    return NextResponse.json({ error: 'Failed to update artist' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update artist', details: String(error) }, { status: 500 });
   }
 }
 
