@@ -364,7 +364,7 @@ function RoomStructureMesh({
         <pointLight
           position={[0, h - 0.4, 0]}
           intensity={3.2}
-          distance={28}
+          distance={20}
           decay={1.2}
           color="#FFF6E8"
         />
@@ -552,7 +552,7 @@ function RoomStructureMesh({
       <pointLight
         position={[0, h - 0.3, 0]}
         intensity={2.8}
-        distance={36}
+        distance={22}
         decay={1.2}
         color="#FFF6E8"
       />
@@ -793,6 +793,9 @@ function CameraController({
   const screenCenter = useRef(new THREE.Vector2(0, 0));
   const aimHoldTimeRef = useRef(0);
   const aimedArtworkIdRef = useRef<string | null>(null);
+  const prevRaycastPos = useRef(new THREE.Vector3());
+  const prevRaycastYawPitch = useRef({ yaw: -999, pitch: -999 });
+  const lastHitResult = useRef<{ artwork: Artwork | null; slot: CalculatedArtworkSlot | null }>({ artwork: null, slot: null });
 
   // First-Person Free-Look State (Yaw: Left/Right, Pitch: Up/Down)
   const isPointerDown = useRef(false);
@@ -918,24 +921,55 @@ function CameraController({
   }, [gl, camera, focusedArtwork, focusedSlot, onClearFocus, onTogglePointerLock]);
 
   useFrame((state, delta) => {
-    // 0. Raycast center screen to detect aimed artwork & track viewed progress
-    raycaster.setFromCamera(screenCenter.current, camera);
-    raycaster.far = 12.0;
-    const intersects = raycaster.intersectObjects(scene.children, true);
-    let hitArtwork: Artwork | null = null;
-    let hitSlot: CalculatedArtworkSlot | null = null;
+    // 0. Raycast center screen to detect aimed artwork (optimized with motion detection & targeted artwork groups)
+    const posDistSq = prevRaycastPos.current.distanceToSquared(camera.position);
+    const yawDelta = Math.abs(prevRaycastYawPitch.current.yaw - yaw.current);
+    const pitchDelta = Math.abs(prevRaycastYawPitch.current.pitch - pitch.current);
+    const shouldRaycast = posDistSq > 0.0004 || yawDelta > 0.001 || pitchDelta > 0.001;
 
-    for (const hit of intersects) {
-      let obj: THREE.Object3D | null = hit.object;
-      while (obj) {
-        if (obj.userData?.artwork && obj.userData?.slot) {
-          hitArtwork = obj.userData.artwork;
-          hitSlot = obj.userData.slot;
-          break;
+    let hitArtwork: Artwork | null = lastHitResult.current.artwork;
+    let hitSlot: CalculatedArtworkSlot | null = lastHitResult.current.slot;
+
+    if (shouldRaycast) {
+      prevRaycastPos.current.copy(camera.position);
+      prevRaycastYawPitch.current = { yaw: yaw.current, pitch: pitch.current };
+
+      raycaster.setFromCamera(screenCenter.current, camera);
+      raycaster.far = 12.0;
+
+      // Filter only visible group children containing artwork userData
+      const interactables: THREE.Object3D[] = [];
+      for (const child of scene.children) {
+        if (child.visible && (child as any).isGroup && child.children.length > 0) {
+          for (const sub of child.children) {
+            if (sub.userData?.artwork && sub.userData?.slot) {
+              interactables.push(sub);
+            }
+          }
         }
-        obj = obj.parent;
       }
-      if (hitArtwork) break;
+
+      const intersects = interactables.length > 0
+        ? raycaster.intersectObjects(interactables, true)
+        : raycaster.intersectObjects(scene.children, true);
+
+      hitArtwork = null;
+      hitSlot = null;
+
+      for (const hit of intersects) {
+        let obj: THREE.Object3D | null = hit.object;
+        while (obj) {
+          if (obj.userData?.artwork && obj.userData?.slot) {
+            hitArtwork = obj.userData.artwork;
+            hitSlot = obj.userData.slot;
+            break;
+          }
+          obj = obj.parent;
+        }
+        if (hitArtwork) break;
+      }
+
+      lastHitResult.current = { artwork: hitArtwork, slot: hitSlot };
     }
 
     const hitId = hitArtwork?.id || null;
@@ -1016,12 +1050,7 @@ function CameraController({
         const tentativeX = camera.position.x + move.x;
         const tentativeZ = camera.position.z + move.z;
 
-        const curRoomIdx = findCurrentRoomIndex(
-          { x: camera.position.x, z: camera.position.z },
-          roomConfigs,
-          currentRoomIndex
-        );
-        const curRoom = roomConfigs[curRoomIdx] || currentRoomConfig;
+        const curRoom = roomConfigs[currentRoomIndex] || currentRoomConfig;
 
         // Transform tentative position into current room's local space
         const dx = tentativeX - curRoom.center.x;
@@ -1074,7 +1103,7 @@ function CameraController({
         const newRoomIdx = findCurrentRoomIndex(
           { x: finalX, z: finalZ },
           roomConfigs,
-          curRoomIdx
+          currentRoomIndex
         );
         if (newRoomIdx !== currentRoomIndex) {
           onRoomChange(newRoomIdx);
@@ -1366,22 +1395,52 @@ export function Modern3DGalleryEngine({
     }
   }, [currentRoomIndex, roomConfigs]);
 
-  // Background Preload Artwork Images across rooms for instant transitions
+  // Background Staggered Preload of Artwork Images (Priority Queue of 4 concurrent workers)
   useEffect(() => {
     if (typeof window === 'undefined' || !exhibition?.artworks) return;
-    const urls = exhibition.artworks
-      .map((a) => a?.imageUrl)
-      .filter((u): u is string => Boolean(u));
+    let active = true;
 
-    urls.forEach((url) => {
-      const targetUrl = url.startsWith('http')
-        ? `/api/image-proxy?url=${encodeURIComponent(url)}`
-        : url;
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = targetUrl;
+    // Prioritize artworks in current room & adjacent rooms first
+    const visibleArtworkUrls: string[] = [];
+    const otherArtworkUrls: string[] = [];
+
+    roomConfigs.forEach((rc) => {
+      const isNearby = Math.abs(rc.roomIndex - currentRoomIndex) <= 1;
+      rc.slots.forEach((s) => {
+        if (s.artwork?.imageUrl) {
+          if (isNearby) visibleArtworkUrls.push(s.artwork.imageUrl);
+          else otherArtworkUrls.push(s.artwork.imageUrl);
+        }
+      });
     });
-  }, [exhibition?.artworks]);
+
+    const queue = Array.from(new Set([...visibleArtworkUrls, ...otherArtworkUrls]));
+    let activeWorkers = 0;
+    let index = 0;
+
+    const pump = () => {
+      while (active && activeWorkers < 4 && index < queue.length) {
+        const url = queue[index++];
+        const targetUrl = url.startsWith('http')
+          ? `/api/image-proxy?url=${encodeURIComponent(url)}`
+          : url;
+        activeWorkers++;
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = img.onerror = () => {
+          activeWorkers--;
+          if (active) pump();
+        };
+        img.src = targetUrl;
+      }
+    };
+
+    pump();
+
+    return () => {
+      active = false;
+    };
+  }, [exhibition?.artworks, currentRoomIndex, roomConfigs]);
 
   // Global Keyboard Navigation (WASD, Arrows, E to Inspect, H for Help, ESC to close)
   useEffect(() => {
@@ -1623,16 +1682,19 @@ export function Modern3DGalleryEngine({
             isInspectActive={!!focusedArtwork}
           />
 
-          {/* Render All Connected World-Space Rooms with Visibility Culling (currentRoomIndex ± 2) */}
+          {/* Render All Connected World-Space Rooms with Visibility Culling (currentRoomIndex ± 2 mounted, ± 1 visible) */}
           {roomConfigs.map((rConfig) => {
-            const isVisible = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 2;
-            if (!isVisible) return null;
+            const isMounted = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 2;
+            if (!isMounted) return null;
+
+            const isVisible = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 1;
 
             return (
               <group
                 key={`room-${rConfig.roomIndex}`}
                 position={[rConfig.center.x, rConfig.center.y, rConfig.center.z]}
                 rotation={[0, rConfig.rotationY, 0]}
+                visible={isVisible}
               >
                 <RoomStructureMesh
                   config={rConfig}

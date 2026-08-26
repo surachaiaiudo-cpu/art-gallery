@@ -65,6 +65,26 @@ function createPlacardTexture(title: string, artistName: string, year: number | 
   texture.anisotropy = 8;
   texture.needsUpdate = true;
   return texture;
+}const placardCache = new Map<string, THREE.CanvasTexture>();
+
+function getPlacardTexture(title: string, artistName: string, year: number | string): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  const key = `${title}__${artistName}__${year}`;
+  if (placardCache.has(key)) {
+    return placardCache.get(key)!;
+  }
+  const tex = createPlacardTexture(title, artistName, year);
+  placardCache.set(key, tex);
+  return tex;
+}
+
+let cachedContactShadowTex: THREE.CanvasTexture | null = null;
+function getContactShadowTexture(): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  if (!cachedContactShadowTex) {
+    cachedContactShadowTex = createContactShadowTexture();
+  }
+  return cachedContactShadowTex;
 }
 
 // -------------------------------------------------------------
@@ -118,32 +138,28 @@ function ArtworkPicturePlane({
 
     img.onload = () => {
       if (!active) return;
-      try {
-        const tex = new THREE.Texture(img);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.needsUpdate = true;
-        globalTextureCache.set(targetUrl, tex);
-        setTexture(tex);
-      } catch (err) {
-        console.warn('Canvas texture creation error, using fallback:', err);
-        const fallbackTex = generateArtworkFallbackTexture(
-          title,
-          artistName,
-          width / height
-        );
-        if (active) setTexture(fallbackTex);
-      }
+      const tex = new THREE.Texture(img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+      tex.needsUpdate = true;
+
+      globalTextureCache.set(targetUrl, tex);
+      setTexture(tex);
     };
 
     img.onerror = () => {
-      console.warn('Image proxy load failed for:', imageUrl, 'using fallback texture');
       if (!active) return;
-      const fallbackTex = generateArtworkFallbackTexture(
+      const fallback = generateArtworkFallbackTexture(
         title,
         artistName,
         width / height
       );
-      setTexture(fallbackTex);
+      if (fallback) {
+        globalTextureCache.set(targetUrl, fallback);
+        setTexture(fallback);
+      }
     };
 
     img.src = targetUrl;
@@ -153,39 +169,34 @@ function ArtworkPicturePlane({
     };
   }, [imageUrl, title, artistName, width, height]);
 
+  if (!texture) {
+    return (
+      <mesh position={[0, 0, 0.048]}>
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial color="#1E1A16" />
+      </mesh>
+    );
+  }
+
   return (
-    <mesh position={[0, 0, 0.022]}>
+    <mesh position={[0, 0, 0.048]}>
       <planeGeometry args={[width, height]} />
-      {texture ? (
-        <meshBasicMaterial map={texture} toneMapped={false} side={THREE.DoubleSide} />
-      ) : (
-        <meshBasicMaterial color="#E5DFD5" side={THREE.DoubleSide} />
-      )}
+      <meshBasicMaterial map={texture} toneMapped={false} />
     </mesh>
   );
 }
 
 // -------------------------------------------------------------
-// 3D Artwork Frame & Lighting Component
+// Interactive 3D Artwork Frame with Museum Track Spotlight & Placard
 // -------------------------------------------------------------
-export function Artwork3DFrame({
+export const Artwork3DFrame = React.memo(function Artwork3DFrame({
   slot,
   artwork,
   isFocused = false,
   onInspect,
 }: Artwork3DFrameProps) {
   const [hovered, setHovered] = useState(false);
-
   const groupRef = useRef<THREE.Group>(null);
-  const spotLightRef = useRef<THREE.SpotLight>(null);
-  const targetRef = useRef<THREE.Group>(null);
-
-  // Link SpotLight to target point at center of this frame
-  useEffect(() => {
-    if (spotLightRef.current && targetRef.current) {
-      spotLightRef.current.target = targetRef.current;
-    }
-  }, []);
 
   // Real-world physical dimensions from artwork metadata
   const dimensions = useMemo(() => {
@@ -196,13 +207,12 @@ export function Artwork3DFrame({
   const frameWidth = dimensions.width;
   const frameHeight = dimensions.height;
 
-  // Contact shadow texture
-  const contactShadowTex = useMemo(() => createContactShadowTexture(), []);
+  // Cached Contact shadow texture
+  const contactShadowTex = useMemo(() => getContactShadowTexture(), []);
 
-  // Ultra-Reliable Zero-Flicker Canvas Placard Texture
+  // Cached Placard Texture (generated once, 0ms overhead on room entry)
   const placardTexture = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return createPlacardTexture(
+    return getPlacardTexture(
       artwork.title,
       artwork.artist?.name || 'Artist',
       artwork.yearCreated || '2026'
@@ -236,8 +246,6 @@ export function Artwork3DFrame({
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Target object for Spotlight in center of frame */}
-      <group ref={targetRef} position={[0, 0, 0]} />
 
       {/* 1. Contact Shadow Plane on Wall (Procedural AO) */}
       {contactShadowTex && (
@@ -364,4 +372,4 @@ export function Artwork3DFrame({
       )}
     </group>
   );
-}
+});
