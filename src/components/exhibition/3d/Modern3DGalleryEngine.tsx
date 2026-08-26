@@ -34,6 +34,7 @@ import { Artwork3DFrame } from './Artwork3DFrame';
 import { MinimapRadar } from './MinimapRadar';
 import { RoomCuratorStudioModal } from './RoomCuratorStudioModal';
 import { ArtworkInspectModal } from './ArtworkInspectModal';
+import { getOptimizedImageUrl } from '@/lib/imagekit';
 import {
   Compass,
   Play,
@@ -1541,26 +1542,52 @@ export function Modern3DGalleryEngine({
     }
   }, [currentRoomIndex, roomConfigs]);
 
-  // Background Staggered Preload of Artwork Images (Priority Queue of 4 concurrent workers)
+  // Background Staggered Preload of Artwork Images (Priority Queue with optimal 1080px WebP)
   useEffect(() => {
     if (typeof window === 'undefined' || !exhibition?.artworks) return;
     let active = true;
 
-    // Prioritize artworks in current room & adjacent rooms first
-    const visibleArtworkUrls: string[] = [];
+    // Prioritize:
+    // 1. Current room front sightline slots (side walls + front partition)
+    // 2. Current room rear sightline slots (back partition)
+    // 3. Next/previous adjacent room slots
+    // 4. Remaining other rooms
+    const curRoomFrontUrls: string[] = [];
+    const curRoomRearUrls: string[] = [];
+    const nextRoomUrls: string[] = [];
     const otherArtworkUrls: string[] = [];
 
     roomConfigs.forEach((rc) => {
-      const isNearby = Math.abs(rc.roomIndex - currentRoomIndex) <= 1;
+      const isCurrent = rc.roomIndex === currentRoomIndex;
+      const isNext = rc.roomIndex === currentRoomIndex + 1;
+      const isPrev = rc.roomIndex === currentRoomIndex - 1;
+
       rc.slots.forEach((s) => {
         if (s.artwork?.imageUrl) {
-          if (isNearby) visibleArtworkUrls.push(s.artwork.imageUrl);
-          else otherArtworkUrls.push(s.artwork.imageUrl);
+          const optUrl = getOptimizedImageUrl(s.artwork.imageUrl, {
+            width: 1080,
+            quality: 75,
+            format: 'webp',
+          });
+
+          if (isCurrent) {
+            if (s.wallIndex === 0 || s.wallIndex === 1 || s.wallIndex === 3) {
+              curRoomFrontUrls.push(optUrl);
+            } else {
+              curRoomRearUrls.push(optUrl);
+            }
+          } else if (isNext || isPrev) {
+            nextRoomUrls.push(optUrl);
+          } else {
+            otherArtworkUrls.push(optUrl);
+          }
         }
       });
     });
 
-    const queue = Array.from(new Set([...visibleArtworkUrls, ...otherArtworkUrls]));
+    const queue = Array.from(
+      new Set([...curRoomFrontUrls, ...curRoomRearUrls, ...nextRoomUrls, ...otherArtworkUrls])
+    );
     let activeWorkers = 0;
     let index = 0;
 

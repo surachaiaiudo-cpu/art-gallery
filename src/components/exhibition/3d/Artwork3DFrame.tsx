@@ -11,6 +11,7 @@ import {
   generateArtworkFallbackTexture,
 } from './MaterialFactory';
 import { parseArtworkDimensions } from '@/lib/utils';
+import { getOptimizedImageUrl } from '@/lib/imagekit';
 import { Eye, Sun } from 'lucide-react';
 
 interface Artwork3DFrameProps {
@@ -99,12 +100,14 @@ function ArtworkPicturePlane({
   artistName,
   width,
   height,
+  isFocused = false,
 }: {
   imageUrl?: string | null;
   title: string;
   artistName: string;
   width: number;
   height: number;
+  isFocused?: boolean;
 }) {
   const { gl } = useThree();
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
@@ -122,10 +125,20 @@ function ArtworkPicturePlane({
       return;
     }
 
+    // Optimal 1080px WebP for standard viewing (~45-60KB, crystal-clear),
+    // and Ultra 2400px WebP when inspecting up close
+    const targetDim = isFocused ? 2400 : 1080;
+    const targetQual = isFocused ? 88 : 75;
+    const optimizedSrc = getOptimizedImageUrl(imageUrl, {
+      width: targetDim,
+      quality: targetQual,
+      format: 'webp',
+    });
+
     // Always route external URLs through local proxy to ensure CORS-safety in WebGL
-    const targetUrl = imageUrl.startsWith('http')
-      ? `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`
-      : imageUrl;
+    const targetUrl = optimizedSrc.startsWith('http')
+      ? `/api/image-proxy?url=${encodeURIComponent(optimizedSrc)}`
+      : optimizedSrc;
 
     // Instant memory cache hit
     if (globalTextureCache.has(targetUrl)) {
@@ -179,7 +192,7 @@ function ArtworkPicturePlane({
     return () => {
       active = false;
     };
-  }, [imageUrl, title, artistName, width, height, gl]);
+  }, [imageUrl, title, artistName, width, height, isFocused, gl]);
 
   if (!texture) {
     return (
@@ -337,6 +350,7 @@ export const Artwork3DFrame = React.memo(function Artwork3DFrame({
         artistName={artwork.artist?.name || 'Artist'}
         width={frameWidth}
         height={frameHeight}
+        isFocused={isFocused}
       />
 
       {/* 6. Museum Placard / Exhibition Label Plate (Zero Z-Fighting Single Texture Mesh) */}
