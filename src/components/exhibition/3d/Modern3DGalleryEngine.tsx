@@ -130,6 +130,55 @@ function makeArtLightmap(
   return tex;
 }
 
+// Module-level lightmap & sign caches (generated only once per room layout, zero canvas repaints on re-render)
+const roomLightmapCache = new Map<
+  string,
+  { left: THREE.CanvasTexture | null; right: THREE.CanvasTexture | null }
+>();
+const roomSignCache = new Map<number, THREE.CanvasTexture>();
+
+function getRoomLightmaps(
+  roomKey: string,
+  sideArtL: { pzRel: number; w: number; h: number; cy: number }[],
+  sideArtR: { pzRel: number; w: number; h: number; cy: number }[]
+) {
+  if (roomLightmapCache.has(roomKey)) {
+    return roomLightmapCache.get(roomKey)!;
+  }
+
+  const left = sideArtL.length > 0 ? makeArtLightmap(sideArtL, true) : null;
+  const right = sideArtR.length > 0 ? makeArtLightmap(sideArtR, false) : null;
+
+  const result = { left, right };
+  roomLightmapCache.set(roomKey, result);
+  return result;
+}
+
+function getRoomSignTexture(roomIndex: number): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  if (roomSignCache.has(roomIndex)) {
+    return roomSignCache.get(roomIndex)!;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 84;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#14100D';
+    ctx.fillRect(0, 0, 512, 84);
+    ctx.fillStyle = '#D8CFBF';
+    ctx.font = '300 38px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const letter = String.fromCharCode(65 + roomIndex);
+    ctx.fillText(`E X H I B I T   ${letter}`, 256, 44);
+  }
+  const t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.SRGBColorSpace;
+  roomSignCache.set(roomIndex, t);
+  return t;
+}
+
 function RoomStructureMesh({
   config,
   terrazzoTex,
@@ -150,17 +199,25 @@ function RoomStructureMesh({
   const withDoorBack = config.doorways?.back || false;
   const segW = (w - DOOR_W) / 2;
 
-  // Separate left and right wall artwork positions for precise lightmap baking
-  const sideArtL: { pzRel: number; w: number; h: number; cy: number }[] = [];
-  const sideArtR: { pzRel: number; w: number; h: number; cy: number }[] = [];
+  // Memoize left & right wall artwork positions based on config
+  const { sideArtL, sideArtR, roomKey } = useMemo(() => {
+    const l: { pzRel: number; w: number; h: number; cy: number }[] = [];
+    const r: { pzRel: number; w: number; h: number; cy: number }[] = [];
+    config.slots.forEach((slot) => {
+      if (!slot.artwork) return;
+      const isLeft = slot.wallIndex === 3 || slot.position.x < 0;
+      const item = { pzRel: slot.position.z, w: 2.1, h: 1.4, cy: slot.position.y || EYE_LEVEL_Y };
+      if (isLeft) l.push(item);
+      else r.push(item);
+    });
+    const key = `room_${config.roomIndex}_${l.length}_${r.length}_${config.slots.map((s) => s.artwork?.id || '').join('_')}`;
+    return { sideArtL: l, sideArtR: r, roomKey: key };
+  }, [config]);
 
-  config.slots.forEach((slot) => {
-    if (!slot.artwork) return;
-    const isLeft = slot.wallIndex === 3 || slot.position.x < 0;
-    const item = { pzRel: slot.position.z, w: 2.1, h: 1.4, cy: slot.position.y || EYE_LEVEL_Y };
-    if (isLeft) sideArtL.push(item);
-    else sideArtR.push(item);
-  });
+  // Baked lightmap textures retrieved from cache (0 canvas repaints per render pass)
+  const lightmaps = useMemo(() => {
+    return getRoomLightmaps(roomKey, sideArtL, sideArtR);
+  }, [roomKey, sideArtL, sideArtR]);
 
   const wallBaseMat = useMemo(
     () =>
@@ -177,33 +234,27 @@ function RoomStructureMesh({
     [wallAOTex, wallBumpTex]
   );
 
-  // Baked Wall Left Material with procedural spotlight lightmap
+  // Baked Wall Left Material with cached procedural spotlight lightmap
   const wallMatLeft = useMemo(() => {
     const m = wallBaseMat.clone();
-    if (sideArtL.length > 0) {
-      const lm = makeArtLightmap(sideArtL, true);
-      if (lm) {
-        m.emissive = new THREE.Color('#FFFFFF');
-        m.emissiveMap = lm;
-        m.emissiveIntensity = spotlightIntensity;
-      }
+    if (lightmaps.left) {
+      m.emissive = new THREE.Color('#FFFFFF');
+      m.emissiveMap = lightmaps.left;
+      m.emissiveIntensity = spotlightIntensity;
     }
     return m;
-  }, [wallBaseMat, sideArtL, spotlightIntensity]);
+  }, [wallBaseMat, lightmaps.left, spotlightIntensity]);
 
-  // Baked Wall Right Material with procedural spotlight lightmap
+  // Baked Wall Right Material with cached procedural spotlight lightmap
   const wallMatRight = useMemo(() => {
     const m = wallBaseMat.clone();
-    if (sideArtR.length > 0) {
-      const lm = makeArtLightmap(sideArtR, false);
-      if (lm) {
-        m.emissive = new THREE.Color('#FFFFFF');
-        m.emissiveMap = lm;
-        m.emissiveIntensity = spotlightIntensity;
-      }
+    if (lightmaps.right) {
+      m.emissive = new THREE.Color('#FFFFFF');
+      m.emissiveMap = lightmaps.right;
+      m.emissiveIntensity = spotlightIntensity;
     }
     return m;
-  }, [wallBaseMat, sideArtR, spotlightIntensity]);
+  }, [wallBaseMat, lightmaps.right, spotlightIntensity]);
 
   const floorMaterial = useMemo(
     () =>
@@ -272,26 +323,9 @@ function RoomStructureMesh({
     []
   );
 
-  // Exhibit room sign texture
+  // Exhibit room sign texture (retrieved from module cache)
   const signTex = useMemo(() => {
-    if (typeof document === 'undefined') return null;
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 84;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#14100D';
-      ctx.fillRect(0, 0, 512, 84);
-      ctx.fillStyle = '#D8CFBF';
-      ctx.font = '300 38px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const letter = String.fromCharCode(65 + config.roomIndex);
-      ctx.fillText(`E X H I B I T   ${letter}`, 256, 44);
-    }
-    const t = new THREE.CanvasTexture(canvas);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
+    return getRoomSignTexture(config.roomIndex);
   }, [config.roomIndex]);
 
   if (config.isCornerPavilion) {
