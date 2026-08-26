@@ -8,18 +8,16 @@ interface MinimapRadarProps {
   roomConfig: RoomGeometryConfig;
   roomConfigs?: RoomGeometryConfig[];
   currentRoomIndex?: number;
-  cameraPos: { x: number; z: number };
-  cameraRotationY: number;
+  cameraTransformRef: React.RefObject<{ x: number; z: number; rotY: number }>;
   onWarpToPosition: (x: number, z: number) => void;
   onSelectArtwork?: (slot: CalculatedArtworkSlot) => void;
 }
 
-export function MinimapRadar({
+export const MinimapRadar = React.memo(function MinimapRadar({
   roomConfig,
   roomConfigs = [],
   currentRoomIndex = 0,
-  cameraPos,
-  cameraRotationY,
+  cameraTransformRef,
   onWarpToPosition,
   onSelectArtwork,
 }: MinimapRadarProps) {
@@ -27,111 +25,129 @@ export function MinimapRadar({
   const allConfigs = roomConfigs.length > 0 ? roomConfigs : [roomConfig];
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    let animId: number;
 
-    const width = canvas.width;
-    const height = canvas.height;
-    ctx.clearRect(0, 0, width, height);
-
-    // Compute bounding box across all rooms
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    allConfigs.forEach((r) => {
-      const halfW = (r.width || 14) / 2 + 2;
-      const halfD = (r.depth || 32) / 2 + 2;
-      minX = Math.min(minX, r.center.x - halfW);
-      maxX = Math.max(maxX, r.center.x + halfW);
-      minZ = Math.min(minZ, r.center.z - halfD);
-      maxZ = Math.max(maxZ, r.center.z + halfD);
-    });
-
-    const spanX = Math.max(maxX - minX, 10);
-    const spanZ = Math.max(maxZ - minZ, 10);
-    const pad = 12;
-    const scale = Math.min((width - pad * 2) / spanX, (height - pad * 2) / spanZ);
-
-    const worldToCanvas = (wx: number, wz: number) => {
-      const px = width / 2 + (wx - (minX + maxX) / 2) * scale;
-      const py = height / 2 + (wz - (minZ + maxZ) / 2) * scale;
-      return { px, py };
-    };
-
-    // 1. Draw Connected Rooms Floorplans
-    allConfigs.forEach((r) => {
-      const isCur = r.roomIndex === currentRoomIndex;
-      ctx.save();
-      const c = worldToCanvas(r.center.x, r.center.z);
-      ctx.translate(c.px, c.py);
-      ctx.rotate(r.rotationY);
-
-      const rW = (r.width || 14) * scale;
-      const rD = (r.depth || 32) * scale;
-
-      ctx.fillStyle = isCur ? 'rgba(217, 184, 120, 0.22)' : 'rgba(255, 255, 255, 0.06)';
-      ctx.strokeStyle = isCur ? '#FFD98A' : 'rgba(217, 184, 120, 0.35)';
-      ctx.lineWidth = isCur ? 1.8 : 1.0;
-
-      ctx.beginPath();
-      ctx.rect(-rW / 2, -rD / 2, rW, rD);
-      ctx.fill();
-      ctx.stroke();
-
-      if (r.isCornerPavilion) {
-        // Draw Central Sculpture Marker in Pavilion
-        ctx.fillStyle = '#D9B878';
-        ctx.beginPath();
-        ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = isCur ? '#FFD98A' : 'rgba(255, 255, 255, 0.7)';
-        ctx.font = 'bold 8px Segoe UI, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🏛️', 0, -rD / 4);
-      } else {
-        // Room Letter Label
-        ctx.fillStyle = isCur ? '#FFD98A' : 'rgba(255, 255, 255, 0.6)';
-        ctx.font = 'bold 9px Segoe UI, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String.fromCharCode(65 + r.roomIndex), 0, 0);
-
-        // Artwork ticks on walls
-        r.slots.forEach((slot) => {
-          const lx = slot.position.x * scale;
-          const lz = slot.position.z * scale;
-          ctx.fillStyle = slot.artwork ? '#FFD98A' : 'rgba(255, 255, 255, 0.2)';
-          ctx.beginPath();
-          ctx.arc(lx, lz, 2.0, 0, Math.PI * 2);
-          ctx.fill();
-        });
+    const render = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        animId = requestAnimationFrame(render);
+        return;
+      }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        animId = requestAnimationFrame(render);
+        return;
       }
 
+      const width = canvas.width;
+      const height = canvas.height;
+      ctx.clearRect(0, 0, width, height);
+
+      // Compute bounding box across all rooms
+      let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      allConfigs.forEach((r) => {
+        const halfW = (r.width || 14) / 2 + 2;
+        const halfD = (r.depth || 32) / 2 + 2;
+        minX = Math.min(minX, r.center.x - halfW);
+        maxX = Math.max(maxX, r.center.x + halfW);
+        minZ = Math.min(minZ, r.center.z - halfD);
+        maxZ = Math.max(maxZ, r.center.z + halfD);
+      });
+
+      const spanX = Math.max(maxX - minX, 10);
+      const spanZ = Math.max(maxZ - minZ, 10);
+      const pad = 12;
+      const scale = Math.min((width - pad * 2) / spanX, (height - pad * 2) / spanZ);
+
+      const worldToCanvas = (wx: number, wz: number) => {
+        const px = width / 2 + (wx - (minX + maxX) / 2) * scale;
+        const py = height / 2 + (wz - (minZ + maxZ) / 2) * scale;
+        return { px, py };
+      };
+
+      // 1. Draw Connected Rooms Floorplans
+      allConfigs.forEach((r) => {
+        const isCur = r.roomIndex === currentRoomIndex;
+        ctx.save();
+        const c = worldToCanvas(r.center.x, r.center.z);
+        ctx.translate(c.px, c.py);
+        ctx.rotate(r.rotationY);
+
+        const rW = (r.width || 14) * scale;
+        const rD = (r.depth || 32) * scale;
+
+        ctx.fillStyle = isCur ? 'rgba(217, 184, 120, 0.22)' : 'rgba(255, 255, 255, 0.06)';
+        ctx.strokeStyle = isCur ? '#FFD98A' : 'rgba(217, 184, 120, 0.35)';
+        ctx.lineWidth = isCur ? 1.8 : 1.0;
+
+        ctx.beginPath();
+        ctx.rect(-rW / 2, -rD / 2, rW, rD);
+        ctx.fill();
+        ctx.stroke();
+
+        if (r.isCornerPavilion) {
+          // Draw Central Sculpture Marker in Pavilion
+          ctx.fillStyle = '#D9B878';
+          ctx.beginPath();
+          ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = isCur ? '#FFD98A' : 'rgba(255, 255, 255, 0.7)';
+          ctx.font = 'bold 8px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🏛️', 0, -rD / 4);
+        } else {
+          // Room Letter Label
+          ctx.fillStyle = isCur ? '#FFD98A' : 'rgba(255, 255, 255, 0.6)';
+          ctx.font = 'bold 9px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String.fromCharCode(65 + r.roomIndex), 0, 0);
+
+          // Artwork ticks on walls
+          r.slots.forEach((slot) => {
+            const lx = slot.position.x * scale;
+            const lz = slot.position.z * scale;
+            ctx.fillStyle = slot.artwork ? '#FFD98A' : 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.arc(lx, lz, 2.0, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+
+        ctx.restore();
+      });
+
+      // 2. Draw Player Position & Direction Arrow from shared ref
+      const cam = cameraTransformRef?.current || { x: 0, z: 0, rotY: 0 };
+      const p = worldToCanvas(cam.x, cam.z);
+      ctx.save();
+      ctx.translate(p.px, p.py);
+      ctx.rotate(cam.rotY);
+
+      ctx.fillStyle = '#FFD98A';
+      ctx.beginPath();
+      ctx.moveTo(0, -7);
+      ctx.lineTo(4.5, 4.5);
+      ctx.lineTo(0, 2);
+      ctx.lineTo(-4.5, 4.5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1;
+      ctx.stroke();
       ctx.restore();
-    });
 
-    // 2. Draw Player Position & Direction Arrow
-    const p = worldToCanvas(cameraPos.x, cameraPos.z);
-    ctx.save();
-    ctx.translate(p.px, p.py);
-    ctx.rotate(cameraRotationY);
+      animId = requestAnimationFrame(render);
+    };
 
-    ctx.fillStyle = '#FFD98A';
-    ctx.beginPath();
-    ctx.moveTo(0, -7);
-    ctx.lineTo(4.5, 4.5);
-    ctx.lineTo(0, 2);
-    ctx.lineTo(-4.5, 4.5);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-  }, [allConfigs, currentRoomIndex, cameraPos, cameraRotationY]);
+    animId = requestAnimationFrame(render);
+    return () => {
+      cancelAnimationFrame(animId);
+    };
+  }, [allConfigs, currentRoomIndex, cameraTransformRef]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -193,4 +209,4 @@ export function MinimapRadar({
       </div>
     </div>
   );
-}
+});

@@ -729,7 +729,7 @@ interface CameraControllerProps {
   onRoomChange: (newRoomIdx: number) => void;
   controlsRef: React.RefObject<any>;
   activeKeys: React.MutableRefObject<{ [key: string]: boolean }>;
-  onCameraUpdate: (pos: { x: number; z: number }, rotY: number) => void;
+  cameraTransformRef: React.MutableRefObject<{ x: number; z: number; rotY: number }>;
   warpTarget: { x: number; z: number } | null;
   onClearWarp: () => void;
   onAimArtwork: (artwork: Artwork | null, slot: CalculatedArtworkSlot | null) => void;
@@ -747,7 +747,7 @@ function CameraController({
   onRoomChange,
   controlsRef,
   activeKeys,
-  onCameraUpdate,
+  cameraTransformRef,
   warpTarget,
   onClearWarp,
   onAimArtwork,
@@ -758,6 +758,7 @@ function CameraController({
   const targetCamPos = useRef(new THREE.Vector3(0, 1.8, ROOM_D / 2 - 3));
   const screenCenter = useRef(new THREE.Vector2(0, 0));
   const aimHoldTimeRef = useRef(0);
+  const aimedArtworkIdRef = useRef<string | null>(null);
 
   // First-Person Free-Look State (Yaw: Left/Right, Pitch: Up/Down)
   const isPointerDown = useRef(false);
@@ -903,15 +904,19 @@ function CameraController({
       if (hitArtwork) break;
     }
 
-    if (hitArtwork && hitSlot) {
+    const hitId = hitArtwork?.id || null;
+    if (hitId !== aimedArtworkIdRef.current) {
+      aimedArtworkIdRef.current = hitId;
       onAimArtwork(hitArtwork, hitSlot);
+    }
+
+    if (hitArtwork) {
       aimHoldTimeRef.current += delta;
       if (aimHoldTimeRef.current > 0.85) {
         onMarkViewed(hitArtwork.id);
       }
     } else {
       aimHoldTimeRef.current = 0;
-      onAimArtwork(null, null);
     }
 
     const isMoving =
@@ -1055,9 +1060,13 @@ function CameraController({
     );
     camera.lookAt(lookTarget);
 
-    // Sync camera orientation to Minimap Radar
+    // Sync camera orientation to Minimap Radar via mutable ref (0 React re-renders)
     const rotY = Math.atan2(forwardX, -forwardZ);
-    onCameraUpdate({ x: camera.position.x, z: camera.position.z }, rotY);
+    if (cameraTransformRef?.current) {
+      cameraTransformRef.current.x = camera.position.x;
+      cameraTransformRef.current.z = camera.position.z;
+      cameraTransformRef.current.rotY = rotY;
+    }
   });
 
   return null;
@@ -1274,9 +1283,8 @@ export function Modern3DGalleryEngine({
     });
   };
 
-  // Camera Minimap Radar state
-  const [cameraRadarPos, setCameraRadarPos] = useState({ x: 0, z: 8 });
-  const [cameraRadarRotY, setCameraRadarRotY] = useState(0);
+  // Camera Minimap Radar ref - mutable ref avoids 60fps React re-renders
+  const cameraTransformRef = useRef({ x: 0, z: 8, rotY: 0 });
   const [warpTarget, setWarpTarget] = useState<{ x: number; z: number } | null>(null);
   const [isMinimapMobileOpen, setIsMinimapMobileOpen] = useState(false);
 
@@ -1631,10 +1639,7 @@ export function Modern3DGalleryEngine({
             onRoomChange={(newIdx) => setCurrentRoomIndex(newIdx)}
             controlsRef={controlsRef}
             activeKeys={activeKeys}
-            onCameraUpdate={(pos, rotY) => {
-              setCameraRadarPos(pos);
-              setCameraRadarRotY(rotY);
-            }}
+            cameraTransformRef={cameraTransformRef}
             warpTarget={warpTarget}
             onClearWarp={() => setWarpTarget(null)}
             onAimArtwork={(art, slot) => {
@@ -2025,8 +2030,7 @@ export function Modern3DGalleryEngine({
           roomConfig={currentRoomConfig}
           roomConfigs={roomConfigs}
           currentRoomIndex={currentRoomIndex}
-          cameraPos={cameraRadarPos}
-          cameraRotationY={cameraRadarRotY}
+          cameraTransformRef={cameraTransformRef}
           onWarpToPosition={(x, z) => setWarpTarget({ x, z })}
           onSelectArtwork={(slot) => {
             if (slot.artwork) handleInspectArtwork(slot.artwork);
@@ -2056,8 +2060,7 @@ export function Modern3DGalleryEngine({
               roomConfig={currentRoomConfig}
               roomConfigs={roomConfigs}
               currentRoomIndex={currentRoomIndex}
-              cameraPos={cameraRadarPos}
-              cameraRotationY={cameraRadarRotY}
+              cameraTransformRef={cameraTransformRef}
               onWarpToPosition={(x, z) => {
                 setWarpTarget({ x, z });
                 setIsMinimapMobileOpen(false);
