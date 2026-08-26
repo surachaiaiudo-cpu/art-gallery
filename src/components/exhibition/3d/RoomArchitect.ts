@@ -1,10 +1,10 @@
 import { Artwork } from '@/types/exhibition';
 import { RoomShape, CalculatedArtworkSlot, RoomGeometryConfig } from './types';
 
-export const ARTWORKS_PER_ROOM = 20;
+export const ARTWORKS_PER_ROOM = 30;
 export const ROOM_W = 14;
 export const ROOM_H = 5;
-export const ROOM_D = 32;
+export const ROOM_D = 34;
 export const DOOR_W = 2.8;
 export const DOOR_H = 3.2;
 export const CEILING_HEIGHT = ROOM_H;
@@ -106,6 +106,10 @@ function rotatePointY(x: number, z: number, angleRad: number) {
 
 /**
  * Calculates slot positions and orientations for standard gallery hall with world-space transformation.
+ * 30 Artworks per Exhibition Room:
+ * - 18 artworks on Left & Right Perimeter Walls (9 per side)
+ * - 6 artworks on Front Partition Island (3 Front, 3 Back)
+ * - 6 artworks on Rear Partition Island (3 Front, 3 Back)
  */
 export function calculateRoomSlots(
   roomShape: RoomShape,
@@ -122,20 +126,52 @@ export function calculateRoomSlots(
 
   for (let k = 0; k < totalArtCount; k++) {
     const art = validArtworks[k] || null;
-    // slotIndex MUST map directly into the flat artworks array
-    // (consumers index artworksList[slot.slotIndex]) — never include pavilions.
     const globalIdx = slotIndexOffset + k;
-    const side = k % 2 === 0 ? -1 : 1; // -1: Left wall, 1: Right wall
-    const row = Math.floor(k / 2);
-    
-    // Spaced along room depth
-    const rowStep = (ROOM_D - 6.4) / (ARTWORKS_PER_ROOM / 2 - 1);
-    const pzRel = ROOM_D / 2 - 3.2 - row * rowStep;
 
-    const localX = side * (ROOM_W / 2 - 0.02);
-    const localY = wallY;
-    const localZ = pzRel;
-    const localRotY = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+    let localX = 0;
+    let localY = wallY;
+    let localZ = 0;
+    let localRotY = 0;
+    let wallIndex = 0;
+    let wallName = '';
+
+    if (k < 18) {
+      // 18 Artworks on Left & Right Perimeter Walls (9 per side)
+      const side = k % 2 === 0 ? -1 : 1; // -1: Left Wall, 1: Right Wall
+      const sideRow = Math.floor(k / 2); // 0 to 8
+      const rowStep = (ROOM_D - 6.0) / 8; // Spaced evenly from +14m to -14m
+      const pzRel = ROOM_D / 2 - 3.0 - sideRow * rowStep;
+
+      localX = side * (ROOM_W / 2 - 0.02);
+      localZ = pzRel;
+      localRotY = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+      wallIndex = side === -1 ? 3 : 1;
+      wallName = side === -1 ? 'ผนังฝั่งซ้าย (Left Wall)' : 'ผนังฝั่งขวา (Right Wall)';
+    } else if (k < 24) {
+      // 6 Artworks on Front Partition Island (at z = +6.0m)
+      const partIdx = k - 18; // 0 to 5
+      const isFront = partIdx < 3;
+      const col = isFront ? (partIdx - 1) : (1 - (partIdx - 3)); // -1, 0, +1
+      const spacingX = 1.6;
+
+      localX = col * spacingX;
+      localZ = 6.0 + (isFront ? 0.20 : -0.20);
+      localRotY = isFront ? 0 : Math.PI;
+      wallIndex = isFront ? 0 : 2;
+      wallName = isFront ? 'พาร์ทิชันด้านหน้า - ฝั่งเข้า (Front Partition - Front)' : 'พาร์ทิชันด้านหน้า - ฝั่งออก (Front Partition - Back)';
+    } else {
+      // 6 Artworks on Rear Partition Island (at z = -6.0m)
+      const partIdx = k - 24; // 0 to 5
+      const isFront = partIdx < 3;
+      const col = isFront ? (partIdx - 1) : (1 - (partIdx - 3)); // -1, 0, +1
+      const spacingX = 1.6;
+
+      localX = col * spacingX;
+      localZ = -6.0 + (isFront ? 0.20 : -0.20);
+      localRotY = isFront ? 0 : Math.PI;
+      wallIndex = isFront ? 0 : 2;
+      wallName = isFront ? 'พาร์ทิชันด้านหลัง - ฝั่งเข้า (Rear Partition - Front)' : 'พาร์ทิชันด้านหลัง - ฝั่งออก (Rear Partition - Back)';
+    }
 
     // Transform local coords to world coords
     const rot = rotatePointY(localX, localZ, roomRotationY);
@@ -144,12 +180,10 @@ export function calculateRoomSlots(
     const worldZ = roomCenter.z + rot.z;
     const worldRotY = localRotY + roomRotationY;
 
-    const wallName = side === -1 ? 'ผนังฝั่งซ้าย (Left Wall)' : 'ผนังฝั่งขวา (Right Wall)';
-
     slots.push({
       slotIndex: globalIdx,
       roomIndex: roomIndex,
-      wallIndex: side === -1 ? 3 : 1,
+      wallIndex: wallIndex,
       wallName: wallName,
       position: { x: localX, y: localY, z: localZ },
       worldPosition: { x: worldX, y: worldY, z: worldZ },

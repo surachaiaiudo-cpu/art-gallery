@@ -15,13 +15,13 @@ export const LIGHT_PRESETS: Record<LightPreset, LightPresetConfig> = {
     spotlightIntensity: 2.8,
   },
   daylight: {
-    ambientColor: '#F5F5F0',
-    ambientIntensity: 0.85,
+    ambientColor: '#F4F7FA',
+    ambientIntensity: 0.9,
     skyColor: '#FFFFFF',
-    groundColor: '#D5D2C8',
-    skyIntensity: 0.8,
+    groundColor: '#D8DEE4',
+    skyIntensity: 0.85,
     spotlightColor: '#FFFFFF',
-    spotlightIntensity: 2.5,
+    spotlightIntensity: 2.8,
   },
   dramatic: {
     ambientColor: '#B0A89C',
