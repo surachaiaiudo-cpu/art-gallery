@@ -726,7 +726,7 @@ interface CameraControllerProps {
   controlsRef: React.RefObject<any>;
   activeKeys: React.MutableRefObject<{ [key: string]: boolean }>;
   cameraTransformRef: React.MutableRefObject<{ x: number; z: number; rotY: number }>;
-  warpTarget: { x: number; z: number } | null;
+  warpTarget: { x: number; z: number; rotY?: number } | null;
   onClearWarp: () => void;
   onAimArtwork: (artwork: Artwork | null, slot: CalculatedArtworkSlot | null) => void;
   onMarkViewed: (artworkId: string) => void;
@@ -788,13 +788,17 @@ function CameraController({
     if (warpTarget) {
       camera.position.set(warpTarget.x, 1.8, warpTarget.z);
       targetCamPos.current.set(warpTarget.x, 1.8, warpTarget.z);
-      targetYaw.current = 0;
+      const newYaw = warpTarget.rotY ?? 0;
+      targetYaw.current = newYaw;
       targetPitch.current = 0;
-      yaw.current = 0;
+      yaw.current = newYaw;
       pitch.current = 0;
+      cameraTransformRef.current.x = warpTarget.x;
+      cameraTransformRef.current.z = warpTarget.z;
+      cameraTransformRef.current.rotY = newYaw;
       onClearWarp();
     }
-  }, [warpTarget, onClearWarp, camera]);
+  }, [warpTarget, onClearWarp, camera, cameraTransformRef]);
 
   // Mouse / Pointer Lock & Drag Look-Around (Left, Right, Up, Down)
   useEffect(() => {
@@ -1310,7 +1314,7 @@ export function Modern3DGalleryEngine({
 
   // Camera Minimap Radar ref - mutable ref avoids 60fps React re-renders
   const cameraTransformRef = useRef({ x: 0, z: 8, rotY: 0 });
-  const [warpTarget, setWarpTarget] = useState<{ x: number; z: number } | null>(null);
+  const [warpTarget, setWarpTarget] = useState<{ x: number; z: number; rotY?: number } | null>(null);
   const [isMinimapMobileOpen, setIsMinimapMobileOpen] = useState(false);
 
   // Virtual Touch Controller handlers
@@ -1811,16 +1815,30 @@ export function Modern3DGalleryEngine({
                       setWarpTarget({
                         x: targetRoom.center.x + offset.x,
                         z: targetRoom.center.z + offset.z,
+                        rotY: targetRoom.rotationY,
                       });
                     }
                   }}
                   className="bg-transparent font-bold text-white focus:outline-none cursor-pointer text-xs"
                 >
-                  {roomConfigs.map((r, i) => (
-                    <option key={i} value={i} className="bg-[#161310] text-white">
-                      #{i + 1} {shapeTitles[r.shape] || r.shape}
-                    </option>
-                  ))}
+                  {roomConfigs.map((r, i) => {
+                    if (r.isCornerPavilion) {
+                      return (
+                        <option key={i} value={i} className="bg-[#161310] text-[#D9B878]">
+                          🏛️ #{i + 1} {r.pavilionTitle || 'โถงมุมอาคาร (Corner Pavilion)'}
+                        </option>
+                      );
+                    }
+                    const letter = String.fromCharCode(65 + (r.exhibitionRoomIndex >= 0 ? r.exhibitionRoomIndex : i));
+                    const artCount = r.slots.filter((s) => s.artwork).length;
+                    const startArt = (r.exhibitionRoomIndex >= 0 ? r.exhibitionRoomIndex : i) * 20 + 1;
+                    const endArt = startArt + artCount - 1;
+                    return (
+                      <option key={i} value={i} className="bg-[#161310] text-white">
+                        🖼️ #{i + 1} Exhibit {letter} ({artCount > 0 ? `ภาพ ${startArt}–${endArt}` : `${artCount} ภาพ`})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
@@ -2267,6 +2285,7 @@ export function Modern3DGalleryEngine({
               setWarpTarget({
                 x: targetRoom.center.x + offset.x,
                 z: targetRoom.center.z + offset.z,
+                rotY: targetRoom.rotationY,
               });
             }
           }}
