@@ -326,6 +326,11 @@ function RoomStructureMesh({
   }, [config]);
 
 
+  // Baked spotlight lightmap textures retrieved from module cache (0 canvas repaints per render pass)
+  const lightmaps = useMemo(() => {
+    return getRoomLightmaps(roomKey, sideArtL, sideArtR);
+  }, [roomKey, sideArtL, sideArtR]);
+
   const wallBaseMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
@@ -336,6 +341,28 @@ function RoomStructureMesh({
       }),
     []
   );
+
+  // Baked Wall Left Material with cached procedural spotlight lightmap
+  const wallMatLeft = useMemo(() => {
+    const m = wallBaseMat.clone();
+    if (lightmaps.left) {
+      m.emissive = new THREE.Color('#FFFFFF');
+      m.emissiveMap = lightmaps.left;
+      m.emissiveIntensity = spotlightIntensity;
+    }
+    return m;
+  }, [wallBaseMat, lightmaps.left, spotlightIntensity]);
+
+  // Baked Wall Right Material with cached procedural spotlight lightmap
+  const wallMatRight = useMemo(() => {
+    const m = wallBaseMat.clone();
+    if (lightmaps.right) {
+      m.emissive = new THREE.Color('#FFFFFF');
+      m.emissiveMap = lightmaps.right;
+      m.emissiveIntensity = spotlightIntensity;
+    }
+    return m;
+  }, [wallBaseMat, lightmaps.right, spotlightIntensity]);
 
   // Modern High-Gloss White Epoxy Floor Material
   const floorMaterial = useMemo(
@@ -569,16 +596,16 @@ function RoomStructureMesh({
         <primitive object={ceilingMaterial} attach="material" />
       </mesh>
 
-      {/* 3. Left Wall (x = -w/2) */}
+      {/* 3. Left Wall with Spotlight Lightmap (x = -w/2) */}
       <mesh position={[-w / 2, h / 2, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[d, h]} />
-        <primitive object={wallBaseMat} attach="material" />
+        <primitive object={wallMatLeft} attach="material" />
       </mesh>
 
-      {/* 4. Right Wall (x = w/2) */}
+      {/* 4. Right Wall with Spotlight Lightmap (x = w/2) */}
       <mesh position={[w / 2, h / 2, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[d, h]} />
-        <primitive object={wallBaseMat} attach="material" />
+        <primitive object={wallMatRight} attach="material" />
       </mesh>
 
       {/* 5. Two Central Freestanding Exhibition Partition Islands (ผนังลอยกลางห้อง 2 แถว แขวนรวม 12 ภาพ) */}
@@ -661,10 +688,10 @@ function RoomStructureMesh({
       {/* 7. Warm Ambient Museum Ceiling Wash Lights */}
       <pointLight
         position={[0, h - 0.3, 0]}
-        intensity={2.6}
-        distance={22}
-        decay={1.2}
-        color="#FFF6E8"
+        intensity={3.2}
+        distance={26}
+        decay={1.1}
+        color="#FFF8EC"
       />
 
       {/* 8. Minimalist Baseboards Left & Right */}
