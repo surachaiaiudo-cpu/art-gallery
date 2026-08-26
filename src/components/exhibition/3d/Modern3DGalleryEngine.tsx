@@ -259,7 +259,7 @@ function RoomStructureMesh({
         color: '#F8F9FB', // Crisp contemporary gallery white
         roughness: 0.92,
         metalness: 0.01,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
         aoMap: wallAOTex || undefined,
         aoMapIntensity: 0.45,
         bumpMap: wallBumpTex || undefined,
@@ -381,7 +381,7 @@ function RoomStructureMesh({
         />
 
         {/* Front Wall (z = +pd/2) -> Entrance from previous room */}
-        <group position={[0, 0, pd / 2]}>
+        <group position={[0, 0, pd / 2 - 0.005]}>
           <mesh position={[-(DOOR_W / 2 + pSegW / 2), h / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
             <planeGeometry args={[pSegW, h]} />
             <primitive object={wallBaseMat} attach="material" />
@@ -432,7 +432,7 @@ function RoomStructureMesh({
         </mesh>
 
         {/* Right Wall (x = +pw/2) -> Exit to next room (Right Turn) */}
-        <group position={[pw / 2, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+        <group position={[pw / 2 - 0.005, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
           <mesh position={[-(DOOR_W / 2 + pSegD / 2), h / 2, 0]} receiveShadow>
             <planeGeometry args={[pSegD, h]} />
             <primitive object={wallBaseMat} attach="material" />
@@ -445,23 +445,19 @@ function RoomStructureMesh({
             <planeGeometry args={[DOOR_W, h - DOOR_H]} />
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          {/* Flush Minimalist Portal Archway with 0.8m buffer vestibule (Approach 4) */}
-          <group position={[0, 0, 0.4]}>
-            <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
-              <boxGeometry args={[0.08, DOOR_H, 0.8]} />
+          {/* Clean Flush Portal Trim (Zero Z-Fighting) */}
+          <group position={[0, 0, 0]}>
+            <mesh position={[-DOOR_W / 2 - 0.03, DOOR_H / 2, 0]}>
+              <boxGeometry args={[0.06, DOOR_H, 0.12]} />
               <primitive object={roomArchMaterials.trim} attach="material" />
             </mesh>
-            <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
-              <boxGeometry args={[0.08, DOOR_H, 0.8]} />
+            <mesh position={[DOOR_W / 2 + 0.03, DOOR_H / 2, 0]}>
+              <boxGeometry args={[0.06, DOOR_H, 0.12]} />
               <primitive object={roomArchMaterials.trim} attach="material" />
             </mesh>
-            <mesh position={[0, DOOR_H + 0.04, 0]}>
-              <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.8]} />
+            <mesh position={[0, DOOR_H + 0.03, 0]}>
+              <boxGeometry args={[DOOR_W + 0.12, 0.06, 0.12]} />
               <primitive object={roomArchMaterials.trim} attach="material" />
-            </mesh>
-            <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[DOOR_W + 0.08, 0.8]} />
-              <meshStandardMaterial color="#211E1A" roughness={0.6} metalness={0.1} />
             </mesh>
           </group>
         </group>
@@ -672,7 +668,7 @@ function RoomStructureMesh({
           <primitive object={wallBaseMat} attach="material" />
         </mesh>
       ) : (
-        <group position={[0, 0, d / 2]}>
+        <group position={[0, 0, d / 2 - 0.005]}>
           {/* Left Segment */}
           <mesh position={[-(DOOR_W / 2 + segW / 2), h / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
             <planeGeometry args={[segW, h]} />
@@ -725,7 +721,7 @@ function RoomStructureMesh({
           </group>
         </group>
       ) : (
-        <group position={[0, 0, -d / 2]}>
+        <group position={[0, 0, -d / 2 + 0.005]}>
           {/* Left Segment */}
           <mesh position={[-(DOOR_W / 2 + segW / 2), h / 2, 0]} receiveShadow>
             <planeGeometry args={[segW, h]} />
@@ -741,27 +737,22 @@ function RoomStructureMesh({
             <planeGeometry args={[DOOR_W, h - DOOR_H]} />
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          {/* Architectural Portal Corridor / Buffer Vestibule (Approach 4) */}
-          <group position={[0, 0, -0.4]}>
-            {/* Left Portal Wall Jamb */}
-            <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
-              <boxGeometry args={[0.08, DOOR_H, 0.8]} />
+          {/* Clean Flush Portal Trim (Zero Z-Fighting) */}
+          <group position={[0, 0, 0]}>
+            {/* Left Door Jamb */}
+            <mesh position={[-DOOR_W / 2 - 0.03, DOOR_H / 2, 0]}>
+              <boxGeometry args={[0.06, DOOR_H, 0.12]} />
               <primitive object={roomArchMaterials.trim} attach="material" />
             </mesh>
-            {/* Right Portal Wall Jamb */}
-            <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
-              <boxGeometry args={[0.08, DOOR_H, 0.8]} />
+            {/* Right Door Jamb */}
+            <mesh position={[DOOR_W / 2 + 0.03, DOOR_H / 2, 0]}>
+              <boxGeometry args={[0.06, DOOR_H, 0.12]} />
               <primitive object={roomArchMaterials.trim} attach="material" />
             </mesh>
-            {/* Portal Soffit Ceiling */}
-            <mesh position={[0, DOOR_H + 0.04, 0]}>
-              <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.8]} />
+            {/* Door Lintel Header */}
+            <mesh position={[0, DOOR_H + 0.03, 0]}>
+              <boxGeometry args={[DOOR_W + 0.12, 0.06, 0.12]} />
               <primitive object={roomArchMaterials.trim} attach="material" />
-            </mesh>
-            {/* Dark Satin Threshold Transition Strip */}
-            <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[DOOR_W + 0.08, 0.8]} />
-              <meshStandardMaterial color="#211E1A" roughness={0.6} metalness={0.1} />
             </mesh>
           </group>
         </group>
