@@ -524,7 +524,7 @@ function RoomStructureMesh({
         <primitive object={wallMatRight} attach="material" />
       </mesh>
 
-      {/* 5. Two Central Freestanding Exhibition Partition Islands (ผนังลอยกลางห้อง 2 แถว แขวนรวม 12 ภาพ) */}
+      {/* 5. Two Central Freestanding Exhibition Partition Islands with Dedicated Spotlight Systems */}
       {[6.0, -6.0].map((pz, pi) => (
         <group key={`partition-${pi}`} position={[0, 0, pz]}>
           {/* Soft Base Drop Shadow on Floor under Freestanding Partition */}
@@ -534,21 +534,70 @@ function RoomStructureMesh({
               <meshBasicMaterial map={benchShadowTex} transparent opacity={0.65} depthWrite={false} />
             </mesh>
           )}
+
           {/* Floating White Exhibition Partition Wall */}
           <mesh position={[0, 1.8, 0]} castShadow receiveShadow>
             <boxGeometry args={[5.6, 3.6, 0.38]} />
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
+
           {/* Partition Top Accent Rail */}
           <mesh position={[0, 3.62, 0]}>
             <boxGeometry args={[5.64, 0.04, 0.4]} />
             <primitive object={roomArchMaterials.baseboard} attach="material" />
           </mesh>
-          {/* Dedicated Suspended Overhead Track Lights */}
-          <mesh position={[0, h - 0.08, 0]}>
-            <boxGeometry args={[5.8, 0.08, 0.05]} />
-            <primitive object={roomArchMaterials.track} attach="material" />
-          </mesh>
+
+          {/* Front & Back Track Lighting Systems with Directed Spotlight Fixtures */}
+          {[
+            { offsetZ: 0.95, tiltRot: 0.45, lightZ: 0.8 },
+            { offsetZ: -0.95, tiltRot: -0.45, lightZ: -0.8 },
+          ].map((side, sIdx) => (
+            <group key={`part-track-side-${sIdx}`}>
+              {/* Suspended White Track Light Rail */}
+              <mesh position={[0, h - 0.08, side.offsetZ]}>
+                <boxGeometry args={[5.6, 0.06, 0.08]} />
+                <primitive object={roomArchMaterials.track} attach="material" />
+              </mesh>
+              {/* Steel Suspension Rods */}
+              {[-2.2, 0, 2.2].map((rx, ri) => (
+                <mesh key={`p-rod-${ri}`} position={[rx, h - 0.04, side.offsetZ]}>
+                  <cylinderGeometry args={[0.008, 0.008, 0.08, 8]} />
+                  <primitive object={roomArchMaterials.trim} attach="material" />
+                </mesh>
+              ))}
+
+              {/* 3 Dedicated Spotlight Fixture Heads aimed at each Artwork */}
+              {[-1.6, 0, 1.6].map((ax, ai) => (
+                <group
+                  key={`part-head-${ai}`}
+                  position={[ax, h - 0.1, side.offsetZ]}
+                  rotation={[side.tiltRot, 0, 0]}
+                >
+                  <mesh position={[0, -0.035, 0]}>
+                    <boxGeometry args={[0.035, 0.07, 0.035]} />
+                    <primitive object={roomArchMaterials.track} attach="material" />
+                  </mesh>
+                  <mesh position={[0, 0, 0.11]} rotation={[Math.PI / 2, 0, 0]}>
+                    <cylinderGeometry args={[0.038, 0.06, 0.24, 14]} />
+                    <primitive object={roomArchMaterials.head} attach="material" />
+                  </mesh>
+                  <mesh position={[0, 0, 0.232]}>
+                    <circleGeometry args={[0.046, 14]} />
+                    <primitive object={roomArchMaterials.lens} attach="material" />
+                  </mesh>
+                </group>
+              ))}
+
+              {/* Dedicated Spotlight Illumination for Partition Artworks */}
+              <pointLight
+                position={[0, 3.4, side.lightZ]}
+                intensity={2.4}
+                distance={7.5}
+                decay={1.2}
+                color="#FFF8EE"
+              />
+            </group>
+          ))}
         </group>
       ))}
 
