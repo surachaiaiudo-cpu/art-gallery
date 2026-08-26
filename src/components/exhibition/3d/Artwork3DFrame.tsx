@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as THREE from 'three';
+import { useThree } from '@react-three/fiber';
 import { Text, Html } from '@react-three/drei';
 import { Artwork } from '@/types/exhibition';
 import { CalculatedArtworkSlot } from './types';
@@ -105,6 +106,7 @@ function ArtworkPicturePlane({
   width: number;
   height: number;
 }) {
+  const { gl } = useThree();
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
@@ -145,6 +147,13 @@ function ArtworkPicturePlane({
       tex.generateMipmaps = true;
       tex.needsUpdate = true;
 
+      // Pre-warm to GPU VRAM immediately so walking into the room has 0ms GPU upload latency
+      try {
+        gl.initTexture(tex);
+      } catch (e) {
+        // Safe fallback
+      }
+
       globalTextureCache.set(targetUrl, tex);
       setTexture(tex);
     };
@@ -157,6 +166,9 @@ function ArtworkPicturePlane({
         width / height
       );
       if (fallback) {
+        try {
+          gl.initTexture(fallback);
+        } catch (e) {}
         globalTextureCache.set(targetUrl, fallback);
         setTexture(fallback);
       }
@@ -167,7 +179,7 @@ function ArtworkPicturePlane({
     return () => {
       active = false;
     };
-  }, [imageUrl, title, artistName, width, height]);
+  }, [imageUrl, title, artistName, width, height, gl]);
 
   if (!texture) {
     return (

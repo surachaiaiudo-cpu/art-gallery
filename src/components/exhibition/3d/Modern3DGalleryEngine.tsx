@@ -422,19 +422,25 @@ function RoomStructureMesh({
             <planeGeometry args={[DOOR_W, h - DOOR_H]} />
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          {/* Flush Minimalist Portal Archway */}
-          <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
-            <boxGeometry args={[0.08, DOOR_H, 0.08]} />
-            <primitive object={roomArchMaterials.trim} attach="material" />
-          </mesh>
-          <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
-            <boxGeometry args={[0.08, DOOR_H, 0.08]} />
-            <primitive object={roomArchMaterials.trim} attach="material" />
-          </mesh>
-          <mesh position={[0, DOOR_H + 0.04, 0]}>
-            <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.08]} />
-            <primitive object={roomArchMaterials.trim} attach="material" />
-          </mesh>
+          {/* Flush Minimalist Portal Archway with 0.8m buffer vestibule (Approach 4) */}
+          <group position={[0, 0, 0.4]}>
+            <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
+              <boxGeometry args={[0.08, DOOR_H, 0.8]} />
+              <primitive object={roomArchMaterials.trim} attach="material" />
+            </mesh>
+            <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
+              <boxGeometry args={[0.08, DOOR_H, 0.8]} />
+              <primitive object={roomArchMaterials.trim} attach="material" />
+            </mesh>
+            <mesh position={[0, DOOR_H + 0.04, 0]}>
+              <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.8]} />
+              <primitive object={roomArchMaterials.trim} attach="material" />
+            </mesh>
+            <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[DOOR_W + 0.08, 0.8]} />
+              <meshStandardMaterial color="#211E1A" roughness={0.6} metalness={0.1} />
+            </mesh>
+          </group>
         </group>
 
         {/* Central Modern Faceted Polygon Pedestal with Floor Contact Shadow */}
@@ -696,19 +702,29 @@ function RoomStructureMesh({
             <planeGeometry args={[DOOR_W, h - DOOR_H]} />
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          {/* Architectural Portal Archway (Minimalist Flush Arch) */}
-          <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
-            <boxGeometry args={[0.08, DOOR_H, 0.08]} />
-            <primitive object={roomArchMaterials.trim} attach="material" />
-          </mesh>
-          <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
-            <boxGeometry args={[0.08, DOOR_H, 0.08]} />
-            <primitive object={roomArchMaterials.trim} attach="material" />
-          </mesh>
-          <mesh position={[0, DOOR_H + 0.04, 0]}>
-            <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.08]} />
-            <primitive object={roomArchMaterials.trim} attach="material" />
-          </mesh>
+          {/* Architectural Portal Corridor / Buffer Vestibule (Approach 4) */}
+          <group position={[0, 0, -0.4]}>
+            {/* Left Portal Wall Jamb */}
+            <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
+              <boxGeometry args={[0.08, DOOR_H, 0.8]} />
+              <primitive object={roomArchMaterials.trim} attach="material" />
+            </mesh>
+            {/* Right Portal Wall Jamb */}
+            <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
+              <boxGeometry args={[0.08, DOOR_H, 0.8]} />
+              <primitive object={roomArchMaterials.trim} attach="material" />
+            </mesh>
+            {/* Portal Soffit Ceiling */}
+            <mesh position={[0, DOOR_H + 0.04, 0]}>
+              <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.8]} />
+              <primitive object={roomArchMaterials.trim} attach="material" />
+            </mesh>
+            {/* Dark Satin Threshold Transition Strip */}
+            <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[DOOR_W + 0.08, 0.8]} />
+              <meshStandardMaterial color="#211E1A" roughness={0.6} metalness={0.1} />
+            </mesh>
+          </group>
         </group>
       )}
 
@@ -817,6 +833,9 @@ function findCurrentRoomIndex(
   configs: RoomGeometryConfig[],
   fallbackIdx: number
 ): number {
+  let bestIdx = fallbackIdx;
+  let minSqDist = Infinity;
+
   for (let i = 0; i < configs.length; i++) {
     const room = configs[i];
     const dx = playerPos.x - room.center.x;
@@ -824,11 +843,33 @@ function findCurrentRoomIndex(
     const local = rotatePointY(dx, dz, -room.rotationY);
     const halfW = (room.width || ROOM_W) / 2;
     const halfD = (room.depth || ROOM_D) / 2;
-    if (Math.abs(local.x) <= halfW + 0.5 && Math.abs(local.z) <= halfD + 0.5) {
-      return i;
+
+    if (Math.abs(local.x) <= halfW + 0.3 && Math.abs(local.z) <= halfD + 0.3) {
+      const sqDist = dx * dx + dz * dz;
+      if (sqDist < minSqDist) {
+        minSqDist = sqDist;
+        bestIdx = i;
+      }
     }
   }
-  return fallbackIdx;
+  return bestIdx;
+}
+
+// -------------------------------------------------------------
+// Approach 1: Scene Warmup Helper (Pre-compile shaders on load)
+// -------------------------------------------------------------
+function SceneWarmupHelper() {
+  const { gl, scene, camera } = useThree();
+
+  useEffect(() => {
+    try {
+      gl.compile(scene, camera);
+    } catch (e) {
+      console.warn('Scene warmup compile:', e);
+    }
+  }, [gl, scene, camera]);
+
+  return null;
 }
 
 interface CameraControllerProps {
@@ -874,6 +915,7 @@ function CameraController({
   const prevRaycastPos = useRef(new THREE.Vector3());
   const prevRaycastYawPitch = useRef({ yaw: -999, pitch: -999 });
   const lastHitResult = useRef<{ artwork: Artwork | null; slot: CalculatedArtworkSlot | null }>({ artwork: null, slot: null });
+  const lastRoomChangeTimeRef = useRef(0);
 
   // First-Person Free-Look State (Yaw: Left/Right, Pitch: Up/Down)
   const isPointerDown = useRef(false);
@@ -1199,13 +1241,15 @@ function CameraController({
 
         camera.position.set(finalX, 1.8, finalZ);
 
-        // Check if room index changed
+        // Check if room index changed (debounced to eliminate doorway fluttering)
         const newRoomIdx = findCurrentRoomIndex(
           { x: finalX, z: finalZ },
           roomConfigs,
           currentRoomIndex
         );
-        if (newRoomIdx !== currentRoomIndex) {
+        const now = performance.now();
+        if (newRoomIdx !== currentRoomIndex && now - lastRoomChangeTimeRef.current > 500) {
+          lastRoomChangeTimeRef.current = now;
           onRoomChange(newRoomIdx);
         }
       }
@@ -1776,6 +1820,7 @@ export function Modern3DGalleryEngine({
       >
         <color attach="background" args={['#0D0C0B']} />
         <Suspense fallback={null}>
+          <SceneWarmupHelper />
           <LightingRig
             preset={activeLightPreset}
             activeRoomCenter={currentRoomConfig.center}
@@ -1784,11 +1829,8 @@ export function Modern3DGalleryEngine({
             isInspectActive={!!focusedArtwork}
           />
 
-          {/* Render All Connected World-Space Rooms with Visibility Culling (currentRoomIndex ± 2 mounted, ± 1 visible) */}
+          {/* Render All Connected World-Space Rooms with Instant Visible Toggle (Approach 2) */}
           {roomConfigs.map((rConfig) => {
-            const isMounted = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 2;
-            if (!isMounted) return null;
-
             const isVisible = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 1;
 
             return (
@@ -1808,7 +1850,7 @@ export function Modern3DGalleryEngine({
                   spotlightIntensity={activeSpotlightIntensity}
                 />
 
-                {/* Render Artworks in this Room (Max 20 per room) */}
+                {/* Render Artworks in this Room */}
                 {rConfig.slots.map((slot) => {
                   if (!slot.artwork) return null;
                   return (
