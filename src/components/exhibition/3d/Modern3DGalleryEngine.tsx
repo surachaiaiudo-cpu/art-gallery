@@ -1850,7 +1850,7 @@ export function Modern3DGalleryEngine({
   };
 
   return (
-    <div className="relative w-full h-[calc(100dvh-64px)] overflow-hidden bg-[#0D0C0B] select-none text-slate-100">
+    <div className="relative w-full h-full min-h-[calc(100vh-64px)] overflow-hidden bg-[#0D0C0B] select-none text-slate-100">
       {/* 3D WebGL Canvas */}
       <Canvas
         camera={{ position: [0, 1.8, ROOM_D / 2 - 3], fov: 60 }}

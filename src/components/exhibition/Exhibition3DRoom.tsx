@@ -18,7 +18,7 @@ export function Exhibition3DRoom({ exhibition, onSwitchTo2D }: Exhibition3DRoomP
   const artworks = exhibition.artworks || [];
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#F4F3EE]">
+    <div className="relative w-full h-[calc(100vh-64px)] overflow-hidden bg-[#0D0C0B]">
       {/* Modern 3D Web Gallery Engine */}
       <Modern3DGalleryEngine
         exhibition={exhibition}
