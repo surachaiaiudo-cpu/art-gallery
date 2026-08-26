@@ -93,42 +93,9 @@ function getContactShadowTexture(): THREE.CanvasTexture | null {
 }
 
 // -------------------------------------------------------------
-// Rolling Horizon LRU Texture Cache (Capped at 36 active textures ~120MB)
+// Global High-Speed Texture Cache (Instant 0ms Room Switching)
 // -------------------------------------------------------------
-const MAX_CACHED_TEXTURES = 36;
 export const globalTextureCache = new Map<string, THREE.Texture>();
-
-export function setCachedTexture(key: string, texture: THREE.Texture) {
-  if (globalTextureCache.has(key)) {
-    globalTextureCache.delete(key);
-    globalTextureCache.set(key, texture);
-    return;
-  }
-
-  // Evict oldest texture to cap memory footprint
-  if (globalTextureCache.size >= MAX_CACHED_TEXTURES) {
-    const oldestKey = globalTextureCache.keys().next().value;
-    if (oldestKey) {
-      const oldTex = globalTextureCache.get(oldestKey);
-      if (oldTex) {
-        oldTex.dispose();
-      }
-      globalTextureCache.delete(oldestKey);
-    }
-  }
-
-  globalTextureCache.set(key, texture);
-}
-
-export function getCachedTexture(key: string): THREE.Texture | undefined {
-  if (globalTextureCache.has(key)) {
-    const tex = globalTextureCache.get(key)!;
-    globalTextureCache.delete(key);
-    globalTextureCache.set(key, tex);
-    return tex;
-  }
-  return undefined;
-}
 
 function ArtworkPicturePlane({
   imageUrl,
@@ -161,7 +128,7 @@ function ArtworkPicturePlane({
       return;
     }
 
-    // Optimal 800px WebP for gallery frames (~25KB, crisp & low memory),
+    // Optimal 800px WebP for standard gallery frames (~25KB, crisp & low memory),
     // and Ultra 2048px WebP when inspecting up close
     const targetDim = isFocused ? 2048 : 800;
     const targetQual = isFocused ? 85 : 75;
@@ -176,105 +143,57 @@ function ArtworkPicturePlane({
       ? `/api/image-proxy?url=${encodeURIComponent(optimizedSrc)}`
       : optimizedSrc;
 
-    // Instant memory cache hit from Rolling Horizon LRU
-    const cached = getCachedTexture(targetUrl);
-    if (cached) {
+    // Instant memory cache hit
+    if (globalTextureCache.has(targetUrl)) {
+      const cached = globalTextureCache.get(targetUrl)!;
       if (active) setTexture(cached);
       return;
     }
 
-    // Asynchronous background hardware decoding via createImageBitmap (0ms main thread lockup)
-    const controller = new AbortController();
+    // Use HTML5 Image loader for 100% rock-solid cross-browser reliability
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
 
-    async function loadWithImageBitmap() {
+    img.onload = () => {
+      if (!active) return;
+      const tex = new THREE.Texture(img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.minFilter = THREE.LinearMipmapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+      tex.needsUpdate = true;
+
+      // Pre-warm to GPU VRAM immediately so walking into the room has 0ms GPU upload latency
       try {
-        const res = await fetch(targetUrl, {
-          mode: 'cors',
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
-        if (!active) return;
-
-        let imageSource: ImageBitmap | HTMLImageElement;
-        if (typeof window !== 'undefined' && typeof window.createImageBitmap === 'function') {
-          // Hardware decoding executed entirely on background GPU/OS worker thread
-          imageSource = await window.createImageBitmap(blob, {
-            imageOrientation: 'flipY',
-            premultiplyAlpha: 'none',
-          });
-        } else {
-          imageSource = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const img = new window.Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = URL.createObjectURL(blob);
-          });
-        }
-
-        if (!active) return;
-
-        const tex = new THREE.Texture(imageSource);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.minFilter = THREE.LinearMipmapLinearFilter;
-        tex.magFilter = THREE.LinearFilter;
-        tex.generateMipmaps = true;
-        tex.needsUpdate = true;
-
-        // Pre-warm to GPU VRAM immediately with 0ms main thread latency
-        try {
-          gl.initTexture(tex);
-        } catch (e) {
-          // Safe fallback
-        }
-
-        setCachedTexture(targetUrl, tex);
-        setTexture(tex);
-      } catch (err: any) {
-        if (err.name === 'AbortError' || !active) return;
-
-        // Graceful fallback to HTML Image Loader
-        const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          if (!active) return;
-          const tex = new THREE.Texture(img);
-          tex.colorSpace = THREE.SRGBColorSpace;
-          tex.minFilter = THREE.LinearMipmapLinearFilter;
-          tex.magFilter = THREE.LinearFilter;
-          tex.generateMipmaps = true;
-          tex.needsUpdate = true;
-          try {
-            gl.initTexture(tex);
-          } catch (e) {}
-          setCachedTexture(targetUrl, tex);
-          setTexture(tex);
-        };
-        img.onerror = () => {
-          if (!active) return;
-          const fallback = generateArtworkFallbackTexture(
-            title,
-            artistName,
-            width / height
-          );
-          if (fallback) {
-            try {
-              gl.initTexture(fallback);
-            } catch (e) {}
-            setCachedTexture(targetUrl, fallback);
-            setTexture(fallback);
-          }
-        };
-        img.src = targetUrl;
+        gl.initTexture(tex);
+      } catch (e) {
+        // Safe fallback
       }
-    }
 
-    loadWithImageBitmap();
+      globalTextureCache.set(targetUrl, tex);
+      setTexture(tex);
+    };
+
+    img.onerror = () => {
+      if (!active) return;
+      const fallback = generateArtworkFallbackTexture(
+        title,
+        artistName,
+        width / height
+      );
+      if (fallback) {
+        try {
+          gl.initTexture(fallback);
+        } catch (e) {}
+        globalTextureCache.set(targetUrl, fallback);
+        setTexture(fallback);
+      }
+    };
+
+    img.src = targetUrl;
 
     return () => {
       active = false;
-      controller.abort();
     };
   }, [imageUrl, title, artistName, width, height, isFocused, gl]);
 
