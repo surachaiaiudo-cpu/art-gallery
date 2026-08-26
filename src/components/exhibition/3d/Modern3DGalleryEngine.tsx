@@ -866,6 +866,9 @@ function findCurrentRoomIndex(
   configs: RoomGeometryConfig[],
   fallbackIdx: number
 ): number {
+  let bestIdx = fallbackIdx;
+  let minSqDist = Infinity;
+
   for (let i = 0; i < configs.length; i++) {
     const room = configs[i];
     const dx = playerPos.x - room.center.x;
@@ -873,11 +876,16 @@ function findCurrentRoomIndex(
     const local = rotatePointY(dx, dz, -room.rotationY);
     const halfW = (room.width || ROOM_W) / 2;
     const halfD = (room.depth || ROOM_D) / 2;
-    if (Math.abs(local.x) <= halfW + 0.5 && Math.abs(local.z) <= halfD + 0.5) {
-      return i;
+
+    if (Math.abs(local.x) <= halfW + 0.3 && Math.abs(local.z) <= halfD + 0.3) {
+      const sqDist = dx * dx + dz * dz;
+      if (sqDist < minSqDist) {
+        minSqDist = sqDist;
+        bestIdx = i;
+      }
     }
   }
-  return fallbackIdx;
+  return bestIdx;
 }
 
 interface CameraControllerProps {
@@ -923,6 +931,7 @@ function CameraController({
   const prevRaycastPos = useRef(new THREE.Vector3());
   const prevRaycastYawPitch = useRef({ yaw: -999, pitch: -999 });
   const lastHitResult = useRef<{ artwork: Artwork | null; slot: CalculatedArtworkSlot | null }>({ artwork: null, slot: null });
+  const lastRoomChangeTimeRef = useRef(0);
 
   // First-Person Free-Look State (Yaw: Left/Right, Pitch: Up/Down)
   const isPointerDown = useRef(false);
@@ -1248,13 +1257,15 @@ function CameraController({
 
         camera.position.set(finalX, 1.8, finalZ);
 
-        // Check if room index changed
+        // Check if room index changed (debounced to eliminate doorway stutter)
         const newRoomIdx = findCurrentRoomIndex(
           { x: finalX, z: finalZ },
           roomConfigs,
           currentRoomIndex
         );
-        if (newRoomIdx !== currentRoomIndex) {
+        const now = performance.now();
+        if (newRoomIdx !== currentRoomIndex && now - lastRoomChangeTimeRef.current > 500) {
+          lastRoomChangeTimeRef.current = now;
           onRoomChange(newRoomIdx);
         }
       }
@@ -1833,46 +1844,38 @@ export function Modern3DGalleryEngine({
             isInspectActive={!!focusedArtwork}
           />
 
-          {/* Render All Connected World-Space Rooms with Visibility Culling (currentRoomIndex ± 2 mounted, ± 1 visible) */}
-          {roomConfigs.map((rConfig) => {
-            const isMounted = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 2;
-            if (!isMounted) return null;
+          {/* Render All Connected World-Space Rooms (Pre-mounted for Zero-Hitch Transitions) */}
+          {roomConfigs.map((rConfig) => (
+            <group
+              key={`room-${rConfig.roomIndex}`}
+              position={[rConfig.center.x, rConfig.center.y, rConfig.center.z]}
+              rotation={[0, rConfig.rotationY, 0]}
+            >
+              <RoomStructureMesh
+                config={rConfig}
+                epoxyFloorTex={epoxyFloorTex}
+                benchShadowTex={benchShadowTex}
+                pedestalShadowTex={pedestalShadowTex}
+                wallAOTex={wallAOTex}
+                wallBumpTex={wallBumpTex}
+                spotlightIntensity={activeSpotlightIntensity}
+              />
 
-            const isVisible = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 1;
-
-            return (
-              <group
-                key={`room-${rConfig.roomIndex}`}
-                position={[rConfig.center.x, rConfig.center.y, rConfig.center.z]}
-                rotation={[0, rConfig.rotationY, 0]}
-                visible={isVisible}
-              >
-                <RoomStructureMesh
-                  config={rConfig}
-                  epoxyFloorTex={epoxyFloorTex}
-                  benchShadowTex={benchShadowTex}
-                  pedestalShadowTex={pedestalShadowTex}
-                  wallAOTex={wallAOTex}
-                  wallBumpTex={wallBumpTex}
-                  spotlightIntensity={activeSpotlightIntensity}
-                />
-
-                {/* Render Artworks in this Room (Max 20 per room) */}
-                {rConfig.slots.map((slot) => {
-                  if (!slot.artwork) return null;
-                  return (
-                    <Artwork3DFrame
-                      key={`art-slot-${slot.slotIndex}`}
-                      slot={slot}
-                      artwork={slot.artwork}
-                      isFocused={focusedArtwork?.id === slot.artwork.id}
-                      onInspect={handleInspectArtwork}
-                    />
-                  );
-                })}
-              </group>
-            );
-          })}
+              {/* Render Artworks in this Room */}
+              {rConfig.slots.map((slot) => {
+                if (!slot.artwork) return null;
+                return (
+                  <Artwork3DFrame
+                    key={`art-slot-${slot.slotIndex}`}
+                    slot={slot}
+                    artwork={slot.artwork}
+                    isFocused={focusedArtwork?.id === slot.artwork.id}
+                    onInspect={handleInspectArtwork}
+                  />
+                );
+              })}
+            </group>
+          ))}
 
           {/* Interactive Multi-Room Camera Rig Controller */}
           <CameraController
