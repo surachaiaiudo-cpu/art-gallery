@@ -833,7 +833,7 @@ function CameraController({
         }
 
         const sensitivity = 0.0022;
-        targetYaw.current -= dx * sensitivity;
+        targetYaw.current += dx * sensitivity;
         targetPitch.current = Math.max(-1.3, Math.min(1.3, targetPitch.current - dy * sensitivity));
       } else if (isPointerDown.current) {
         // 🖱️ Classic Mode: Click & Drag to look around
@@ -848,7 +848,7 @@ function CameraController({
         }
 
         const sensitivity = 0.0034;
-        targetYaw.current -= dx * sensitivity;
+        targetYaw.current += dx * sensitivity;
         targetPitch.current = Math.max(-1.3, Math.min(1.3, targetPitch.current - dy * sensitivity));
       }
     };
@@ -929,10 +929,10 @@ function CameraController({
     // 1. Keyboard Look Rotation (ArrowLeft / ArrowRight / Q / E) & Pitch (PageUp / PageDown)
     const keyTurnSpeed = 2.2 * delta;
     if (activeKeys.current['arrowleft'] || activeKeys.current['q']) {
-      targetYaw.current += keyTurnSpeed;
+      targetYaw.current -= keyTurnSpeed;
     }
     if (activeKeys.current['arrowright'] || activeKeys.current['e']) {
-      targetYaw.current -= keyTurnSpeed;
+      targetYaw.current += keyTurnSpeed;
     }
     if (activeKeys.current['pageup']) {
       targetPitch.current = Math.min(1.3, targetPitch.current + keyTurnSpeed * 0.6);
