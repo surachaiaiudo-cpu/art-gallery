@@ -524,26 +524,33 @@ function RoomStructureMesh({
         <primitive object={wallMatRight} attach="material" />
       </mesh>
 
-      {/* 5. Central Freestanding Exhibition Partition Island (ผนังลอยกลางห้อง) */}
-      <group position={[0, 0, 0]}>
-        {/* Soft Base Drop Shadow on Floor under Freestanding Partition */}
-        {benchShadowTex && (
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
-            <planeGeometry args={[6.8, 1.4]} />
-            <meshBasicMaterial map={benchShadowTex} transparent opacity={0.65} depthWrite={false} />
+      {/* 5. Two Central Freestanding Exhibition Partition Islands (ผนังลอยกลางห้อง 2 แถว แขวนรวม 12 ภาพ) */}
+      {[6.0, -6.0].map((pz, pi) => (
+        <group key={`partition-${pi}`} position={[0, 0, pz]}>
+          {/* Soft Base Drop Shadow on Floor under Freestanding Partition */}
+          {benchShadowTex && (
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
+              <planeGeometry args={[6.2, 1.4]} />
+              <meshBasicMaterial map={benchShadowTex} transparent opacity={0.65} depthWrite={false} />
+            </mesh>
+          )}
+          {/* Floating White Exhibition Partition Wall */}
+          <mesh position={[0, 1.8, 0]} castShadow receiveShadow>
+            <boxGeometry args={[5.6, 3.6, 0.38]} />
+            <primitive object={wallBaseMat} attach="material" />
           </mesh>
-        )}
-        {/* Floating White Exhibition Partition Wall */}
-        <mesh position={[0, 1.8, 0]} castShadow receiveShadow>
-          <boxGeometry args={[6.0, 3.6, 0.38]} />
-          <primitive object={wallBaseMat} attach="material" />
-        </mesh>
-        {/* Partition Top Accent Rail */}
-        <mesh position={[0, 3.62, 0]}>
-          <boxGeometry args={[6.04, 0.04, 0.4]} />
-          <primitive object={roomArchMaterials.baseboard} attach="material" />
-        </mesh>
-      </group>
+          {/* Partition Top Accent Rail */}
+          <mesh position={[0, 3.62, 0]}>
+            <boxGeometry args={[5.64, 0.04, 0.4]} />
+            <primitive object={roomArchMaterials.baseboard} attach="material" />
+          </mesh>
+          {/* Dedicated Suspended Overhead Track Lights */}
+          <mesh position={[0, h - 0.08, 0]}>
+            <boxGeometry args={[5.8, 0.08, 0.05]} />
+            <primitive object={roomArchMaterials.track} attach="material" />
+          </mesh>
+        </group>
+      ))}
 
       {/* 6. Ceiling Track Light Rails and White Spotlight Fixtures */}
       {[-1, 1].map((sd) => {
@@ -1166,17 +1173,21 @@ function CameraController({
             }
           }
 
-          // Central Freestanding Partition Obstacle Collision (width: 6.0m, depth: 0.38m)
-          // Player cannot walk through the partition wall
-          const partHalfW = 3.0 + margin; // 3.6m
+          // Two Central Freestanding Partitions Obstacle Collision (width: 5.6m, depth: 0.38m at z = +6.0m and z = -6.0m)
+          // Player cannot walk through either partition wall
+          const partHalfW = 2.8 + margin; // 3.4m
           const partHalfD = 0.19 + margin; // 0.79m
-          if (Math.abs(local.x) < partHalfW && Math.abs(local.z) < partHalfD) {
-            const overlapX = partHalfW - Math.abs(local.x);
-            const overlapZ = partHalfD - Math.abs(local.z);
-            if (overlapZ < overlapX) {
-              local.z = local.z > 0 ? partHalfD : -partHalfD;
-            } else {
-              local.x = local.x > 0 ? partHalfW : -partHalfW;
+
+          for (const partZ of [6.0, -6.0]) {
+            const relZ = local.z - partZ;
+            if (Math.abs(local.x) < partHalfW && Math.abs(relZ) < partHalfD) {
+              const overlapX = partHalfW - Math.abs(local.x);
+              const overlapZ = partHalfD - Math.abs(relZ);
+              if (overlapZ < overlapX) {
+                local.z = partZ + (relZ > 0 ? partHalfD : -partHalfD);
+              } else {
+                local.x = local.x > 0 ? partHalfW : -partHalfW;
+              }
             }
           }
         }
@@ -1958,7 +1969,7 @@ export function Modern3DGalleryEngine({
                     }
                     const letter = String.fromCharCode(65 + (r.exhibitionRoomIndex >= 0 ? r.exhibitionRoomIndex : i));
                     const artCount = r.slots.filter((s) => s.artwork).length;
-                    const startArt = (r.exhibitionRoomIndex >= 0 ? r.exhibitionRoomIndex : i) * 20 + 1;
+                    const startArt = (r.exhibitionRoomIndex >= 0 ? r.exhibitionRoomIndex : i) * ARTWORKS_PER_ROOM + 1;
                     const endArt = startArt + artCount - 1;
                     return (
                       <option key={i} value={i} className="bg-[#161310] text-white">
