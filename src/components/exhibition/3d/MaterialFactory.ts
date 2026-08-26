@@ -222,3 +222,122 @@ export function generateArtworkFallbackTexture(
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
+
+// 6. Modern High-Gloss White Epoxy Floor Texture
+export function createWhiteEpoxyFloorTexture(): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+
+  const size = 1024;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  // Clean luminous contemporary white/light-gray base
+  ctx.fillStyle = '#E8ECEF';
+  ctx.fillRect(0, 0, size, size);
+
+  // Very subtle large polished epoxy cloudiness / soft ambient variation
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+  grad.addColorStop(0.5, 'rgba(235, 240, 245, 0.2)');
+  grad.addColorStop(1, 'rgba(220, 226, 232, 0.35)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+
+  // Micro-fine quartz / polished sheen dust (barely visible fine texture)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  for (let i = 0; i < 600; i++) {
+    const rx = Math.random() * size;
+    const ry = Math.random() * size;
+    ctx.fillRect(rx, ry, 1.5, 1.5);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(4, 4);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// 7. Soft Rectangular Contact Shadow Decal for Benches
+export function createFloorBenchContactShadowTexture(): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+
+  const width = 512;
+  const height = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Soft elongated shadow under the wooden bench plank
+  const grad = ctx.createRadialGradient(width / 2, height / 2, 20, width / 2, height / 2, width / 2 - 20);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
+  grad.addColorStop(0.3, 'rgba(0, 0, 0, 0.45)');
+  grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.15)');
+  grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+  ctx.save();
+  ctx.scale(1, height / width);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(width / 2, width / 2, width / 2 - 20, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 4 Darker core leg shadow spots
+  const legPositions = [
+    [width * 0.16, height * 0.25],
+    [width * 0.84, height * 0.25],
+    [width * 0.16, height * 0.75],
+    [width * 0.84, height * 0.75],
+  ];
+
+  for (const [lx, ly] of legPositions) {
+    const legGrad = ctx.createRadialGradient(lx, ly, 2, lx, ly, 32);
+    legGrad.addColorStop(0, 'rgba(0, 0, 0, 0.85)');
+    legGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0.4)');
+    legGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = legGrad;
+    ctx.beginPath();
+    ctx.arc(lx, ly, 32, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
+
+// 8. Soft Radial Contact Shadow Decal for Pedestals & Sculptures
+export function createFloorPedestalContactShadowTexture(): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.clearRect(0, 0, size, size);
+
+  const grad = ctx.createRadialGradient(size / 2, size / 2, 10, size / 2, size / 2, size / 2 - 12);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0.75)');
+  grad.addColorStop(0.35, 'rgba(0, 0, 0, 0.4)');
+  grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.12)');
+  grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2 - 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
