@@ -30,7 +30,7 @@ import {
   ARTWORKS_PER_ROOM,
 } from './RoomArchitect';
 import { LightingRig } from './LightingRig';
-import { Artwork3DFrame } from './Artwork3DFrame';
+import { Artwork3DFrame, getCachedTexture, setCachedTexture } from './Artwork3DFrame';
 import { MinimapRadar } from './MinimapRadar';
 import { RoomCuratorStudioModal } from './RoomCuratorStudioModal';
 import { ArtworkInspectModal } from './ArtworkInspectModal';
@@ -1642,19 +1642,50 @@ export function Modern3DGalleryEngine({
     let index = 0;
 
     const pump = () => {
-      while (active && activeWorkers < 4 && index < queue.length) {
+      while (active && activeWorkers < 3 && index < queue.length) {
         const url = queue[index++];
         const targetUrl = url.startsWith('http')
           ? `/api/image-proxy?url=${encodeURIComponent(url)}`
           : url;
+
+        if (getCachedTexture(targetUrl)) {
+          continue; // Already warm in memory
+        }
+
         activeWorkers++;
-        const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = img.onerror = () => {
-          activeWorkers--;
-          if (active) pump();
-        };
-        img.src = targetUrl;
+        fetch(targetUrl, { mode: 'cors' })
+          .then((res) => res.blob())
+          .then(async (blob) => {
+            if (!active) return;
+            let imageSource: ImageBitmap | HTMLImageElement;
+            if (typeof window !== 'undefined' && typeof window.createImageBitmap === 'function') {
+              imageSource = await window.createImageBitmap(blob, {
+                imageOrientation: 'flipY',
+                premultiplyAlpha: 'none',
+              });
+            } else {
+              imageSource = await new Promise<HTMLImageElement>((resolve, reject) => {
+                const img = new window.Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = URL.createObjectURL(blob);
+              });
+            }
+            if (!active) return;
+            const tex = new THREE.Texture(imageSource);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.minFilter = THREE.LinearMipmapLinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.generateMipmaps = true;
+            tex.needsUpdate = true;
+            setCachedTexture(targetUrl, tex);
+          })
+          .catch(() => {})
+          .finally(() => {
+            activeWorkers--;
+            if (active) pump();
+          });
       }
     };
 

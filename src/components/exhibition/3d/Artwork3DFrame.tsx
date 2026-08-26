@@ -22,52 +22,55 @@ interface Artwork3DFrameProps {
 }
 
 // -------------------------------------------------------------
-// Dedicated Zero-Flicker Canvas Placard Texture Generator
+// -------------------------------------------------------------
+// Memory-Optimized Zero-Flicker Canvas Placard Texture Generator (512x128)
 // -------------------------------------------------------------
 function createPlacardTexture(title: string, artistName: string, year: number | string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 256;
+  canvas.width = 512;
+  canvas.height = 128;
   const ctx = canvas.getContext('2d');
   if (!ctx) return new THREE.CanvasTexture(canvas);
 
   // Background Ivory / Alabaster Plate
   ctx.fillStyle = '#F8F6F0';
-  ctx.fillRect(0, 0, 1024, 256);
+  ctx.fillRect(0, 0, 512, 128);
 
   // Outer Border Trim
   ctx.strokeStyle = '#D5CBB9';
-  ctx.lineWidth = 6;
-  ctx.strokeRect(10, 10, 1004, 236);
+  ctx.lineWidth = 3;
+  ctx.strokeRect(5, 5, 502, 118);
 
   // Inner Gold Accent Line
   ctx.strokeStyle = '#8C6D3F';
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(18, 18, 988, 220);
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(9, 9, 494, 110);
 
   // Title Typography
   ctx.fillStyle = '#1E1D1B';
-  ctx.font = 'bold 50px "Sarabun", "Noto Sans Thai", "Segoe UI", sans-serif';
+  ctx.font = 'bold 24px "Sarabun", "Noto Sans Thai", "Segoe UI", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   const cleanTitle = title || 'Untitled';
   const displayTitle = cleanTitle.length > 32 ? cleanTitle.slice(0, 30) + '...' : cleanTitle;
-  ctx.fillText(displayTitle, 512, 95);
+  ctx.fillText(displayTitle, 256, 48);
 
   // Artist & Year Typography
   ctx.fillStyle = '#6E675F';
-  ctx.font = '500 34px "Sarabun", "Noto Sans Thai", "Segoe UI", sans-serif';
+  ctx.font = '500 17px "Sarabun", "Noto Sans Thai", "Segoe UI", sans-serif';
   const subtitle = `${artistName || 'Artist'} • ${year || '2026'}`;
   const displaySub = subtitle.length > 42 ? subtitle.slice(0, 40) + '...' : subtitle;
-  ctx.fillText(displaySub, 512, 175);
+  ctx.fillText(displaySub, 256, 88);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  texture.anisotropy = 4;
   texture.needsUpdate = true;
   return texture;
-}const placardCache = new Map<string, THREE.CanvasTexture>();
+}
+
+const placardCache = new Map<string, THREE.CanvasTexture>();
 
 function getPlacardTexture(title: string, artistName: string, year: number | string): THREE.CanvasTexture | null {
   if (typeof document === 'undefined') return null;
@@ -90,9 +93,42 @@ function getContactShadowTexture(): THREE.CanvasTexture | null {
 }
 
 // -------------------------------------------------------------
-// Global High-Speed Texture Cache (Instant 0ms Room Switching)
+// Rolling Horizon LRU Texture Cache (Capped at 48 active textures ~200MB)
 // -------------------------------------------------------------
-const globalTextureCache = new Map<string, THREE.Texture>();
+const MAX_CACHED_TEXTURES = 48;
+export const globalTextureCache = new Map<string, THREE.Texture>();
+
+export function setCachedTexture(key: string, texture: THREE.Texture) {
+  if (globalTextureCache.has(key)) {
+    globalTextureCache.delete(key);
+    globalTextureCache.set(key, texture);
+    return;
+  }
+
+  // Evict oldest texture to cap memory footprint
+  if (globalTextureCache.size >= MAX_CACHED_TEXTURES) {
+    const oldestKey = globalTextureCache.keys().next().value;
+    if (oldestKey) {
+      const oldTex = globalTextureCache.get(oldestKey);
+      if (oldTex) {
+        oldTex.dispose();
+      }
+      globalTextureCache.delete(oldestKey);
+    }
+  }
+
+  globalTextureCache.set(key, texture);
+}
+
+export function getCachedTexture(key: string): THREE.Texture | undefined {
+  if (globalTextureCache.has(key)) {
+    const tex = globalTextureCache.get(key)!;
+    globalTextureCache.delete(key);
+    globalTextureCache.set(key, tex);
+    return tex;
+  }
+  return undefined;
+}
 
 function ArtworkPicturePlane({
   imageUrl,
@@ -140,9 +176,9 @@ function ArtworkPicturePlane({
       ? `/api/image-proxy?url=${encodeURIComponent(optimizedSrc)}`
       : optimizedSrc;
 
-    // Instant memory cache hit
-    if (globalTextureCache.has(targetUrl)) {
-      const cached = globalTextureCache.get(targetUrl)!;
+    // Instant memory cache hit from Rolling Horizon LRU
+    const cached = getCachedTexture(targetUrl);
+    if (cached) {
       if (active) setTexture(cached);
       return;
     }
@@ -193,7 +229,7 @@ function ArtworkPicturePlane({
           // Safe fallback
         }
 
-        globalTextureCache.set(targetUrl, tex);
+        setCachedTexture(targetUrl, tex);
         setTexture(tex);
       } catch (err: any) {
         if (err.name === 'AbortError' || !active) return;
@@ -212,7 +248,7 @@ function ArtworkPicturePlane({
           try {
             gl.initTexture(tex);
           } catch (e) {}
-          globalTextureCache.set(targetUrl, tex);
+          setCachedTexture(targetUrl, tex);
           setTexture(tex);
         };
         img.onerror = () => {
@@ -226,7 +262,7 @@ function ArtworkPicturePlane({
             try {
               gl.initTexture(fallback);
             } catch (e) {}
-            globalTextureCache.set(targetUrl, fallback);
+            setCachedTexture(targetUrl, fallback);
             setTexture(fallback);
           }
         };
