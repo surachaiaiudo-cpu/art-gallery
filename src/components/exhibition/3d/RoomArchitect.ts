@@ -122,20 +122,40 @@ export function calculateRoomSlots(
 
   for (let k = 0; k < totalArtCount; k++) {
     const art = validArtworks[k] || null;
-    // slotIndex MUST map directly into the flat artworks array
-    // (consumers index artworksList[slot.slotIndex]) — never include pavilions.
     const globalIdx = slotIndexOffset + k;
-    const side = k % 2 === 0 ? -1 : 1; // -1: Left wall, 1: Right wall
-    const row = Math.floor(k / 2);
-    
-    // Spaced along room depth
-    const rowStep = (ROOM_D - 6.4) / (ARTWORKS_PER_ROOM / 2 - 1);
-    const pzRel = ROOM_D / 2 - 3.2 - row * rowStep;
 
-    const localX = side * (ROOM_W / 2 - 0.02);
-    const localY = wallY;
-    const localZ = pzRel;
-    const localRotY = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+    let localX = 0;
+    let localY = wallY;
+    let localZ = 0;
+    let localRotY = 0;
+    let wallIndex = 0;
+    let wallName = '';
+
+    if (k < 14) {
+      // 14 Artworks distributed along Left & Right Perimeter Walls (7 per side)
+      const side = k % 2 === 0 ? -1 : 1; // -1: Left Wall, 1: Right Wall
+      const sideRow = Math.floor(k / 2); // 0 to 6
+      const rowStep = (ROOM_D - 6.4) / 6; // Spaced evenly along depth
+      const pzRel = ROOM_D / 2 - 3.2 - sideRow * rowStep;
+
+      localX = side * (ROOM_W / 2 - 0.02);
+      localZ = pzRel;
+      localRotY = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+      wallIndex = side === -1 ? 3 : 1;
+      wallName = side === -1 ? 'ผนังฝั่งซ้าย (Left Wall)' : 'ผนังฝั่งขวา (Right Wall)';
+    } else {
+      // 6 Artworks hung on Central Freestanding Partition Island (3 Front, 3 Back)
+      const partIdx = k - 14; // 0 to 5
+      const isFront = partIdx < 3;
+      const col = isFront ? (partIdx - 1) : (1 - (partIdx - 3)); // -1, 0, +1
+      const spacingX = 1.8;
+
+      localX = col * spacingX;
+      localZ = isFront ? 0.20 : -0.20;
+      localRotY = isFront ? 0 : Math.PI;
+      wallIndex = isFront ? 0 : 2;
+      wallName = isFront ? 'พาร์ทิชันกลางห้อง - ด้านหน้า (Partition Front)' : 'พาร์ทิชันกลางห้อง - ด้านหลัง (Partition Back)';
+    }
 
     // Transform local coords to world coords
     const rot = rotatePointY(localX, localZ, roomRotationY);
@@ -144,12 +164,10 @@ export function calculateRoomSlots(
     const worldZ = roomCenter.z + rot.z;
     const worldRotY = localRotY + roomRotationY;
 
-    const wallName = side === -1 ? 'ผนังฝั่งซ้าย (Left Wall)' : 'ผนังฝั่งขวา (Right Wall)';
-
     slots.push({
       slotIndex: globalIdx,
       roomIndex: roomIndex,
-      wallIndex: side === -1 ? 3 : 1,
+      wallIndex: wallIndex,
       wallName: wallName,
       position: { x: localX, y: localY, z: localZ },
       worldPosition: { x: worldX, y: worldY, z: worldZ },

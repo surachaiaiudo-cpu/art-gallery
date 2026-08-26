@@ -1165,6 +1165,20 @@ function CameraController({
               local.z = -halfD + margin;
             }
           }
+
+          // Central Freestanding Partition Obstacle Collision (width: 6.0m, depth: 0.38m)
+          // Player cannot walk through the partition wall
+          const partHalfW = 3.0 + margin; // 3.6m
+          const partHalfD = 0.19 + margin; // 0.79m
+          if (Math.abs(local.x) < partHalfW && Math.abs(local.z) < partHalfD) {
+            const overlapX = partHalfW - Math.abs(local.x);
+            const overlapZ = partHalfD - Math.abs(local.z);
+            if (overlapZ < overlapX) {
+              local.z = local.z > 0 ? partHalfD : -partHalfD;
+            } else {
+              local.x = local.x > 0 ? partHalfW : -partHalfW;
+            }
+          }
         }
 
         // Transform clamped local coordinates back to world space
