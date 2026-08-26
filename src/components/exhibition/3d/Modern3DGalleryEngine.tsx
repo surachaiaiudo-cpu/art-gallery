@@ -30,7 +30,7 @@ import {
   ARTWORKS_PER_ROOM,
 } from './RoomArchitect';
 import { LightingRig } from './LightingRig';
-import { Artwork3DFrame, getCachedTexture, setCachedTexture } from './Artwork3DFrame';
+import { Artwork3DFrame } from './Artwork3DFrame';
 import { MinimapRadar } from './MinimapRadar';
 import { RoomCuratorStudioModal } from './RoomCuratorStudioModal';
 import { ArtworkInspectModal } from './ArtworkInspectModal';
@@ -1592,109 +1592,7 @@ export function Modern3DGalleryEngine({
     }
   }, [currentRoomIndex, roomConfigs]);
 
-  // Background Staggered Preload of Artwork Images (Priority Queue with optimal 1080px WebP)
-  useEffect(() => {
-    if (typeof window === 'undefined' || !exhibition?.artworks) return;
-    let active = true;
 
-    // Prioritize:
-    // 1. Current room front sightline slots (side walls + front partition)
-    // 2. Current room rear sightline slots (back partition)
-    // 3. Next/previous adjacent room slots
-    // 4. Remaining other rooms
-    const curRoomFrontUrls: string[] = [];
-    const curRoomRearUrls: string[] = [];
-    const nextRoomUrls: string[] = [];
-    const otherArtworkUrls: string[] = [];
-
-    roomConfigs.forEach((rc) => {
-      const isCurrent = rc.roomIndex === currentRoomIndex;
-      const isNext = rc.roomIndex === currentRoomIndex + 1;
-      const isPrev = rc.roomIndex === currentRoomIndex - 1;
-
-      rc.slots.forEach((s) => {
-        if (s.artwork?.imageUrl) {
-          const optUrl = getOptimizedImageUrl(s.artwork.imageUrl, {
-            width: 1080,
-            quality: 75,
-            format: 'webp',
-          });
-
-          if (isCurrent) {
-            if (s.wallIndex === 0 || s.wallIndex === 1 || s.wallIndex === 3) {
-              curRoomFrontUrls.push(optUrl);
-            } else {
-              curRoomRearUrls.push(optUrl);
-            }
-          } else if (isNext || isPrev) {
-            nextRoomUrls.push(optUrl);
-          } else {
-            otherArtworkUrls.push(optUrl);
-          }
-        }
-      });
-    });
-
-    const queue = Array.from(
-      new Set([...curRoomFrontUrls, ...curRoomRearUrls, ...nextRoomUrls, ...otherArtworkUrls])
-    );
-    let activeWorkers = 0;
-    let index = 0;
-
-    const pump = () => {
-      while (active && activeWorkers < 3 && index < queue.length) {
-        const url = queue[index++];
-        const targetUrl = url.startsWith('http')
-          ? `/api/image-proxy?url=${encodeURIComponent(url)}`
-          : url;
-
-        if (getCachedTexture(targetUrl)) {
-          continue; // Already warm in memory
-        }
-
-        activeWorkers++;
-        fetch(targetUrl, { mode: 'cors' })
-          .then((res) => res.blob())
-          .then(async (blob) => {
-            if (!active) return;
-            let imageSource: ImageBitmap | HTMLImageElement;
-            if (typeof window !== 'undefined' && typeof window.createImageBitmap === 'function') {
-              imageSource = await window.createImageBitmap(blob, {
-                imageOrientation: 'flipY',
-                premultiplyAlpha: 'none',
-              });
-            } else {
-              imageSource = await new Promise<HTMLImageElement>((resolve, reject) => {
-                const img = new window.Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => resolve(img);
-                img.onerror = reject;
-                img.src = URL.createObjectURL(blob);
-              });
-            }
-            if (!active) return;
-            const tex = new THREE.Texture(imageSource);
-            tex.colorSpace = THREE.SRGBColorSpace;
-            tex.minFilter = THREE.LinearMipmapLinearFilter;
-            tex.magFilter = THREE.LinearFilter;
-            tex.generateMipmaps = true;
-            tex.needsUpdate = true;
-            setCachedTexture(targetUrl, tex);
-          })
-          .catch(() => {})
-          .finally(() => {
-            activeWorkers--;
-            if (active) pump();
-          });
-      }
-    };
-
-    pump();
-
-    return () => {
-      active = false;
-    };
-  }, [exhibition?.artworks, currentRoomIndex, roomConfigs]);
 
   // Global Keyboard Navigation (WASD, Arrows, E to Inspect, H for Help, ESC to close)
   useEffect(() => {
@@ -1958,19 +1856,20 @@ export function Modern3DGalleryEngine({
                   spotlightIntensity={activeSpotlightIntensity}
                 />
 
-                {/* Render Artworks in this Room */}
-                {rConfig.slots.map((slot) => {
-                  if (!slot.artwork) return null;
-                  return (
-                    <Artwork3DFrame
-                      key={`art-slot-${slot.slotIndex}`}
-                      slot={slot}
-                      artwork={slot.artwork}
-                      isFocused={focusedArtwork?.id === slot.artwork.id}
-                      onInspect={handleInspectArtwork}
-                    />
-                  );
-                })}
+                {/* Render Artworks in this Room ONLY when visible (prevents loading distant rooms) */}
+                {isVisible &&
+                  rConfig.slots.map((slot) => {
+                    if (!slot.artwork) return null;
+                    return (
+                      <Artwork3DFrame
+                        key={`art-slot-${slot.slotIndex}`}
+                        slot={slot}
+                        artwork={slot.artwork}
+                        isFocused={focusedArtwork?.id === slot.artwork.id}
+                        onInspect={handleInspectArtwork}
+                      />
+                    );
+                  })}
               </group>
             );
           })}

@@ -93,9 +93,9 @@ function getContactShadowTexture(): THREE.CanvasTexture | null {
 }
 
 // -------------------------------------------------------------
-// Rolling Horizon LRU Texture Cache (Capped at 48 active textures ~200MB)
+// Rolling Horizon LRU Texture Cache (Capped at 36 active textures ~120MB)
 // -------------------------------------------------------------
-const MAX_CACHED_TEXTURES = 48;
+const MAX_CACHED_TEXTURES = 36;
 export const globalTextureCache = new Map<string, THREE.Texture>();
 
 export function setCachedTexture(key: string, texture: THREE.Texture) {
@@ -161,10 +161,10 @@ function ArtworkPicturePlane({
       return;
     }
 
-    // Optimal 1080px WebP for standard viewing (~45-60KB, crystal-clear),
-    // and Ultra 2400px WebP when inspecting up close
-    const targetDim = isFocused ? 2400 : 1080;
-    const targetQual = isFocused ? 88 : 75;
+    // Optimal 800px WebP for gallery frames (~25KB, crisp & low memory),
+    // and Ultra 2048px WebP when inspecting up close
+    const targetDim = isFocused ? 2048 : 800;
+    const targetQual = isFocused ? 85 : 75;
     const optimizedSrc = getOptimizedImageUrl(imageUrl, {
       width: targetDim,
       quality: targetQual,
