@@ -46,6 +46,7 @@ import {
   Plus,
   Minus,
   Maximize2,
+  Minimize2,
   Building,
   Volume2,
   VolumeX,
@@ -1168,6 +1169,49 @@ export function Modern3DGalleryEngine({
     }
   };
 
+  // State: Fullscreen Mode
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const handleToggleFullscreen = async () => {
+    if (typeof document === 'undefined') return;
+
+    if (!document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } catch (err) {
+        console.warn('Error attempting to enable full-screen mode:', err);
+      }
+    } else {
+      if (document.exitFullscreen) {
+        try {
+          await document.exitFullscreen();
+          setIsFullscreen(false);
+        } catch (err) {
+          console.warn('Error attempting to exit full-screen mode:', err);
+        }
+      }
+    }
+  };
+
+  // Sync fullscreen state when user presses F11 or ESC
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
   // State: Milestone 3 UI Layer & Interaction Progress
   const [currentAim, setCurrentAim] = useState<{ artwork: Artwork; slot: CalculatedArtworkSlot } | null>(null);
   const [viewedArtworkIds, setViewedArtworkIds] = useState<Set<string>>(new Set());
@@ -1320,6 +1364,9 @@ export function Modern3DGalleryEngine({
       } else if (k === 'h') {
         e.preventDefault();
         setIsHelpOpen((prev) => !prev);
+      } else if (k === 'f') {
+        e.preventDefault();
+        handleToggleFullscreen();
       } else if (k === 'escape') {
         setFocusedArtwork(null);
         setFocusedSlot(null);
@@ -1806,6 +1853,33 @@ export function Modern3DGalleryEngine({
             </span>
           </div>
 
+          {/* Fullscreen Mode Toggle */}
+          <div className="relative group">
+            <button
+              onClick={handleToggleFullscreen}
+              className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1 sm:space-x-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.25)] border transition-all active:scale-95 ${
+                isFullscreen
+                  ? 'bg-[#FFD98A] text-black border-[#FFD98A] font-bold shadow-[0_0_16px_rgba(255,217,138,0.5)]'
+                  : 'bg-[#161310]/25 backdrop-blur-xl hover:bg-[#221C16]/50 text-white hover:text-[#FFD98A] border-[#D9B878]/30 hover:border-[#D9B878]'
+              }`}
+            >
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5 text-black" />
+                  <span className="hidden sm:inline">ย่อจอ</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5 text-[#D9B878]" />
+                  <span className="hidden sm:inline">เต็มจอ</span>
+                </>
+              )}
+            </button>
+            <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              {isFullscreen ? 'ออกจากมุมมองเต็มจอ (กด F หรือ ESC)' : 'เปิดมุมมองเต็มหน้าจอ Fullscreen (กด F)'}
+            </span>
+          </div>
+
           {/* Help Button (H) */}
           <button
             onClick={() => setIsHelpOpen(true)}
@@ -1893,6 +1967,13 @@ export function Modern3DGalleryEngine({
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
                 <span>🔍 เลื่อนล้อเมาส์ (Wheel)</span>
                 <span className="font-semibold text-[#FFD98A]">ซูมเข้า / ซูมออก (Zoom)</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                <span>⛶ เปิด / ปิด โหมดเต็มหน้าจอ</span>
+                <div className="flex items-center gap-1 font-mono text-[#FFD98A]">
+                  <kbd className="px-2 py-0.5 bg-black/40 rounded border border-[#D9B878]/30">F</kbd>
+                  <span className="text-neutral-400 font-sans">หรือ ปุ่มเต็มจอ</span>
+                </div>
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
                 <span>เดินหน้า / ถอยหลัง / สไลด์</span>
