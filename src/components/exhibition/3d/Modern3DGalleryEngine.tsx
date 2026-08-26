@@ -205,6 +205,83 @@ const roomArchMaterials = {
   windowDaylightGlow: new THREE.MeshBasicMaterial({ color: '#F8FCFF' }),
 };
 
+// Procedural Semicircular Roman Arch Wall Geometry (Cached singleton)
+const archWallGeoCache = new Map<string, THREE.BufferGeometry>();
+
+function getArchWallGeometry(wallW: number, wallH: number, doorW: number = DOOR_W, straightH: number = 2.4): THREE.BufferGeometry {
+  const key = `${wallW}_${wallH}_${doorW}_${straightH}`;
+  if (archWallGeoCache.has(key)) return archWallGeoCache.get(key)!;
+
+  const shape = new THREE.Shape();
+  // Outer rectangle: from bottom-left (-w/2, 0) up to top-right (w/2, h)
+  shape.moveTo(-wallW / 2, 0);
+  shape.lineTo(wallW / 2, 0);
+  shape.lineTo(wallW / 2, wallH);
+  shape.lineTo(-wallW / 2, wallH);
+  shape.closePath();
+
+  // Inner semicircular arch opening
+  const r = doorW / 2;
+  const hole = new THREE.Path();
+  hole.moveTo(-r, 0);
+  hole.lineTo(-r, straightH);
+  // Semicircle arc at top: from angle PI (left) to 0 (right) clockwise
+  hole.absarc(0, straightH, r, Math.PI, 0, true);
+  hole.lineTo(r, 0);
+  hole.lineTo(-r, 0);
+  hole.closePath();
+
+  shape.holes.push(hole);
+  const geo = new THREE.ShapeGeometry(shape, 32);
+  geo.computeVertexNormals();
+
+  if (geo.attributes.uv) {
+    geo.setAttribute('uv2', geo.attributes.uv.clone());
+  }
+
+  archWallGeoCache.set(key, geo);
+  return geo;
+}
+
+// Neoclassical Semicircular Roman Arch Trim Molding (คิ้วบัวซุ้มประตูโค้ง)
+function RomanArchTrim({ doorW = DOOR_W, straightH = 2.4 }: { doorW?: number; straightH?: number }) {
+  const r = doorW / 2;
+  return (
+    <group position={[0, 0, 0]}>
+      {/* Left Vertical Pilaster Column */}
+      <mesh position={[-r - 0.035, straightH / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, straightH, 0.12]} />
+        <primitive object={roomArchMaterials.trim} attach="material" />
+      </mesh>
+      {/* Right Vertical Pilaster Column */}
+      <mesh position={[r + 0.035, straightH / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, straightH, 0.12]} />
+        <primitive object={roomArchMaterials.trim} attach="material" />
+      </mesh>
+      {/* Left Capital Block */}
+      <mesh position={[-r - 0.035, straightH, 0.01]}>
+        <boxGeometry args={[0.11, 0.06, 0.14]} />
+        <primitive object={roomArchMaterials.trim} attach="material" />
+      </mesh>
+      {/* Right Capital Block */}
+      <mesh position={[r + 0.035, straightH, 0.01]}>
+        <boxGeometry args={[0.11, 0.06, 0.14]} />
+        <primitive object={roomArchMaterials.trim} attach="material" />
+      </mesh>
+      {/* Semicircular Arch Top Molding Rim */}
+      <mesh position={[0, straightH, 0]}>
+        <torusGeometry args={[r + 0.035, 0.035, 12, 36, Math.PI]} />
+        <primitive object={roomArchMaterials.trim} attach="material" />
+      </mesh>
+      {/* Central Keystone (หินก้อนยอดซุ้มโค้ง) */}
+      <mesh position={[0, straightH + r + 0.035, 0.015]}>
+        <boxGeometry args={[0.18, 0.12, 0.14]} />
+        <primitive object={roomArchMaterials.trim} attach="material" />
+      </mesh>
+    </group>
+  );
+}
+
 function RoomStructureMesh({
   config,
   epoxyFloorTex,
@@ -380,20 +457,12 @@ function RoomStructureMesh({
           color="#FFF8F0"
         />
 
-        {/* Front Wall (z = +pd/2) -> Entrance from previous room */}
+        {/* Front Wall (z = +pd/2) -> Roman Semicircular Arch Entrance */}
         <group position={[0, 0, pd / 2 - 0.005]}>
-          <mesh position={[-(DOOR_W / 2 + pSegW / 2), h / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
-            <planeGeometry args={[pSegW, h]} />
+          <mesh rotation={[0, Math.PI, 0]} receiveShadow geometry={getArchWallGeometry(pw, h, DOOR_W, 2.4)}>
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          <mesh position={[DOOR_W / 2 + pSegW / 2, h / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
-            <planeGeometry args={[pSegW, h]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
-          <mesh position={[0, DOOR_H + (h - DOOR_H) / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
-            <planeGeometry args={[DOOR_W, h - DOOR_H]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
+          <RomanArchTrim doorW={DOOR_W} straightH={2.4} />
         </group>
 
         {/* Back Wall (z = -pd/2) -> Architectural Daylight Window / Solid wall */}
@@ -431,35 +500,12 @@ function RoomStructureMesh({
           <primitive object={wallBaseMat} attach="material" />
         </mesh>
 
-        {/* Right Wall (x = +pw/2) -> Exit to next room (Right Turn) */}
+        {/* Right Wall (x = +pw/2) -> Roman Semicircular Arch Exit (Right Turn) */}
         <group position={[pw / 2 - 0.005, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
-          <mesh position={[-(DOOR_W / 2 + pSegD / 2), h / 2, 0]} receiveShadow>
-            <planeGeometry args={[pSegD, h]} />
+          <mesh receiveShadow geometry={getArchWallGeometry(pd, h, DOOR_W, 2.4)}>
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          <mesh position={[DOOR_W / 2 + pSegD / 2, h / 2, 0]} receiveShadow>
-            <planeGeometry args={[pSegD, h]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
-          <mesh position={[0, DOOR_H + (h - DOOR_H) / 2, 0]} receiveShadow>
-            <planeGeometry args={[DOOR_W, h - DOOR_H]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
-          {/* Clean Flush Portal Trim (Zero Z-Fighting) */}
-          <group position={[0, 0, 0]}>
-            <mesh position={[-DOOR_W / 2 - 0.03, DOOR_H / 2, 0]}>
-              <boxGeometry args={[0.06, DOOR_H, 0.12]} />
-              <primitive object={roomArchMaterials.trim} attach="material" />
-            </mesh>
-            <mesh position={[DOOR_W / 2 + 0.03, DOOR_H / 2, 0]}>
-              <boxGeometry args={[0.06, DOOR_H, 0.12]} />
-              <primitive object={roomArchMaterials.trim} attach="material" />
-            </mesh>
-            <mesh position={[0, DOOR_H + 0.03, 0]}>
-              <boxGeometry args={[DOOR_W + 0.12, 0.06, 0.12]} />
-              <primitive object={roomArchMaterials.trim} attach="material" />
-            </mesh>
-          </group>
+          <RomanArchTrim doorW={DOOR_W} straightH={2.4} />
         </group>
 
         {/* Central Modern Faceted Polygon Pedestal with Floor Contact Shadow */}
@@ -669,21 +715,10 @@ function RoomStructureMesh({
         </mesh>
       ) : (
         <group position={[0, 0, d / 2 - 0.005]}>
-          {/* Left Segment */}
-          <mesh position={[-(DOOR_W / 2 + segW / 2), h / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
-            <planeGeometry args={[segW, h]} />
+          <mesh rotation={[0, Math.PI, 0]} receiveShadow geometry={getArchWallGeometry(w, h, DOOR_W, 2.4)}>
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          {/* Right Segment */}
-          <mesh position={[DOOR_W / 2 + segW / 2, h / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
-            <planeGeometry args={[segW, h]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
-          {/* Lintel above door */}
-          <mesh position={[0, DOOR_H + (h - DOOR_H) / 2, 0]} rotation={[0, Math.PI, 0]} receiveShadow>
-            <planeGeometry args={[DOOR_W, h - DOOR_H]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
+          <RomanArchTrim doorW={DOOR_W} straightH={2.4} />
         </group>
       )}
 
@@ -722,46 +757,17 @@ function RoomStructureMesh({
         </group>
       ) : (
         <group position={[0, 0, -d / 2 + 0.005]}>
-          {/* Left Segment */}
-          <mesh position={[-(DOOR_W / 2 + segW / 2), h / 2, 0]} receiveShadow>
-            <planeGeometry args={[segW, h]} />
+          <mesh receiveShadow geometry={getArchWallGeometry(w, h, DOOR_W, 2.4)}>
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          {/* Right Segment */}
-          <mesh position={[DOOR_W / 2 + segW / 2, h / 2, 0]} receiveShadow>
-            <planeGeometry args={[segW, h]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
-          {/* Lintel above door */}
-          <mesh position={[0, DOOR_H + (h - DOOR_H) / 2, 0]} receiveShadow>
-            <planeGeometry args={[DOOR_W, h - DOOR_H]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
-          {/* Clean Flush Portal Trim (Zero Z-Fighting) */}
-          <group position={[0, 0, 0]}>
-            {/* Left Door Jamb */}
-            <mesh position={[-DOOR_W / 2 - 0.03, DOOR_H / 2, 0]}>
-              <boxGeometry args={[0.06, DOOR_H, 0.12]} />
-              <primitive object={roomArchMaterials.trim} attach="material" />
-            </mesh>
-            {/* Right Door Jamb */}
-            <mesh position={[DOOR_W / 2 + 0.03, DOOR_H / 2, 0]}>
-              <boxGeometry args={[0.06, DOOR_H, 0.12]} />
-              <primitive object={roomArchMaterials.trim} attach="material" />
-            </mesh>
-            {/* Door Lintel Header */}
-            <mesh position={[0, DOOR_H + 0.03, 0]}>
-              <boxGeometry args={[DOOR_W + 0.12, 0.06, 0.12]} />
-              <primitive object={roomArchMaterials.trim} attach="material" />
-            </mesh>
-          </group>
+          <RomanArchTrim doorW={DOOR_W} straightH={2.4} />
         </group>
       )}
 
-      {/* 11. Exhibit Signboard above front entrance */}
+      {/* 11. Exhibit Signboard above front entrance arch */}
       {signTex && (
-        <mesh position={[0, 3.9, d / 2 - 0.06]} rotation={[0, Math.PI, 0]}>
-          <planeGeometry args={[3.4, 0.55]} />
+        <mesh position={[0, 4.38, d / 2 - 0.06]} rotation={[0, Math.PI, 0]}>
+          <planeGeometry args={[2.8, 0.36]} />
           <meshStandardMaterial
             map={signTex}
             emissiveMap={signTex}
