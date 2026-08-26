@@ -325,47 +325,17 @@ function RoomStructureMesh({
     return { sideArtL: l, sideArtR: r, roomKey: key };
   }, [config]);
 
-  // Baked lightmap textures retrieved from cache (0 canvas repaints per render pass)
-  const lightmaps = useMemo(() => {
-    return getRoomLightmaps(roomKey, sideArtL, sideArtR);
-  }, [roomKey, sideArtL, sideArtR]);
 
   const wallBaseMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
         color: '#F8F9FB', // Crisp contemporary gallery white
-        roughness: 0.92,
+        roughness: 0.90,
         metalness: 0.01,
         side: THREE.FrontSide,
-        aoMap: wallAOTex || undefined,
-        aoMapIntensity: 0.45,
-        bumpMap: wallBumpTex || undefined,
-        bumpScale: 0.002,
       }),
-    [wallAOTex, wallBumpTex]
+    []
   );
-
-  // Baked Wall Left Material with cached procedural spotlight lightmap
-  const wallMatLeft = useMemo(() => {
-    const m = wallBaseMat.clone();
-    if (lightmaps.left) {
-      m.emissive = new THREE.Color('#FFFFFF');
-      m.emissiveMap = lightmaps.left;
-      m.emissiveIntensity = spotlightIntensity;
-    }
-    return m;
-  }, [wallBaseMat, lightmaps.left, spotlightIntensity]);
-
-  // Baked Wall Right Material with cached procedural spotlight lightmap
-  const wallMatRight = useMemo(() => {
-    const m = wallBaseMat.clone();
-    if (lightmaps.right) {
-      m.emissive = new THREE.Color('#FFFFFF');
-      m.emissiveMap = lightmaps.right;
-      m.emissiveIntensity = spotlightIntensity;
-    }
-    return m;
-  }, [wallBaseMat, lightmaps.right, spotlightIntensity]);
 
   // Modern High-Gloss White Epoxy Floor Material
   const floorMaterial = useMemo(
@@ -599,16 +569,16 @@ function RoomStructureMesh({
         <primitive object={ceilingMaterial} attach="material" />
       </mesh>
 
-      {/* 3. Left Wall with Baked Lightmap (x = -w/2) */}
+      {/* 3. Left Wall (x = -w/2) */}
       <mesh position={[-w / 2, h / 2, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[d, h]} />
-        <primitive object={wallMatLeft} attach="material" />
+        <primitive object={wallBaseMat} attach="material" />
       </mesh>
 
-      {/* 4. Right Wall with Baked Lightmap (x = w/2) */}
+      {/* 4. Right Wall (x = w/2) */}
       <mesh position={[w / 2, h / 2, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[d, h]} />
-        <primitive object={wallMatRight} attach="material" />
+        <primitive object={wallBaseMat} attach="material" />
       </mesh>
 
       {/* 5. Two Central Freestanding Exhibition Partition Islands (ผนังลอยกลางห้อง 2 แถว แขวนรวม 12 ภาพ) */}
