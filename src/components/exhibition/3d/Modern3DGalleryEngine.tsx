@@ -14,6 +14,8 @@ import {
   createWhiteEpoxyFloorTexture,
   createFloorBenchContactShadowTexture,
   createFloorPedestalContactShadowTexture,
+  createPartitionContactShadowTexture,
+  createWallFloorEdgeAOTexture,
   createPlasterWallAOMap,
   createPlasterBumpMap,
 } from './MaterialFactory';
@@ -208,6 +210,8 @@ function RoomStructureMesh({
   epoxyFloorTex,
   benchShadowTex,
   pedestalShadowTex,
+  partitionShadowTex,
+  wallFloorEdgeAOTex,
   wallAOTex,
   wallBumpTex,
   spotlightIntensity = 1.0,
@@ -216,6 +220,8 @@ function RoomStructureMesh({
   epoxyFloorTex: THREE.CanvasTexture | null;
   benchShadowTex: THREE.CanvasTexture | null;
   pedestalShadowTex: THREE.CanvasTexture | null;
+  partitionShadowTex: THREE.CanvasTexture | null;
+  wallFloorEdgeAOTex: THREE.CanvasTexture | null;
   wallAOTex: THREE.CanvasTexture | null;
   wallBumpTex: THREE.CanvasTexture | null;
   spotlightIntensity?: number;
@@ -326,6 +332,22 @@ function RoomStructureMesh({
           <planeGeometry args={[pw, pd]} />
           <primitive object={floorMaterial} attach="material" />
         </mesh>
+
+        {/* Wall-Floor Junction Baseboard Ambient Occlusion Crevice Shadows */}
+        {wallFloorEdgeAOTex && (
+          <>
+            {/* Left Wall AO */}
+            <mesh position={[-pw / 2 + 0.35, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[0.7, pd]} />
+              <meshBasicMaterial map={wallFloorEdgeAOTex} transparent opacity={0.75} depthWrite={false} />
+            </mesh>
+            {/* Back Wall AO */}
+            <mesh position={[0, 0.002, -pd / 2 + 0.35]} rotation={[-Math.PI / 2, 0, -Math.PI / 2]}>
+              <planeGeometry args={[0.7, pw]} />
+              <meshBasicMaterial map={wallFloorEdgeAOTex} transparent opacity={0.75} depthWrite={false} />
+            </mesh>
+          </>
+        )}
 
         {/* Ceiling - Matte Charcoal Black */}
         <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, h, 0]}>
@@ -513,6 +535,22 @@ function RoomStructureMesh({
         <primitive object={floorMaterial} attach="material" />
       </mesh>
 
+      {/* 1.1 Wall-to-Floor Junction Baseboard Ambient Occlusion Crevice Shadows */}
+      {wallFloorEdgeAOTex && (
+        <>
+          {/* Left Wall Floor AO Strip */}
+          <mesh position={[-w / 2 + 0.35, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.7, d]} />
+            <meshBasicMaterial map={wallFloorEdgeAOTex} transparent opacity={0.75} depthWrite={false} />
+          </mesh>
+          {/* Right Wall Floor AO Strip */}
+          <mesh position={[w / 2 - 0.35, 0.002, 0]} rotation={[-Math.PI / 2, 0, Math.PI]}>
+            <planeGeometry args={[0.7, d]} />
+            <meshBasicMaterial map={wallFloorEdgeAOTex} transparent opacity={0.75} depthWrite={false} />
+          </mesh>
+        </>
+      )}
+
       {/* 2. Ceiling - Matte Charcoal Black Industrial Museum Roof */}
       <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, h, 0]}>
         <planeGeometry args={[w, d]} />
@@ -534,11 +572,11 @@ function RoomStructureMesh({
       {/* 5. Two Central Freestanding Exhibition Partition Islands (ผนังลอยกลางห้อง 2 แถว แขวนรวม 12 ภาพ) */}
       {[6.0, -6.0].map((pz, pi) => (
         <group key={`partition-${pi}`} position={[0, 0, pz]}>
-          {/* Soft Base Drop Shadow on Floor under Freestanding Partition */}
-          {benchShadowTex && (
+          {/* Dedicated Architectural Ambient Occlusion Contact Shadow on Floor under Partition */}
+          {partitionShadowTex && (
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
-              <planeGeometry args={[6.2, 1.4]} />
-              <meshBasicMaterial map={benchShadowTex} transparent opacity={0.65} depthWrite={false} />
+              <planeGeometry args={[6.0, 1.2]} />
+              <meshBasicMaterial map={partitionShadowTex} transparent opacity={0.92} depthWrite={false} />
             </mesh>
           )}
           {/* Floating White Exhibition Partition Wall */}
@@ -1559,6 +1597,8 @@ export function Modern3DGalleryEngine({
   const epoxyFloorTex = useMemo(() => createWhiteEpoxyFloorTexture(), []);
   const benchShadowTex = useMemo(() => createFloorBenchContactShadowTexture(), []);
   const pedestalShadowTex = useMemo(() => createFloorPedestalContactShadowTexture(), []);
+  const partitionShadowTex = useMemo(() => createPartitionContactShadowTexture(), []);
+  const wallFloorEdgeAOTex = useMemo(() => createWallFloorEdgeAOTexture(), []);
   const wallAOTex = useMemo(() => createPlasterWallAOMap(), []);
   const wallBumpTex = useMemo(() => createPlasterBumpMap(), []);
 
@@ -1851,6 +1891,8 @@ export function Modern3DGalleryEngine({
                   epoxyFloorTex={epoxyFloorTex}
                   benchShadowTex={benchShadowTex}
                   pedestalShadowTex={pedestalShadowTex}
+                  partitionShadowTex={partitionShadowTex}
+                  wallFloorEdgeAOTex={wallFloorEdgeAOTex}
                   wallAOTex={wallAOTex}
                   wallBumpTex={wallBumpTex}
                   spotlightIntensity={activeSpotlightIntensity}

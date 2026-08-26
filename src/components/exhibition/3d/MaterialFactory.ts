@@ -113,7 +113,7 @@ export function createPlasterWallAOMap(): THREE.CanvasTexture | null {
   return texture;
 }
 
-// 3. Contact Shadow Texture for 3D Artwork Frames
+// 3. Contact Shadow Texture for 3D Artwork Frames (Dual-layer Soft Ambient Penumbra)
 export function createContactShadowTexture(): THREE.CanvasTexture | null {
   if (typeof document === 'undefined') return null;
 
@@ -124,13 +124,23 @@ export function createContactShadowTexture(): THREE.CanvasTexture | null {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
-  const grad = ctx.createRadialGradient(size / 2, size / 2, 20, size / 2, size / 2, size / 2 - 10);
-  grad.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
-  grad.addColorStop(0.4, 'rgba(0, 0, 0, 0.22)');
-  grad.addColorStop(0.8, 'rgba(0, 0, 0, 0.05)');
-  grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+  // Broad soft ambient penumbra
+  const broadGrad = ctx.createRadialGradient(size / 2, size / 2, 20, size / 2, size / 2, size / 2 - 8);
+  broadGrad.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+  broadGrad.addColorStop(0.3, 'rgba(0, 0, 0, 0.42)');
+  broadGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.12)');
+  broadGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
 
-  ctx.fillStyle = grad;
+  ctx.fillStyle = broadGrad;
+  ctx.fillRect(0, 0, size, size);
+
+  // Sharp inner core occlusion directly behind the wooden frame molding
+  const coreGrad = ctx.createRadialGradient(size / 2, size / 2, 10, size / 2, size / 2, size * 0.38);
+  coreGrad.addColorStop(0, 'rgba(0, 0, 0, 0.85)');
+  coreGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.45)');
+  coreGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+  ctx.fillStyle = coreGrad;
   ctx.fillRect(0, 0, size, size);
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -339,5 +349,95 @@ export function createFloorPedestalContactShadowTexture(): THREE.CanvasTexture |
   ctx.fill();
 
   const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
+
+// 9. Dedicated Architectural Contact AO Shadow for Central Partitions
+export function createPartitionContactShadowTexture(): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+
+  const width = 512;
+  const height = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Soft diffuse outer ambient occlusion envelope
+  const outerGrad = ctx.createLinearGradient(0, 0, 0, height);
+  outerGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  outerGrad.addColorStop(0.2, 'rgba(0, 0, 0, 0.3)');
+  outerGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.75)');
+  outerGrad.addColorStop(0.8, 'rgba(0, 0, 0, 0.3)');
+  outerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  ctx.fillStyle = outerGrad;
+  ctx.fillRect(16, 0, width - 32, height);
+
+  // Dark sharp contact seam directly beneath the 0.38m partition footprint
+  const coreGrad = ctx.createLinearGradient(0, 0, 0, height);
+  coreGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  coreGrad.addColorStop(0.32, 'rgba(0, 0, 0, 0.65)');
+  coreGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.96)');
+  coreGrad.addColorStop(0.68, 'rgba(0, 0, 0, 0.65)');
+  coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  ctx.fillStyle = coreGrad;
+  ctx.fillRect(24, height * 0.22, width - 48, height * 0.56);
+
+  // Soft rounded capsule ends
+  const leftCap = ctx.createRadialGradient(24, height / 2, 4, 24, height / 2, 28);
+  leftCap.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
+  leftCap.addColorStop(0.5, 'rgba(0, 0, 0, 0.45)');
+  leftCap.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = leftCap;
+  ctx.beginPath();
+  ctx.arc(24, height / 2, 28, 0, Math.PI * 2);
+  ctx.fill();
+
+  const rightCap = ctx.createRadialGradient(width - 24, height / 2, 4, width - 24, height / 2, 28);
+  rightCap.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
+  rightCap.addColorStop(0.5, 'rgba(0, 0, 0, 0.45)');
+  rightCap.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = rightCap;
+  ctx.beginPath();
+  ctx.arc(width - 24, height / 2, 28, 0, Math.PI * 2);
+  ctx.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
+
+// 10. Wall-to-Floor Junction Baseboard Ambient Occlusion Strip
+export function createWallFloorEdgeAOTexture(): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+
+  const width = 64;
+  const height = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Gradient from dark wall crevice (left = 0) fading smoothly into floor
+  const grad = ctx.createLinearGradient(0, 0, width, 0);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 0.72)');
+  grad.addColorStop(0.18, 'rgba(0, 0, 0, 0.42)');
+  grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.15)');
+  grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 8);
   return texture;
 }
