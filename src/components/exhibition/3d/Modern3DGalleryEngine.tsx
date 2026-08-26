@@ -179,6 +179,23 @@ function getRoomSignTexture(roomIndex: number): THREE.CanvasTexture | null {
   return t;
 }
 
+// Module-level static architectural materials singleton (zero allocation overhead across all rooms)
+const roomArchMaterials = {
+  baseboard: new THREE.MeshStandardMaterial({ color: '#2A2622', roughness: 0.5, metalness: 0.1 }),
+  trim: new THREE.MeshStandardMaterial({ color: '#2A2622', roughness: 0.5, metalness: 0.2 }),
+  track: new THREE.MeshStandardMaterial({ color: '#1C1A18', roughness: 0.4, metalness: 0.6 }),
+  head: new THREE.MeshStandardMaterial({ color: '#26221E', roughness: 0.35, metalness: 0.7 }),
+  lens: new THREE.MeshStandardMaterial({ color: '#FFF3DD', emissive: '#FFF3DD', emissiveIntensity: 1.6 }),
+  benchTop: new THREE.MeshStandardMaterial({ color: '#3A3026', roughness: 0.5 }),
+  benchLeg: new THREE.MeshStandardMaterial({ color: '#1C1814', roughness: 0.4, metalness: 0.5 }),
+  pot: new THREE.MeshStandardMaterial({ color: '#8F857A', roughness: 0.85 }),
+  soil: new THREE.MeshStandardMaterial({ color: '#241B12', roughness: 1.0 }),
+  leaf: new THREE.MeshStandardMaterial({ color: '#3E5A33', roughness: 0.8 }),
+  ped: new THREE.MeshStandardMaterial({ color: '#DEDBD4', roughness: 0.35 }),
+  bronze: new THREE.MeshPhysicalMaterial({ color: '#8A6A34', roughness: 0.25, metalness: 0.9, clearcoat: 0.4 }),
+  darkSteel: new THREE.MeshPhysicalMaterial({ color: '#33363B', roughness: 0.3, metalness: 0.85, clearcoat: 0.3 }),
+};
+
 function RoomStructureMesh({
   config,
   terrazzoTex,
@@ -266,61 +283,6 @@ function RoomStructureMesh({
         map: terrazzoTex || undefined,
       }),
     [terrazzoTex]
-  );
-
-  const baseboardMaterial = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: '#2A2622',
-        roughness: 0.5,
-        metalness: 0.1,
-      }),
-    []
-  );
-
-  const trimMat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: '#2A2622',
-        roughness: 0.5,
-        metalness: 0.2,
-      }),
-    []
-  );
-
-  const trackMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#1C1A18', roughness: 0.4, metalness: 0.6 }),
-    []
-  );
-  const headMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#26221E', roughness: 0.35, metalness: 0.7 }),
-    []
-  );
-  const lensMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#FFF3DD', emissive: '#FFF3DD', emissiveIntensity: 1.6 }),
-    []
-  );
-
-  const benchTopMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#3A3026', roughness: 0.5 }),
-    []
-  );
-  const benchLegMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#1C1814', roughness: 0.4, metalness: 0.5 }),
-    []
-  );
-
-  const potMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#8F857A', roughness: 0.85 }), []);
-  const soilMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#241B12', roughness: 1.0 }), []);
-  const leafMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#3E5A33', roughness: 0.8 }), []);
-  const pedMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#DEDBD4', roughness: 0.35 }), []);
-  const bronzeMat = useMemo(
-    () => new THREE.MeshPhysicalMaterial({ color: '#8A6A34', roughness: 0.25, metalness: 0.9, clearcoat: 0.4 }),
-    []
-  );
-  const darkSteelMat = useMemo(
-    () => new THREE.MeshPhysicalMaterial({ color: '#33363B', roughness: 0.3, metalness: 0.85, clearcoat: 0.3 }),
-    []
   );
 
   // Exhibit room sign texture (retrieved from module cache)
@@ -414,15 +376,15 @@ function RoomStructureMesh({
           {/* Flush Portal Archway */}
           <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
             <boxGeometry args={[0.08, DOOR_H, 0.08]} />
-            <primitive object={trimMat} attach="material" />
+            <primitive object={roomArchMaterials.trim} attach="material" />
           </mesh>
           <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
             <boxGeometry args={[0.08, DOOR_H, 0.08]} />
-            <primitive object={trimMat} attach="material" />
+            <primitive object={roomArchMaterials.trim} attach="material" />
           </mesh>
           <mesh position={[0, DOOR_H + 0.04, 0]}>
             <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.08]} />
-            <primitive object={trimMat} attach="material" />
+            <primitive object={roomArchMaterials.trim} attach="material" />
           </mesh>
         </group>
 
@@ -430,11 +392,11 @@ function RoomStructureMesh({
         <group position={[0, 0, 0]}>
           <mesh position={[0, 0.55, 0]}>
             <boxGeometry args={[0.9, 1.1, 0.9]} />
-            <primitive object={pedMat} attach="material" />
+            <primitive object={roomArchMaterials.ped} attach="material" />
           </mesh>
           <mesh position={[0, 1.55, 0]} rotation={[0.4, 0.6, 0]}>
             <torusKnotGeometry args={[0.38, 0.11, 120, 16]} />
-            <primitive object={bronzeMat} attach="material" />
+            <primitive object={roomArchMaterials.bronze} attach="material" />
           </mesh>
         </group>
 
@@ -446,11 +408,11 @@ function RoomStructureMesh({
           <group key={`pav-plant-${pi}`} position={[px, 0, pz]}>
             <mesh position={[0, 0.275, 0]}>
               <cylinderGeometry args={[0.34, 0.26, 0.55, 12]} />
-              <primitive object={potMat} attach="material" />
+              <primitive object={roomArchMaterials.pot} attach="material" />
             </mesh>
             <mesh position={[0, 0.54, 0]}>
               <cylinderGeometry args={[0.3, 0.3, 0.04, 12]} />
-              <primitive object={soilMat} attach="material" />
+              <primitive object={roomArchMaterials.soil} attach="material" />
             </mesh>
             {Array.from({ length: 6 }).map((_, f) => (
               <mesh
@@ -463,7 +425,7 @@ function RoomStructureMesh({
                 scale={[1, 0.75, 1]}
               >
                 <sphereGeometry args={[0.28 - f * 0.02, 8, 6]} />
-                <primitive object={leafMat} attach="material" />
+                <primitive object={roomArchMaterials.leaf} attach="material" />
               </mesh>
             ))}
           </group>
@@ -507,7 +469,7 @@ function RoomStructureMesh({
             {/* Rail */}
             <mesh position={[tx, h - 0.05, 0]}>
               <boxGeometry args={[0.045, 0.1, d]} />
-              <primitive object={trackMat} attach="material" />
+              <primitive object={roomArchMaterials.track} attach="material" />
             </mesh>
             {/* Fixture heads pointing at each artwork */}
             {arts.map((a, ai) => (
@@ -518,15 +480,15 @@ function RoomStructureMesh({
               >
                 <mesh position={[0, -0.035, 0]}>
                   <boxGeometry args={[0.035, 0.07, 0.035]} />
-                  <primitive object={trackMat} attach="material" />
+                  <primitive object={roomArchMaterials.track} attach="material" />
                 </mesh>
                 <mesh position={[0, 0, 0.11]} rotation={[Math.PI / 2, 0, 0]}>
                   <cylinderGeometry args={[0.038, 0.06, 0.26, 14]} />
-                  <primitive object={headMat} attach="material" />
+                  <primitive object={roomArchMaterials.head} attach="material" />
                 </mesh>
                 <mesh position={[0, 0, 0.242]}>
                   <circleGeometry args={[0.048, 14]} />
-                  <primitive object={lensMat} attach="material" />
+                  <primitive object={roomArchMaterials.lens} attach="material" />
                 </mesh>
               </group>
             ))}
@@ -560,11 +522,11 @@ function RoomStructureMesh({
       {/* Baseboards Left & Right */}
       <mesh position={[-w / 2 + 0.03, 0.06, 0]}>
         <boxGeometry args={[0.06, 0.12, d]} />
-        <primitive object={baseboardMaterial} attach="material" />
+        <primitive object={roomArchMaterials.baseboard} attach="material" />
       </mesh>
       <mesh position={[w / 2 - 0.03, 0.06, 0]}>
         <boxGeometry args={[0.06, 0.12, d]} />
-        <primitive object={baseboardMaterial} attach="material" />
+        <primitive object={roomArchMaterials.baseboard} attach="material" />
       </mesh>
 
       {/* Front Wall (z = d/2) */}
@@ -619,15 +581,15 @@ function RoomStructureMesh({
           {/* Architectural Portal Archway (Flush & Clean Single Arch) */}
           <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
             <boxGeometry args={[0.08, DOOR_H, 0.08]} />
-            <primitive object={trimMat} attach="material" />
+            <primitive object={roomArchMaterials.trim} attach="material" />
           </mesh>
           <mesh position={[DOOR_W / 2 + 0.04, DOOR_H / 2, 0]}>
             <boxGeometry args={[0.08, DOOR_H, 0.08]} />
-            <primitive object={trimMat} attach="material" />
+            <primitive object={roomArchMaterials.trim} attach="material" />
           </mesh>
           <mesh position={[0, DOOR_H + 0.04, 0]}>
             <boxGeometry args={[DOOR_W + 0.16, 0.08, 0.08]} />
-            <primitive object={trimMat} attach="material" />
+            <primitive object={roomArchMaterials.trim} attach="material" />
           </mesh>
         </group>
       )}
@@ -651,12 +613,12 @@ function RoomStructureMesh({
         <group key={`bench-${i}`} position={[0, 0, bz]}>
           <mesh position={[0, 0.46, 0]} castShadow receiveShadow>
             <boxGeometry args={[3.0, 0.12, 0.95]} />
-            <primitive object={benchTopMat} attach="material" />
+            <primitive object={roomArchMaterials.benchTop} attach="material" />
           </mesh>
           {[[-1.32, -0.36], [1.32, -0.36], [-1.32, 0.36], [1.32, 0.36]].map(([lx, lz], li) => (
             <mesh key={`leg-${li}`} position={[lx, 0.2, lz]}>
               <boxGeometry args={[0.07, 0.4, 0.07]} />
-              <primitive object={benchLegMat} attach="material" />
+              <primitive object={roomArchMaterials.benchLeg} attach="material" />
             </mesh>
           ))}
         </group>
@@ -672,11 +634,11 @@ function RoomStructureMesh({
         <group key={`plant-${pi}`} position={[px, 0, pz]}>
           <mesh position={[0, 0.275, 0]}>
             <cylinderGeometry args={[0.34, 0.26, 0.55, 12]} />
-            <primitive object={potMat} attach="material" />
+            <primitive object={roomArchMaterials.pot} attach="material" />
           </mesh>
           <mesh position={[0, 0.54, 0]}>
             <cylinderGeometry args={[0.3, 0.3, 0.04, 12]} />
-            <primitive object={soilMat} attach="material" />
+            <primitive object={roomArchMaterials.soil} attach="material" />
           </mesh>
           {Array.from({ length: 6 }).map((_, f) => (
             <mesh
@@ -689,7 +651,7 @@ function RoomStructureMesh({
               scale={[1, 0.75, 1]}
             >
               <sphereGeometry args={[0.28 - f * 0.02, 8, 6]} />
-              <primitive object={leafMat} attach="material" />
+              <primitive object={roomArchMaterials.leaf} attach="material" />
             </mesh>
           ))}
         </group>
@@ -703,17 +665,17 @@ function RoomStructureMesh({
         <group key={`sculpt-${si}`} position={[Number(sx), 0, Number(sz)]}>
           <mesh position={[0, 0.525, 0]}>
             <boxGeometry args={[0.55, 1.05, 0.55]} />
-            <primitive object={pedMat} attach="material" />
+            <primitive object={roomArchMaterials.ped} attach="material" />
           </mesh>
           {type === 'bronze' ? (
             <mesh position={[0, 1.42, 0]} rotation={[0.6, 0, 0]}>
               <torusKnotGeometry args={[0.24, 0.08, 90, 14]} />
-              <primitive object={bronzeMat} attach="material" />
+              <primitive object={roomArchMaterials.bronze} attach="material" />
             </mesh>
           ) : (
             <mesh position={[0, 1.4, 0]} rotation={[0, 0, 0.3]}>
               <icosahedronGeometry args={[0.3, 1]} />
-              <primitive object={darkSteelMat} attach="material" />
+              <primitive object={roomArchMaterials.darkSteel} attach="material" />
             </mesh>
           )}
         </group>

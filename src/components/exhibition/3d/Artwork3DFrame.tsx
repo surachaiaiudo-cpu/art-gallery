@@ -186,6 +186,16 @@ function ArtworkPicturePlane({
   );
 }
 
+const frameMatShared = {
+  mountMat: new THREE.MeshStandardMaterial({ color: '#FAF8F5', roughness: 0.9 }),
+  backingNormal: new THREE.MeshStandardMaterial({ color: '#1A1816', roughness: 0.4, metalness: 0.1 }),
+  backingHovered: new THREE.MeshStandardMaterial({ color: '#2C2216', roughness: 0.4, metalness: 0.1 }),
+  moldingNormal: new THREE.MeshStandardMaterial({ color: '#2A2016', roughness: 0.4, metalness: 0.2 }),
+  moldingHovered: new THREE.MeshStandardMaterial({ color: '#D4AF37', roughness: 0.25, metalness: 0.6 }),
+  brassBracket: new THREE.MeshStandardMaterial({ color: '#D4AF37', roughness: 0.25, metalness: 0.8 }),
+  steelCable: new THREE.MeshStandardMaterial({ color: '#D1CCC0', roughness: 0.2, metalness: 0.9 }),
+};
+
 // -------------------------------------------------------------
 // Interactive 3D Artwork Frame with Museum Track Spotlight & Placard
 // -------------------------------------------------------------
@@ -219,6 +229,16 @@ export const Artwork3DFrame = React.memo(function Artwork3DFrame({
     );
   }, [artwork.title, artwork.artist?.name, artwork.yearCreated]);
 
+  // Placard Material with cached texture
+  const placardMat = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      map: placardTexture || undefined,
+      color: placardTexture ? '#FFFFFF' : '#F4F2EB',
+      roughness: 0.4,
+      metalness: 0.05,
+    });
+  }, [placardTexture]);
+
   useEffect(() => {
     if (hovered) {
       document.body.style.cursor = 'pointer';
@@ -229,6 +249,10 @@ export const Artwork3DFrame = React.memo(function Artwork3DFrame({
       document.body.style.cursor = 'default';
     };
   }, [hovered]);
+
+  const isHighlighted = hovered || isFocused;
+  const backingMat = isHighlighted ? frameMatShared.backingHovered : frameMatShared.backingNormal;
+  const moldingMat = isHighlighted ? frameMatShared.moldingHovered : frameMatShared.moldingNormal;
 
   return (
     <group
@@ -263,55 +287,35 @@ export const Artwork3DFrame = React.memo(function Artwork3DFrame({
       {/* 2. Frame Backing Board */}
       <mesh position={[0, 0, 0]} castShadow receiveShadow>
         <boxGeometry args={[frameWidth + 0.16, frameHeight + 0.16, 0.03]} />
-        <meshStandardMaterial
-          color={hovered || isFocused ? '#2C2216' : '#1A1816'}
-          roughness={0.4}
-          metalness={0.1}
-        />
+        <primitive object={backingMat} attach="material" />
       </mesh>
 
       {/* 3. Passe-partout (Mount Mat) */}
       <mesh position={[0, 0, 0.016]}>
         <planeGeometry args={[frameWidth + 0.1, frameHeight + 0.1]} />
-        <meshStandardMaterial color="#FAF8F5" roughness={0.9} />
+        <primitive object={frameMatShared.mountMat} attach="material" />
       </mesh>
 
       {/* 4. Outer Gold / Dark Walnut Frame Moldings */}
       {/* Top Molding */}
       <mesh position={[0, frameHeight / 2 + 0.05, 0.02]} castShadow>
         <boxGeometry args={[frameWidth + 0.18, 0.06, 0.04]} />
-        <meshStandardMaterial
-          color={hovered || isFocused ? '#D4AF37' : '#2A2016'}
-          roughness={hovered ? 0.25 : 0.4}
-          metalness={hovered ? 0.6 : 0.2}
-        />
+        <primitive object={moldingMat} attach="material" />
       </mesh>
       {/* Bottom Molding */}
       <mesh position={[0, -(frameHeight / 2 + 0.05), 0.02]} castShadow>
         <boxGeometry args={[frameWidth + 0.18, 0.06, 0.04]} />
-        <meshStandardMaterial
-          color={hovered || isFocused ? '#D4AF37' : '#2A2016'}
-          roughness={hovered ? 0.25 : 0.4}
-          metalness={hovered ? 0.6 : 0.2}
-        />
+        <primitive object={moldingMat} attach="material" />
       </mesh>
       {/* Left Molding */}
       <mesh position={[-(frameWidth / 2 + 0.05), 0, 0.02]} castShadow>
         <boxGeometry args={[0.06, frameHeight + 0.06, 0.04]} />
-        <meshStandardMaterial
-          color={hovered || isFocused ? '#D4AF37' : '#2A2016'}
-          roughness={hovered ? 0.25 : 0.4}
-          metalness={hovered ? 0.6 : 0.2}
-        />
+        <primitive object={moldingMat} attach="material" />
       </mesh>
       {/* Right Molding */}
       <mesh position={[frameWidth / 2 + 0.05, 0, 0.02]} castShadow>
         <boxGeometry args={[0.06, frameHeight + 0.06, 0.04]} />
-        <meshStandardMaterial
-          color={hovered || isFocused ? '#D4AF37' : '#2A2016'}
-          roughness={hovered ? 0.25 : 0.4}
-          metalness={hovered ? 0.6 : 0.2}
-        />
+        <primitive object={moldingMat} attach="material" />
       </mesh>
 
       {/* 5. Actual Mounted Artwork Picture Plane */}
@@ -327,12 +331,7 @@ export const Artwork3DFrame = React.memo(function Artwork3DFrame({
       <group position={[0, -(frameHeight / 2 + 0.22), 0.02]}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[1.2, 0.24, 0.02]} />
-          <meshStandardMaterial
-            map={placardTexture || undefined}
-            color={placardTexture ? '#FFFFFF' : '#F4F2EB'}
-            roughness={0.4}
-            metalness={0.05}
-          />
+          <primitive object={placardMat} attach="material" />
         </mesh>
       </group>
 
@@ -341,23 +340,23 @@ export const Artwork3DFrame = React.memo(function Artwork3DFrame({
         {/* Left Brass Mounting Bracket */}
         <mesh position={[-frameWidth * 0.32, 0.04, 0.01]} castShadow>
           <boxGeometry args={[0.05, 0.08, 0.03]} />
-          <meshStandardMaterial color="#D4AF37" roughness={0.25} metalness={0.8} />
+          <primitive object={frameMatShared.brassBracket} attach="material" />
         </mesh>
         {/* Left Stainless Steel Suspension Cable (Reaching up to ceiling) */}
         <mesh position={[-frameWidth * 0.32, 2.5, 0.01]}>
           <cylinderGeometry args={[0.005, 0.005, 5.0, 12]} />
-          <meshStandardMaterial color="#D1CCC0" roughness={0.2} metalness={0.9} />
+          <primitive object={frameMatShared.steelCable} attach="material" />
         </mesh>
 
         {/* Right Brass Mounting Bracket */}
         <mesh position={[frameWidth * 0.32, 0.04, 0.01]} castShadow>
           <boxGeometry args={[0.05, 0.08, 0.03]} />
-          <meshStandardMaterial color="#D4AF37" roughness={0.25} metalness={0.8} />
+          <primitive object={frameMatShared.brassBracket} attach="material" />
         </mesh>
         {/* Right Stainless Steel Suspension Cable (Reaching up to ceiling) */}
         <mesh position={[frameWidth * 0.32, 2.5, 0.01]}>
           <cylinderGeometry args={[0.005, 0.005, 5.0, 12]} />
-          <meshStandardMaterial color="#D1CCC0" roughness={0.2} metalness={0.9} />
+          <primitive object={frameMatShared.steelCable} attach="material" />
         </mesh>
       </group>
 
