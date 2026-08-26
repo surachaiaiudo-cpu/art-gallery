@@ -11,9 +11,7 @@ import {
   RoomGeometryConfig,
 } from './types';
 import {
-  createWhiteEpoxyFloorTexture,
-  createFloorBenchContactShadowTexture,
-  createFloorPedestalContactShadowTexture,
+  createTerrazzoFloorTexture,
   createPlasterWallAOMap,
   createPlasterBumpMap,
 } from './MaterialFactory';
@@ -181,40 +179,32 @@ function getRoomSignTexture(roomIndex: number): THREE.CanvasTexture | null {
   return t;
 }
 
-// Module-level static architectural materials singleton (Modern White Cube aesthetic)
+// Module-level static architectural materials singleton (zero allocation overhead across all rooms)
 const roomArchMaterials = {
-  baseboard: new THREE.MeshStandardMaterial({ color: '#E4E7EA', roughness: 0.35, metalness: 0.1 }),
-  trim: new THREE.MeshStandardMaterial({ color: '#16181B', roughness: 0.3, metalness: 0.2 }),
-  track: new THREE.MeshStandardMaterial({ color: '#E2E6EA', roughness: 0.2, metalness: 0.85 }),
-  trackRailBlack: new THREE.MeshStandardMaterial({ color: '#161719', roughness: 0.35, metalness: 0.8 }),
-  head: new THREE.MeshStandardMaterial({ color: '#F0F3F6', roughness: 0.25, metalness: 0.7 }),
-  lens: new THREE.MeshStandardMaterial({ color: '#FFF8EB', emissive: '#FFF8EB', emissiveIntensity: 2.2 }),
-  benchTop: new THREE.MeshStandardMaterial({ color: '#7A522E', roughness: 0.55, metalness: 0.05 }), // Warm teak/oak wood
-  benchLeg: new THREE.MeshStandardMaterial({ color: '#141517', roughness: 0.3, metalness: 0.85 }), // Matte black industrial metal
-  pot: new THREE.MeshStandardMaterial({ color: '#E0E3E6', roughness: 0.4 }),
-  soil: new THREE.MeshStandardMaterial({ color: '#1E1914', roughness: 1.0 }),
-  leaf: new THREE.MeshStandardMaterial({ color: '#2C4A26', roughness: 0.75 }),
-  facetedPedestal: new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.22, metalness: 0.05 }), // Crisp white faceted geometric pedestal
-  bronze: new THREE.MeshPhysicalMaterial({ color: '#C49A45', roughness: 0.2, metalness: 0.95, clearcoat: 0.6 }),
-  darkSteel: new THREE.MeshPhysicalMaterial({ color: '#1A1C20', roughness: 0.25, metalness: 0.9, clearcoat: 0.5 }),
-  windowGlass: new THREE.MeshPhysicalMaterial({ color: '#EAF3FC', transmission: 0.9, opacity: 0.4, transparent: true, roughness: 0.05, ior: 1.5 }),
-  windowFrame: new THREE.MeshStandardMaterial({ color: '#181A1D', roughness: 0.35, metalness: 0.7 }),
-  windowDaylightGlow: new THREE.MeshBasicMaterial({ color: '#F8FCFF' }),
+  baseboard: new THREE.MeshStandardMaterial({ color: '#2A2622', roughness: 0.5, metalness: 0.1 }),
+  trim: new THREE.MeshStandardMaterial({ color: '#2A2622', roughness: 0.5, metalness: 0.2 }),
+  track: new THREE.MeshStandardMaterial({ color: '#1C1A18', roughness: 0.4, metalness: 0.6 }),
+  head: new THREE.MeshStandardMaterial({ color: '#26221E', roughness: 0.35, metalness: 0.7 }),
+  lens: new THREE.MeshStandardMaterial({ color: '#FFF3DD', emissive: '#FFF3DD', emissiveIntensity: 1.6 }),
+  benchTop: new THREE.MeshStandardMaterial({ color: '#3A3026', roughness: 0.5 }),
+  benchLeg: new THREE.MeshStandardMaterial({ color: '#1C1814', roughness: 0.4, metalness: 0.5 }),
+  pot: new THREE.MeshStandardMaterial({ color: '#8F857A', roughness: 0.85 }),
+  soil: new THREE.MeshStandardMaterial({ color: '#241B12', roughness: 1.0 }),
+  leaf: new THREE.MeshStandardMaterial({ color: '#3E5A33', roughness: 0.8 }),
+  ped: new THREE.MeshStandardMaterial({ color: '#DEDBD4', roughness: 0.35 }),
+  bronze: new THREE.MeshPhysicalMaterial({ color: '#8A6A34', roughness: 0.25, metalness: 0.9, clearcoat: 0.4 }),
+  darkSteel: new THREE.MeshPhysicalMaterial({ color: '#33363B', roughness: 0.3, metalness: 0.85, clearcoat: 0.3 }),
 };
 
 function RoomStructureMesh({
   config,
-  epoxyFloorTex,
-  benchShadowTex,
-  pedestalShadowTex,
+  terrazzoTex,
   wallAOTex,
   wallBumpTex,
   spotlightIntensity = 1.0,
 }: {
   config: RoomGeometryConfig;
-  epoxyFloorTex: THREE.CanvasTexture | null;
-  benchShadowTex: THREE.CanvasTexture | null;
-  pedestalShadowTex: THREE.CanvasTexture | null;
+  terrazzoTex: THREE.CanvasTexture | null;
   wallAOTex: THREE.CanvasTexture | null;
   wallBumpTex: THREE.CanvasTexture | null;
   spotlightIntensity?: number;
@@ -249,14 +239,14 @@ function RoomStructureMesh({
   const wallBaseMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#F8F9FB', // Crisp contemporary gallery white
+        color: '#E8E4DC',
         roughness: 0.92,
-        metalness: 0.01,
+        metalness: 0.02,
         side: THREE.DoubleSide,
         aoMap: wallAOTex || undefined,
-        aoMapIntensity: 0.45,
+        aoMapIntensity: 0.8,
         bumpMap: wallBumpTex || undefined,
-        bumpScale: 0.002,
+        bumpScale: 0.003,
       }),
     [wallAOTex, wallBumpTex]
   );
@@ -283,28 +273,16 @@ function RoomStructureMesh({
     return m;
   }, [wallBaseMat, lightmaps.right, spotlightIntensity]);
 
-  // Modern High-Gloss White Epoxy Floor Material
   const floorMaterial = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#F2F5F8',
-        roughness: 0.16, // High-gloss specular sheen
-        metalness: 0.08,
-        side: THREE.DoubleSide,
-        map: epoxyFloorTex || undefined,
-      }),
-    [epoxyFloorTex]
-  );
-
-  // Modern Matte Black / Dark Charcoal Exposed Ceiling Material
-  const ceilingMaterial = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: '#131416',
-        roughness: 0.95,
+        color: '#6B5138',
+        roughness: 0.45,
         metalness: 0.05,
+        side: THREE.DoubleSide,
+        map: terrazzoTex || undefined,
       }),
-    []
+    [terrazzoTex]
   );
 
   // Exhibit room sign texture (retrieved from module cache)
@@ -320,41 +298,37 @@ function RoomStructureMesh({
 
     return (
       <group>
-        {/* Floor - Glossy White Epoxy */}
+        {/* Floor */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[pw, pd]} />
           <primitive object={floorMaterial} attach="material" />
         </mesh>
 
-        {/* Ceiling - Matte Charcoal Black */}
+        {/* Ceiling with warm skylight */}
         <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, h, 0]}>
           <planeGeometry args={[pw, pd]} />
-          <primitive object={ceilingMaterial} attach="material" />
+          <meshStandardMaterial color="#F5F5F0" roughness={0.95} />
         </mesh>
 
-        {/* Modern Suspended Ceiling Track Light Grid */}
-        <group position={[0, h - 0.08, 0]}>
-          {[-pw / 4, pw / 4].map((gx, gi) => (
-            <mesh key={`p-track-x-${gi}`} position={[gx, 0, 0]}>
-              <boxGeometry args={[0.06, 0.08, pd - 2]} />
-              <primitive object={roomArchMaterials.track} attach="material" />
-            </mesh>
-          ))}
-          {[-pd / 4, pd / 4].map((gz, gi) => (
-            <mesh key={`p-track-z-${gi}`} position={[0, 0, gz]}>
-              <boxGeometry args={[pw - 2, 0.08, 0.06]} />
-              <primitive object={roomArchMaterials.track} attach="material" />
-            </mesh>
-          ))}
+        {/* Central Skylight Panel */}
+        <group position={[0, h - 0.03, 0]}>
+          <mesh>
+            <boxGeometry args={[4.5, 0.04, 4.5]} />
+            <meshStandardMaterial color="#FFFFFF" emissive="#FFF9F0" emissiveIntensity={0.9} />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, -0.03, 0]}>
+            <planeGeometry args={[4.5, 4.5]} />
+            <meshBasicMaterial color="#FFF9F0" />
+          </mesh>
         </group>
 
-        {/* Pavilion Ambient Downlight */}
+        {/* Pavilion Wash Light */}
         <pointLight
           position={[0, h - 0.4, 0]}
-          intensity={2.8}
+          intensity={3.2}
           distance={20}
           decay={1.2}
-          color="#FFF8F0"
+          color="#FFF6E8"
         />
 
         {/* Front Wall (z = +pd/2) -> Entrance from previous room */}
@@ -373,34 +347,11 @@ function RoomStructureMesh({
           </mesh>
         </group>
 
-        {/* Back Wall (z = -pd/2) -> Architectural Daylight Window / Solid wall */}
-        <group position={[0, 0, -pd / 2]}>
-          <mesh position={[0, h / 2, 0]} receiveShadow>
-            <planeGeometry args={[pw, h]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
-          {/* Daylight Atrium Window on Pavilion Back Wall */}
-          <group position={[0, h / 2, 0.02]}>
-            <mesh position={[0, 0, -0.04]}>
-              <planeGeometry args={[6.8, 3.8]} />
-              <primitive object={roomArchMaterials.windowDaylightGlow} attach="material" />
-            </mesh>
-            <mesh position={[0, 0, 0]}>
-              <planeGeometry args={[6.6, 3.6]} />
-              <primitive object={roomArchMaterials.windowGlass} attach="material" />
-            </mesh>
-            {[-2.0, 0, 2.0].map((mx, mi) => (
-              <mesh key={`p-mull-v-${mi}`} position={[mx, 0, 0.01]}>
-                <boxGeometry args={[0.06, 3.6, 0.04]} />
-                <primitive object={roomArchMaterials.windowFrame} attach="material" />
-              </mesh>
-            ))}
-            <mesh position={[0, 0, 0.01]}>
-              <boxGeometry args={[6.6, 0.06, 0.04]} />
-              <primitive object={roomArchMaterials.windowFrame} attach="material" />
-            </mesh>
-          </group>
-        </group>
+        {/* Back Wall (z = -pd/2) -> Solid wall */}
+        <mesh position={[0, h / 2, -pd / 2]} receiveShadow>
+          <planeGeometry args={[pw, h]} />
+          <primitive object={wallBaseMat} attach="material" />
+        </mesh>
 
         {/* Left Wall (x = -pw/2) -> Solid wall */}
         <mesh position={[-pw / 2, h / 2, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
@@ -422,7 +373,7 @@ function RoomStructureMesh({
             <planeGeometry args={[DOOR_W, h - DOOR_H]} />
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          {/* Flush Minimalist Portal Archway */}
+          {/* Flush Portal Archway */}
           <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
             <boxGeometry args={[0.08, DOOR_H, 0.08]} />
             <primitive object={roomArchMaterials.trim} attach="material" />
@@ -437,45 +388,30 @@ function RoomStructureMesh({
           </mesh>
         </group>
 
-        {/* Central Modern Faceted Polygon Pedestal with Floor Contact Shadow */}
+        {/* Central Masterpiece Sculpture on Grand Pedestal */}
         <group position={[0, 0, 0]}>
-          {/* Soft Radial Contact Shadow on Floor */}
-          {pedestalShadowTex && (
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-              <planeGeometry args={[2.2, 2.2]} />
-              <meshBasicMaterial map={pedestalShadowTex} transparent opacity={0.85} depthWrite={false} />
-            </mesh>
-          )}
-          {/* Faceted Geometric Sculpture Pedestal (Chiseled Modern Polygon) */}
-          <mesh position={[0, 0.48, 0]} castShadow receiveShadow>
-            <cylinderGeometry args={[0.56, 0.42, 0.96, 6]} />
-            <primitive object={roomArchMaterials.facetedPedestal} attach="material" />
+          <mesh position={[0, 0.55, 0]}>
+            <boxGeometry args={[0.9, 1.1, 0.9]} />
+            <primitive object={roomArchMaterials.ped} attach="material" />
           </mesh>
-          {/* Contemporary Bronze / Gold Sculpture */}
-          <mesh position={[0, 1.48, 0]} rotation={[0.4, 0.6, 0]}>
-            <torusKnotGeometry args={[0.36, 0.1, 120, 16]} />
+          <mesh position={[0, 1.55, 0]} rotation={[0.4, 0.6, 0]}>
+            <torusKnotGeometry args={[0.38, 0.11, 120, 16]} />
             <primitive object={roomArchMaterials.bronze} attach="material" />
           </mesh>
         </group>
 
-        {/* 2 Decorative Minimalist Plants */}
+        {/* 2 Decorative Plants on Solid Wall Corners */}
         {[
           [-pw / 2 + 1.2, -pd / 2 + 1.2],
           [-pw / 2 + 1.2, pd / 2 - 1.2],
         ].map(([px, pz], pi) => (
           <group key={`pav-plant-${pi}`} position={[px, 0, pz]}>
-            {pedestalShadowTex && (
-              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
-                <planeGeometry args={[1.2, 1.2]} />
-                <meshBasicMaterial map={pedestalShadowTex} transparent opacity={0.65} depthWrite={false} />
-              </mesh>
-            )}
             <mesh position={[0, 0.275, 0]}>
-              <cylinderGeometry args={[0.32, 0.24, 0.55, 12]} />
+              <cylinderGeometry args={[0.34, 0.26, 0.55, 12]} />
               <primitive object={roomArchMaterials.pot} attach="material" />
             </mesh>
             <mesh position={[0, 0.54, 0]}>
-              <cylinderGeometry args={[0.28, 0.28, 0.04, 12]} />
+              <cylinderGeometry args={[0.3, 0.3, 0.04, 12]} />
               <primitive object={roomArchMaterials.soil} attach="material" />
             </mesh>
             {Array.from({ length: 6 }).map((_, f) => (
@@ -488,7 +424,7 @@ function RoomStructureMesh({
                 ]}
                 scale={[1, 0.75, 1]}
               >
-                <sphereGeometry args={[0.26 - f * 0.02, 8, 6]} />
+                <sphereGeometry args={[0.28 - f * 0.02, 8, 6]} />
                 <primitive object={roomArchMaterials.leaf} attach="material" />
               </mesh>
             ))}
@@ -500,130 +436,46 @@ function RoomStructureMesh({
 
   return (
     <group>
-      {/* 1. Floor - High-Gloss White Epoxy with Reflective Specular */}
+      {/* Floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[w, d]} />
         <primitive object={floorMaterial} attach="material" />
       </mesh>
 
-      {/* 2. Ceiling - Matte Charcoal Black Industrial Museum Roof */}
+      {/* Ceiling */}
       <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, h, 0]}>
         <planeGeometry args={[w, d]} />
-        <primitive object={ceilingMaterial} attach="material" />
+        <meshStandardMaterial color="#F5F5F0" roughness={0.95} />
       </mesh>
 
-      {/* 3. Left Wall with Baked Lightmap (x = -w/2) */}
+      {/* Left Wall with Baked Lightmap (x = -w/2) */}
       <mesh position={[-w / 2, h / 2, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[d, h]} />
         <primitive object={wallMatLeft} attach="material" />
       </mesh>
 
-      {/* 4. Right Wall with Baked Lightmap (x = w/2) */}
+      {/* Right Wall with Baked Lightmap (x = w/2) */}
       <mesh position={[w / 2, h / 2, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[d, h]} />
         <primitive object={wallMatRight} attach="material" />
       </mesh>
 
-      {/* 5. Two Central Freestanding Exhibition Partition Islands with Dedicated Spotlight Systems */}
-      {[6.0, -6.0].map((pz, pi) => (
-        <group key={`partition-${pi}`} position={[0, 0, pz]}>
-          {/* Soft Base Drop Shadow on Floor under Freestanding Partition */}
-          {benchShadowTex && (
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
-              <planeGeometry args={[6.2, 1.4]} />
-              <meshBasicMaterial map={benchShadowTex} transparent opacity={0.65} depthWrite={false} />
-            </mesh>
-          )}
-
-          {/* Floating White Exhibition Partition Wall */}
-          <mesh position={[0, 1.8, 0]} castShadow receiveShadow>
-            <boxGeometry args={[5.6, 3.6, 0.38]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
-
-          {/* Partition Top Accent Rail */}
-          <mesh position={[0, 3.62, 0]}>
-            <boxGeometry args={[5.64, 0.04, 0.4]} />
-            <primitive object={roomArchMaterials.baseboard} attach="material" />
-          </mesh>
-
-          {/* Front & Back Track Lighting Systems with Directed Spotlight Fixtures */}
-          {[
-            { offsetZ: 0.95, tiltRot: 0.45, lightZ: 0.8 },
-            { offsetZ: -0.95, tiltRot: -0.45, lightZ: -0.8 },
-          ].map((side, sIdx) => (
-            <group key={`part-track-side-${sIdx}`}>
-              {/* Suspended White Track Light Rail */}
-              <mesh position={[0, h - 0.08, side.offsetZ]}>
-                <boxGeometry args={[5.6, 0.06, 0.08]} />
-                <primitive object={roomArchMaterials.track} attach="material" />
-              </mesh>
-              {/* Steel Suspension Rods */}
-              {[-2.2, 0, 2.2].map((rx, ri) => (
-                <mesh key={`p-rod-${ri}`} position={[rx, h - 0.04, side.offsetZ]}>
-                  <cylinderGeometry args={[0.008, 0.008, 0.08, 8]} />
-                  <primitive object={roomArchMaterials.trim} attach="material" />
-                </mesh>
-              ))}
-
-              {/* 3 Dedicated Spotlight Fixture Heads aimed at each Artwork */}
-              {[-1.6, 0, 1.6].map((ax, ai) => (
-                <group
-                  key={`part-head-${ai}`}
-                  position={[ax, h - 0.1, side.offsetZ]}
-                  rotation={[side.tiltRot, 0, 0]}
-                >
-                  <mesh position={[0, -0.035, 0]}>
-                    <boxGeometry args={[0.035, 0.07, 0.035]} />
-                    <primitive object={roomArchMaterials.track} attach="material" />
-                  </mesh>
-                  <mesh position={[0, 0, 0.11]} rotation={[Math.PI / 2, 0, 0]}>
-                    <cylinderGeometry args={[0.038, 0.06, 0.24, 14]} />
-                    <primitive object={roomArchMaterials.head} attach="material" />
-                  </mesh>
-                  <mesh position={[0, 0, 0.232]}>
-                    <circleGeometry args={[0.046, 14]} />
-                    <primitive object={roomArchMaterials.lens} attach="material" />
-                  </mesh>
-                </group>
-              ))}
-
-              {/* Dedicated Spotlight Illumination for Partition Artworks */}
-              <pointLight
-                position={[0, 3.4, side.lightZ]}
-                intensity={2.4}
-                distance={7.5}
-                decay={1.2}
-                color="#FFF8EE"
-              />
-            </group>
-          ))}
-        </group>
-      ))}
-
-      {/* 6. Ceiling Track Light Rails and White Spotlight Fixtures */}
+      {/* Ceiling Track Light Rails and Fixture Heads */}
       {[-1, 1].map((sd) => {
-        const tx = sd * (w / 2 - 1.2);
+        const tx = sd * (w / 2 - 1.15);
         const arts = sd === -1 ? sideArtL : sideArtR;
         return (
           <group key={`track-${sd}`}>
-            {/* White Suspended Lighting Rail */}
-            <mesh position={[tx, h - 0.08, 0]}>
-              <boxGeometry args={[0.05, 0.1, d]} />
+            {/* Rail */}
+            <mesh position={[tx, h - 0.05, 0]}>
+              <boxGeometry args={[0.045, 0.1, d]} />
               <primitive object={roomArchMaterials.track} attach="material" />
             </mesh>
-            {/* Suspended Steel Hanger Rods to Ceiling */}
-            {[-d / 3, 0, d / 3].map((rz, ri) => (
-              <mesh key={`rod-${ri}`} position={[tx, h - 0.04, rz]}>
-                <cylinderGeometry args={[0.008, 0.008, 0.08, 8]} />
-                <primitive object={roomArchMaterials.trim} attach="material" />
-              </mesh>
-            ))}
-            {/* White Fixture heads pointing at each artwork */}
+            {/* Fixture heads pointing at each artwork */}
             {arts.map((a, ai) => (
               <group
                 key={`fixture-${ai}`}
-                position={[tx, h - 0.1, a.pzRel]}
+                position={[tx, h - 0.075, a.pzRel]}
                 rotation={[0.35, sd === -1 ? -Math.PI / 2 : Math.PI / 2, 0]}
               >
                 <mesh position={[0, -0.035, 0]}>
@@ -631,11 +483,11 @@ function RoomStructureMesh({
                   <primitive object={roomArchMaterials.track} attach="material" />
                 </mesh>
                 <mesh position={[0, 0, 0.11]} rotation={[Math.PI / 2, 0, 0]}>
-                  <cylinderGeometry args={[0.038, 0.06, 0.24, 14]} />
+                  <cylinderGeometry args={[0.038, 0.06, 0.26, 14]} />
                   <primitive object={roomArchMaterials.head} attach="material" />
                 </mesh>
-                <mesh position={[0, 0, 0.232]}>
-                  <circleGeometry args={[0.046, 14]} />
+                <mesh position={[0, 0, 0.242]}>
+                  <circleGeometry args={[0.048, 14]} />
                   <primitive object={roomArchMaterials.lens} attach="material" />
                 </mesh>
               </group>
@@ -644,32 +496,40 @@ function RoomStructureMesh({
         );
       })}
 
-      {/* Central Track Light for Freestanding Partition */}
-      <mesh position={[0, h - 0.08, 0]}>
-        <boxGeometry args={[0.05, 0.1, 7.0]} />
-        <primitive object={roomArchMaterials.track} attach="material" />
-      </mesh>
+      {/* Central Ceiling Luminaire Panels */}
+      {[-w / 2 + 2, 0, w / 2 - 2].map((px, pi) => (
+        <group key={`panel-${pi}`} position={[px, h - 0.03, 0]}>
+          <mesh>
+            <boxGeometry args={[1.6, 0.04, 0.35]} />
+            <meshStandardMaterial color="#FFFFFF" emissive="#FFF9F0" emissiveIntensity={0.75} />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, -0.03, 0]}>
+            <planeGeometry args={[1.6, 0.35]} />
+            <meshBasicMaterial color="#FFF9F0" />
+          </mesh>
+        </group>
+      ))}
 
-      {/* 7. Warm Ambient Museum Ceiling Wash Lights */}
+      {/* Warm Room Ceiling Luminaire Wash Light (Per Room Lighting) */}
       <pointLight
         position={[0, h - 0.3, 0]}
-        intensity={2.6}
+        intensity={2.8}
         distance={22}
         decay={1.2}
         color="#FFF6E8"
       />
 
-      {/* 8. Minimalist Baseboards Left & Right */}
-      <mesh position={[-w / 2 + 0.02, 0.05, 0]}>
-        <boxGeometry args={[0.04, 0.1, d]} />
+      {/* Baseboards Left & Right */}
+      <mesh position={[-w / 2 + 0.03, 0.06, 0]}>
+        <boxGeometry args={[0.06, 0.12, d]} />
         <primitive object={roomArchMaterials.baseboard} attach="material" />
       </mesh>
-      <mesh position={[w / 2 - 0.02, 0.05, 0]}>
-        <boxGeometry args={[0.04, 0.1, d]} />
+      <mesh position={[w / 2 - 0.03, 0.06, 0]}>
+        <boxGeometry args={[0.06, 0.12, d]} />
         <primitive object={roomArchMaterials.baseboard} attach="material" />
       </mesh>
 
-      {/* 9. Front Wall (z = d/2) */}
+      {/* Front Wall (z = d/2) */}
       {!withDoorFront ? (
         <mesh position={[0, h / 2, d / 2]} rotation={[0, Math.PI, 0]} receiveShadow>
           <planeGeometry args={[w, h]} />
@@ -695,39 +555,12 @@ function RoomStructureMesh({
         </group>
       )}
 
-      {/* 10. Back Wall (z = -d/2) with Architectural Daylight Window */}
+      {/* Back Wall (z = -d/2) */}
       {!withDoorBack ? (
-        <group position={[0, 0, -d / 2]}>
-          {/* Solid Wall Surface */}
-          <mesh position={[0, h / 2, 0]} receiveShadow>
-            <planeGeometry args={[w, h]} />
-            <primitive object={wallBaseMat} attach="material" />
-          </mesh>
-          {/* Grand Floor-to-Ceiling Daylight Atrium Window */}
-          <group position={[0, h / 2, 0.02]}>
-            {/* Exterior Bright Natural Light Wash */}
-            <mesh position={[0, 0, -0.04]}>
-              <planeGeometry args={[7.8, 4.2]} />
-              <primitive object={roomArchMaterials.windowDaylightGlow} attach="material" />
-            </mesh>
-            {/* Window Glass Plane */}
-            <mesh position={[0, 0, 0]}>
-              <planeGeometry args={[7.6, 4.0]} />
-              <primitive object={roomArchMaterials.windowGlass} attach="material" />
-            </mesh>
-            {/* Minimalist Dark Metal Window Mullions */}
-            {[-2.5, 0, 2.5].map((mx, mi) => (
-              <mesh key={`mull-v-${mi}`} position={[mx, 0, 0.01]}>
-                <boxGeometry args={[0.06, 4.0, 0.04]} />
-                <primitive object={roomArchMaterials.windowFrame} attach="material" />
-              </mesh>
-            ))}
-            <mesh position={[0, 0, 0.01]}>
-              <boxGeometry args={[7.6, 0.06, 0.04]} />
-              <primitive object={roomArchMaterials.windowFrame} attach="material" />
-            </mesh>
-          </group>
-        </group>
+        <mesh position={[0, h / 2, -d / 2]} receiveShadow>
+          <planeGeometry args={[w, h]} />
+          <primitive object={wallBaseMat} attach="material" />
+        </mesh>
       ) : (
         <group position={[0, 0, -d / 2]}>
           {/* Left Segment */}
@@ -745,7 +578,7 @@ function RoomStructureMesh({
             <planeGeometry args={[DOOR_W, h - DOOR_H]} />
             <primitive object={wallBaseMat} attach="material" />
           </mesh>
-          {/* Architectural Portal Archway (Minimalist Flush Arch) */}
+          {/* Architectural Portal Archway (Flush & Clean Single Arch) */}
           <mesh position={[-DOOR_W / 2 - 0.04, DOOR_H / 2, 0]}>
             <boxGeometry args={[0.08, DOOR_H, 0.08]} />
             <primitive object={roomArchMaterials.trim} attach="material" />
@@ -761,7 +594,7 @@ function RoomStructureMesh({
         </group>
       )}
 
-      {/* 11. Exhibit Signboard above front entrance */}
+      {/* Exhibit Signboard above front entrance */}
       {signTex && (
         <mesh position={[0, 3.9, d / 2 - 0.06]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[3.4, 0.55]} />
@@ -775,62 +608,64 @@ function RoomStructureMesh({
         </mesh>
       )}
 
-      {/* 12. 2 Modern Loft Benches with Floor Contact Shadows */}
+      {/* 2 Central Gallery Benches */}
       {[-d / 4, d / 4].map((bz, i) => (
-        <group key={`bench-${i}`} position={[i === 0 ? 3.5 : -3.5, 0, bz]}>
-          {/* Soft Floor Drop Shadow Plane */}
-          {benchShadowTex && (
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-              <planeGeometry args={[3.4, 1.4]} />
-              <meshBasicMaterial map={benchShadowTex} transparent opacity={0.78} depthWrite={false} />
-            </mesh>
-          )}
-          {/* Solid Natural Teak Wood Plank */}
-          <mesh position={[0, 0.44, 0]} castShadow receiveShadow>
-            <boxGeometry args={[2.8, 0.09, 0.8]} />
+        <group key={`bench-${i}`} position={[0, 0, bz]}>
+          <mesh position={[0, 0.46, 0]} castShadow receiveShadow>
+            <boxGeometry args={[3.0, 0.12, 0.95]} />
             <primitive object={roomArchMaterials.benchTop} attach="material" />
           </mesh>
-          {/* Matte Black Metal Loop Legs at each end */}
-          {[-1.15, 1.15].map((lx, li) => (
-            <mesh key={`leg-${li}`} position={[lx, 0.2, 0]}>
-              <boxGeometry args={[0.08, 0.38, 0.76]} />
+          {[[-1.32, -0.36], [1.32, -0.36], [-1.32, 0.36], [1.32, 0.36]].map(([lx, lz], li) => (
+            <mesh key={`leg-${li}`} position={[lx, 0.2, lz]}>
+              <boxGeometry args={[0.07, 0.4, 0.07]} />
               <primitive object={roomArchMaterials.benchLeg} attach="material" />
             </mesh>
           ))}
         </group>
       ))}
 
-      {/* 13. Modern White Faceted Polygon Pedestal with Contact Shadow */}
-      <group position={[0, 0, 4.8]}>
-        {/* Soft Radial Contact Shadow on Floor */}
-        {pedestalShadowTex && (
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-            <planeGeometry args={[1.8, 1.8]} />
-            <meshBasicMaterial map={pedestalShadowTex} transparent opacity={0.82} depthWrite={false} />
+      {/* 4 Corner Potted Plants */}
+      {[
+        [-w / 2 + 1.2, -d / 2 + 1.4],
+        [w / 2 - 1.2, -d / 2 + 1.4],
+        [-w / 2 + 1.2, d / 2 - 1.4],
+        [w / 2 - 1.2, d / 2 - 1.4],
+      ].map(([px, pz], pi) => (
+        <group key={`plant-${pi}`} position={[px, 0, pz]}>
+          <mesh position={[0, 0.275, 0]}>
+            <cylinderGeometry args={[0.34, 0.26, 0.55, 12]} />
+            <primitive object={roomArchMaterials.pot} attach="material" />
           </mesh>
-        )}
-        {/* Crisp White Faceted Geometric Pedestal */}
-        <mesh position={[0, 0.48, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.55, 0.42, 0.96, 6]} />
-          <primitive object={roomArchMaterials.facetedPedestal} attach="material" />
-        </mesh>
-      </group>
+          <mesh position={[0, 0.54, 0]}>
+            <cylinderGeometry args={[0.3, 0.3, 0.04, 12]} />
+            <primitive object={roomArchMaterials.soil} attach="material" />
+          </mesh>
+          {Array.from({ length: 6 }).map((_, f) => (
+            <mesh
+              key={f}
+              position={[
+                Math.sin(f * 2.5 + pi) * (0.22 + f * 0.03),
+                0.75 + f * 0.16,
+                Math.cos(f * 2.5 + pi) * (0.22 + f * 0.03),
+              ]}
+              scale={[1, 0.75, 1]}
+            >
+              <sphereGeometry args={[0.28 - f * 0.02, 8, 6]} />
+              <primitive object={roomArchMaterials.leaf} attach="material" />
+            </mesh>
+          ))}
+        </group>
+      ))}
 
-      {/* 14. 2 Minimalist Sculptures on Corner Pedestals */}
+      {/* 2 Sculptures on Pedestals */}
       {[
         [-2.9, -d / 2 + 5.5, 'bronze'],
         [2.9, d / 2 - 5.5, 'steel'],
       ].map(([sx, sz, type], si) => (
         <group key={`sculpt-${si}`} position={[Number(sx), 0, Number(sz)]}>
-          {pedestalShadowTex && (
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-              <planeGeometry args={[1.4, 1.4]} />
-              <meshBasicMaterial map={pedestalShadowTex} transparent opacity={0.7} depthWrite={false} />
-            </mesh>
-          )}
           <mesh position={[0, 0.525, 0]}>
             <boxGeometry args={[0.55, 1.05, 0.55]} />
-            <primitive object={roomArchMaterials.facetedPedestal} attach="material" />
+            <primitive object={roomArchMaterials.ped} attach="material" />
           </mesh>
           {type === 'bronze' ? (
             <mesh position={[0, 1.42, 0]} rotation={[0.6, 0, 0]}>
@@ -866,9 +701,6 @@ function findCurrentRoomIndex(
   configs: RoomGeometryConfig[],
   fallbackIdx: number
 ): number {
-  let bestIdx = fallbackIdx;
-  let minSqDist = Infinity;
-
   for (let i = 0; i < configs.length; i++) {
     const room = configs[i];
     const dx = playerPos.x - room.center.x;
@@ -876,16 +708,11 @@ function findCurrentRoomIndex(
     const local = rotatePointY(dx, dz, -room.rotationY);
     const halfW = (room.width || ROOM_W) / 2;
     const halfD = (room.depth || ROOM_D) / 2;
-
-    if (Math.abs(local.x) <= halfW + 0.3 && Math.abs(local.z) <= halfD + 0.3) {
-      const sqDist = dx * dx + dz * dz;
-      if (sqDist < minSqDist) {
-        minSqDist = sqDist;
-        bestIdx = i;
-      }
+    if (Math.abs(local.x) <= halfW + 0.5 && Math.abs(local.z) <= halfD + 0.5) {
+      return i;
     }
   }
-  return bestIdx;
+  return fallbackIdx;
 }
 
 interface CameraControllerProps {
@@ -931,7 +758,6 @@ function CameraController({
   const prevRaycastPos = useRef(new THREE.Vector3());
   const prevRaycastYawPitch = useRef({ yaw: -999, pitch: -999 });
   const lastHitResult = useRef<{ artwork: Artwork | null; slot: CalculatedArtworkSlot | null }>({ artwork: null, slot: null });
-  const lastRoomChangeTimeRef = useRef(0);
 
   // First-Person Free-Look State (Yaw: Left/Right, Pitch: Up/Down)
   const isPointerDown = useRef(false);
@@ -1230,24 +1056,6 @@ function CameraController({
               local.z = -halfD + margin;
             }
           }
-
-          // Two Central Freestanding Partitions Obstacle Collision (width: 5.6m, depth: 0.38m at z = +6.0m and z = -6.0m)
-          // Player cannot walk through either partition wall
-          const partHalfW = 2.8 + margin; // 3.4m
-          const partHalfD = 0.19 + margin; // 0.79m
-
-          for (const partZ of [6.0, -6.0]) {
-            const relZ = local.z - partZ;
-            if (Math.abs(local.x) < partHalfW && Math.abs(relZ) < partHalfD) {
-              const overlapX = partHalfW - Math.abs(local.x);
-              const overlapZ = partHalfD - Math.abs(relZ);
-              if (overlapZ < overlapX) {
-                local.z = partZ + (relZ > 0 ? partHalfD : -partHalfD);
-              } else {
-                local.x = local.x > 0 ? partHalfW : -partHalfW;
-              }
-            }
-          }
         }
 
         // Transform clamped local coordinates back to world space
@@ -1257,15 +1065,13 @@ function CameraController({
 
         camera.position.set(finalX, 1.8, finalZ);
 
-        // Check if room index changed (debounced to eliminate doorway stutter)
+        // Check if room index changed
         const newRoomIdx = findCurrentRoomIndex(
           { x: finalX, z: finalZ },
           roomConfigs,
           currentRoomIndex
         );
-        const now = performance.now();
-        if (newRoomIdx !== currentRoomIndex && now - lastRoomChangeTimeRef.current > 500) {
-          lastRoomChangeTimeRef.current = now;
+        if (newRoomIdx !== currentRoomIndex) {
           onRoomChange(newRoomIdx);
         }
       }
@@ -1346,7 +1152,7 @@ export function Modern3DGalleryEngine({
   const activeLightPreset = useMemo<LightPreset>(() => {
     if (userLightPreset) return userLightPreset;
     if (parsedTheme?.lightPreset) return parsedTheme.lightPreset as LightPreset;
-    return 'daylight';
+    return 'warm';
   }, [userLightPreset, parsedTheme?.lightPreset]);
 
   // Active spotlight intensity for baked lightmap
@@ -1521,9 +1327,7 @@ export function Modern3DGalleryEngine({
   const tourIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Procedural Materials
-  const epoxyFloorTex = useMemo(() => createWhiteEpoxyFloorTexture(), []);
-  const benchShadowTex = useMemo(() => createFloorBenchContactShadowTexture(), []);
-  const pedestalShadowTex = useMemo(() => createFloorPedestalContactShadowTexture(), []);
+  const terrazzoTex = useMemo(() => createTerrazzoFloorTexture(), []);
   const wallAOTex = useMemo(() => createPlasterWallAOMap(), []);
   const wallBumpTex = useMemo(() => createPlasterBumpMap(), []);
 
@@ -1844,38 +1648,44 @@ export function Modern3DGalleryEngine({
             isInspectActive={!!focusedArtwork}
           />
 
-          {/* Render All Connected World-Space Rooms (Pre-mounted for Zero-Hitch Transitions) */}
-          {roomConfigs.map((rConfig) => (
-            <group
-              key={`room-${rConfig.roomIndex}`}
-              position={[rConfig.center.x, rConfig.center.y, rConfig.center.z]}
-              rotation={[0, rConfig.rotationY, 0]}
-            >
-              <RoomStructureMesh
-                config={rConfig}
-                epoxyFloorTex={epoxyFloorTex}
-                benchShadowTex={benchShadowTex}
-                pedestalShadowTex={pedestalShadowTex}
-                wallAOTex={wallAOTex}
-                wallBumpTex={wallBumpTex}
-                spotlightIntensity={activeSpotlightIntensity}
-              />
+          {/* Render All Connected World-Space Rooms with Visibility Culling (currentRoomIndex ± 2 mounted, ± 1 visible) */}
+          {roomConfigs.map((rConfig) => {
+            const isMounted = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 2;
+            if (!isMounted) return null;
 
-              {/* Render Artworks in this Room */}
-              {rConfig.slots.map((slot) => {
-                if (!slot.artwork) return null;
-                return (
-                  <Artwork3DFrame
-                    key={`art-slot-${slot.slotIndex}`}
-                    slot={slot}
-                    artwork={slot.artwork}
-                    isFocused={focusedArtwork?.id === slot.artwork.id}
-                    onInspect={handleInspectArtwork}
-                  />
-                );
-              })}
-            </group>
-          ))}
+            const isVisible = Math.abs(rConfig.roomIndex - currentRoomIndex) <= 1;
+
+            return (
+              <group
+                key={`room-${rConfig.roomIndex}`}
+                position={[rConfig.center.x, rConfig.center.y, rConfig.center.z]}
+                rotation={[0, rConfig.rotationY, 0]}
+                visible={isVisible}
+              >
+                <RoomStructureMesh
+                  config={rConfig}
+                  terrazzoTex={terrazzoTex}
+                  wallAOTex={wallAOTex}
+                  wallBumpTex={wallBumpTex}
+                  spotlightIntensity={activeSpotlightIntensity}
+                />
+
+                {/* Render Artworks in this Room (Max 20 per room) */}
+                {rConfig.slots.map((slot) => {
+                  if (!slot.artwork) return null;
+                  return (
+                    <Artwork3DFrame
+                      key={`art-slot-${slot.slotIndex}`}
+                      slot={slot}
+                      artwork={slot.artwork}
+                      isFocused={focusedArtwork?.id === slot.artwork.id}
+                      onInspect={handleInspectArtwork}
+                    />
+                  );
+                })}
+              </group>
+            );
+          })}
 
           {/* Interactive Multi-Room Camera Rig Controller */}
           <CameraController
@@ -2021,7 +1831,7 @@ export function Modern3DGalleryEngine({
                     }
                     const letter = String.fromCharCode(65 + (r.exhibitionRoomIndex >= 0 ? r.exhibitionRoomIndex : i));
                     const artCount = r.slots.filter((s) => s.artwork).length;
-                    const startArt = (r.exhibitionRoomIndex >= 0 ? r.exhibitionRoomIndex : i) * ARTWORKS_PER_ROOM + 1;
+                    const startArt = (r.exhibitionRoomIndex >= 0 ? r.exhibitionRoomIndex : i) * 20 + 1;
                     const endArt = startArt + artCount - 1;
                     return (
                       <option key={i} value={i} className="bg-[#161310] text-white">
