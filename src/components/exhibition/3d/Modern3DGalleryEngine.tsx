@@ -918,6 +918,15 @@ function CameraController({
   const lastHitResult = useRef<{ artwork: Artwork | null; slot: CalculatedArtworkSlot | null }>({ artwork: null, slot: null });
   const lastRoomChangeTimeRef = useRef(0);
 
+  // Option 1: Cinematic Quick-Glide Warp State (0.36s High-Speed Luxury Drone Glide)
+  const isGliding = useRef(false);
+  const glideStartPos = useRef(new THREE.Vector3());
+  const glideEndPos = useRef(new THREE.Vector3());
+  const glideStartYaw = useRef(0);
+  const glideEndYaw = useRef(0);
+  const glideStartTime = useRef(0);
+  const glideDuration = 360; // 360ms fast smooth ease-out flight
+
   // First-Person Free-Look State (Yaw: Left/Right, Pitch: Up/Down)
   const isPointerDown = useRef(false);
   const pointerStart = useRef({ x: 0, y: 0 });
@@ -942,22 +951,20 @@ function CameraController({
     }
   }, [camera]);
 
-  // Handle Warp Trigger from Minimap or Room Switcher
+  // Handle Warp Trigger from Minimap or Room Switcher with Cinematic Quick-Glide
   useEffect(() => {
     if (warpTarget) {
-      camera.position.set(warpTarget.x, 1.8, warpTarget.z);
-      targetCamPos.current.set(warpTarget.x, 1.8, warpTarget.z);
+      glideStartPos.current.copy(camera.position);
+      glideEndPos.current.set(warpTarget.x, 1.8, warpTarget.z);
+      glideStartYaw.current = yaw.current;
       const newYaw = warpTarget.rotY ?? 0;
-      targetYaw.current = newYaw;
+      glideEndYaw.current = newYaw;
+      glideStartTime.current = performance.now();
+      isGliding.current = true;
       targetPitch.current = 0;
-      yaw.current = newYaw;
-      pitch.current = 0;
-      cameraTransformRef.current.x = warpTarget.x;
-      cameraTransformRef.current.z = warpTarget.z;
-      cameraTransformRef.current.rotY = newYaw;
       onClearWarp();
     }
-  }, [warpTarget, onClearWarp, camera, cameraTransformRef]);
+  }, [warpTarget, onClearWarp, camera]);
 
   // Mouse / Pointer Lock & Drag Look-Around (Left, Right, Up, Down)
   useEffect(() => {
@@ -1110,6 +1117,49 @@ function CameraController({
       }
     } else {
       aimHoldTimeRef.current = 0;
+    }
+
+    // 0. Option 1: High-Speed Cinematic Drone Glide Flight Easing
+    if (isGliding.current) {
+      const elapsed = performance.now() - glideStartTime.current;
+      const progress = Math.min(1, elapsed / glideDuration);
+      // Smooth cubic ease-out curve
+      const t = 1 - Math.pow(1 - progress, 3);
+
+      camera.position.lerpVectors(glideStartPos.current, glideEndPos.current, t);
+      targetCamPos.current.copy(camera.position);
+
+      // Shortest angular interpolation for yaw
+      const diffYaw =
+        ((glideEndYaw.current - glideStartYaw.current + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      const curGlideYaw = glideStartYaw.current + diffYaw * t;
+      yaw.current = curGlideYaw;
+      targetYaw.current = curGlideYaw;
+      pitch.current = THREE.MathUtils.lerp(pitch.current, 0, t);
+      targetPitch.current = 0;
+
+      cameraTransformRef.current.x = camera.position.x;
+      cameraTransformRef.current.z = camera.position.z;
+      cameraTransformRef.current.rotY = yaw.current;
+
+      const forwardX = Math.sin(yaw.current) * Math.cos(pitch.current);
+      const forwardY = Math.sin(pitch.current);
+      const forwardZ = -Math.cos(yaw.current) * Math.cos(pitch.current);
+      const lookTarget = new THREE.Vector3(
+        camera.position.x + forwardX,
+        camera.position.y + forwardY,
+        camera.position.z + forwardZ
+      );
+      camera.lookAt(lookTarget);
+
+      if (progress >= 1) {
+        isGliding.current = false;
+        camera.position.copy(glideEndPos.current);
+        targetCamPos.current.copy(glideEndPos.current);
+        yaw.current = glideEndYaw.current;
+        targetYaw.current = glideEndYaw.current;
+      }
+      return;
     }
 
     const isMoving =

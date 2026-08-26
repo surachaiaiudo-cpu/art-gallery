@@ -147,50 +147,98 @@ function ArtworkPicturePlane({
       return;
     }
 
-    // Use HTML5 Image loader for 100% reliable canvas texture creation
-    const img = new window.Image();
-    img.crossOrigin = 'anonymous';
+    // Asynchronous background hardware decoding via createImageBitmap (0ms main thread lockup)
+    const controller = new AbortController();
 
-    img.onload = () => {
-      if (!active) return;
-      const tex = new THREE.Texture(img);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.minFilter = THREE.LinearMipmapLinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-      tex.generateMipmaps = true;
-      tex.needsUpdate = true;
-
-      // Pre-warm to GPU VRAM immediately so walking into the room has 0ms GPU upload latency
+    async function loadWithImageBitmap() {
       try {
-        gl.initTexture(tex);
-      } catch (e) {
-        // Safe fallback
-      }
+        const res = await fetch(targetUrl, {
+          mode: 'cors',
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        if (!active) return;
 
-      globalTextureCache.set(targetUrl, tex);
-      setTexture(tex);
-    };
+        let imageSource: ImageBitmap | HTMLImageElement;
+        if (typeof window !== 'undefined' && typeof window.createImageBitmap === 'function') {
+          // Hardware decoding executed entirely on background GPU/OS worker thread
+          imageSource = await window.createImageBitmap(blob, {
+            imageOrientation: 'flipY',
+            premultiplyAlpha: 'none',
+          });
+        } else {
+          imageSource = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new window.Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = URL.createObjectURL(blob);
+          });
+        }
 
-    img.onerror = () => {
-      if (!active) return;
-      const fallback = generateArtworkFallbackTexture(
-        title,
-        artistName,
-        width / height
-      );
-      if (fallback) {
+        if (!active) return;
+
+        const tex = new THREE.Texture(imageSource);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.generateMipmaps = true;
+        tex.needsUpdate = true;
+
+        // Pre-warm to GPU VRAM immediately with 0ms main thread latency
         try {
-          gl.initTexture(fallback);
-        } catch (e) {}
-        globalTextureCache.set(targetUrl, fallback);
-        setTexture(fallback);
-      }
-    };
+          gl.initTexture(tex);
+        } catch (e) {
+          // Safe fallback
+        }
 
-    img.src = targetUrl;
+        globalTextureCache.set(targetUrl, tex);
+        setTexture(tex);
+      } catch (err: any) {
+        if (err.name === 'AbortError' || !active) return;
+
+        // Graceful fallback to HTML Image Loader
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          if (!active) return;
+          const tex = new THREE.Texture(img);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.minFilter = THREE.LinearMipmapLinearFilter;
+          tex.magFilter = THREE.LinearFilter;
+          tex.generateMipmaps = true;
+          tex.needsUpdate = true;
+          try {
+            gl.initTexture(tex);
+          } catch (e) {}
+          globalTextureCache.set(targetUrl, tex);
+          setTexture(tex);
+        };
+        img.onerror = () => {
+          if (!active) return;
+          const fallback = generateArtworkFallbackTexture(
+            title,
+            artistName,
+            width / height
+          );
+          if (fallback) {
+            try {
+              gl.initTexture(fallback);
+            } catch (e) {}
+            globalTextureCache.set(targetUrl, fallback);
+            setTexture(fallback);
+          }
+        };
+        img.src = targetUrl;
+      }
+    }
+
+    loadWithImageBitmap();
 
     return () => {
       active = false;
+      controller.abort();
     };
   }, [imageUrl, title, artistName, width, height, isFocused, gl]);
 
