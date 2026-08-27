@@ -42,6 +42,7 @@ interface CatalogViewerClientProps {
 
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const searchParams = useSearchParams();
+  const isAdmin = searchParams?.get('admin') === 'true' || searchParams?.get('preview') === 'admin';
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeerReviewModalOpen, setIsPeerReviewModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -289,25 +290,28 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </button>
             </div>
 
-            {/* Peer Reviewer Editor Button */}
-            <button
-              onClick={() => setIsPeerReviewModalOpen(true)}
-              className="flex items-center space-x-1.5 px-3.5 py-2 bg-white hover:bg-[#FAF8F5] text-[#555] hover:text-[#1E1D1B] border border-[#DDD6C8] rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
-              title="จัดการรายนามคณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน"
-            >
-              <GraduationCap className="w-4 h-4 text-[#8C6D3F]" />
-              <span>ผู้ทรงคุณวุฒิ ({peerReviewersList.length})</span>
-            </button>
+            {/* Peer Reviewer & Footer Editor Buttons (Only visible in Curator / Admin Mode) */}
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => setIsPeerReviewModalOpen(true)}
+                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                  title="จัดการรายนามคณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Curator Only)"
+                >
+                  <GraduationCap className="w-4 h-4 text-amber-700" />
+                  <span>ผู้ทรงคุณวุฒิ ({peerReviewersList.length})</span>
+                </button>
 
-            {/* Edit Footer Button */}
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center space-x-1.5 px-3.5 py-2 bg-white hover:bg-[#FAF8F5] text-[#555] hover:text-[#1E1D1B] border border-[#DDD6C8] rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
-              title="แก้ไขข้อความ Footer ท้ายหน้าสูจิบัตร"
-            >
-              <Edit3 className="w-4 h-4 text-[#8C6D3F]" />
-              <span>ตั้งค่า Footer</span>
-            </button>
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                  title="แก้ไขข้อความ Footer ท้ายหน้าสูจิบัตร (Curator Only)"
+                >
+                  <Edit3 className="w-4 h-4 text-amber-700" />
+                  <span>ตั้งค่า Footer</span>
+                </button>
+              </>
+            )}
 
             {/* Save Vector PDF 100% Button */}
             <button

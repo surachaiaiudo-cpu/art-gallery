@@ -467,7 +467,7 @@ export default function AdminExhibitionHubPage({
 
             <div className="pt-6 mt-4 border-t border-[#F0EBE0] flex items-center justify-between gap-2">
               <Link
-                href={`/catalog/${exhibition.slug}`}
+                href={`/catalog/${exhibition.slug}?admin=true`}
                 target="_blank"
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#F3EFE9] hover:bg-[#EAE5DC] text-[#1A1918] rounded-xl text-xs font-semibold transition-all"
               >
