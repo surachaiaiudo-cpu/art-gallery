@@ -52,120 +52,113 @@ export function CatalogPlate({
 
   // ==========================================
   // 🔲 FORMAT 2: SQUARE 8x8 INCHES (203.2 x 203.2 mm)
-  // Margins: 0.25 in (6.35 mm)
-  // Left 2/3: Artwork Image
-  // Right 1/3: Artist Photo (top right) -> Artist Details -> Artwork Details -> Concept (all right-aligned)
+  // - Top Margin: 1 inch (25.4 mm)
+  // - Left, Right, Bottom Margin: 0.25 inch (6.35 mm)
+  // - Left 2/3: Artwork Image ALWAYS CENTERED (no table/borders)
+  // - Right 1/3: Artist Photo at Top Right -> Artist Details -> Artwork Details -> Concept (Contiguous, No gap, All Right-Aligned, No tables)
   // ==========================================
   if (paperSize === 'square8x8') {
     return (
-      <section className="catalog-square8-page w-[203.2mm] h-[203.2mm] min-h-[203.2mm] max-h-[203.2mm] p-[6.35mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border">
-        {/* Main 2-Column Split: 2/3 Left Image & 1/3 Right Details */}
-        <div className="flex flex-row gap-4 h-[180mm] max-h-[180mm] w-full overflow-hidden">
+      <section className="catalog-square8-page w-[203.2mm] h-[203.2mm] min-h-[203.2mm] max-h-[203.2mm] pt-[25.4mm] px-[6.35mm] pb-[6.35mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border">
+        {/* Main 2-Column Area: Left 2/3 and Right 1/3 */}
+        <div className="flex flex-row gap-5 flex-1 w-full overflow-hidden">
           
-          {/* Left Column (2/3 of Page): Artwork Image */}
-          <div className="w-2/3 h-full flex items-center justify-center bg-[#FAF9F7] rounded-lg border border-[#EFECE6] p-2 overflow-hidden">
+          {/* Left Column (2/3 of Page): Artwork Image ALWAYS CENTERED */}
+          <div className="w-2/3 h-full flex items-center justify-center overflow-hidden p-1">
             <img
               src={optimizedArtworkUrl}
               alt={artwork.title}
               loading={isReaderModal ? 'eager' : 'lazy'}
               decoding="async"
-              className="max-h-full max-w-full object-contain drop-shadow-md"
+              className="max-h-full max-w-full object-contain"
             />
           </div>
 
-          {/* Right Column (1/3 of Page): Right-Aligned Details */}
-          <div className="w-1/3 h-full flex flex-col items-end text-right justify-between pl-1 pr-1 overflow-hidden">
+          {/* Right Column (1/3 of Page): Continuous Right-Aligned Information (No table, No gap) */}
+          <div className="w-1/3 h-full flex flex-col items-end text-right justify-start space-y-1.5 overflow-hidden pl-1 pr-1">
             
-            {/* 1. Artist Photo & Country Flag (Top Right) */}
-            <div className="space-y-2 flex flex-col items-end w-full">
-              <div className="flex items-center gap-2 justify-end">
-                {flagUrl && (
-                  <div className="relative w-6 h-4 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-xs bg-[#F5F5F5]">
-                    <img src={flagUrl} alt={artist?.country || 'Flag'} className="w-full h-full object-cover" />
-                  </div>
-                )}
-                {hasRealPhoto ? (
-                  <div className="relative w-14 h-16 rounded-md overflow-hidden shadow-sm bg-[#1A1A1A] border border-[#DDD]">
-                    <img
-                      src={optimizedPhotoUrl}
-                      alt={artist?.name || 'Artist'}
-                      onError={() => setPhotoError(true)}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-14 h-16 bg-[#EFEFEF] border border-[#D0D0D0] rounded-md flex flex-col items-center justify-center shadow-xs">
-                    <span className="catalog-heading-th text-lg font-bold text-[#555]">
-                      {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* 2. Artist Details (ถัดลงมา จัดชิดขวา) */}
-              <div className="space-y-0.5 text-right w-full">
-                <h3 className="catalog-heading-th text-xs font-bold text-[#111111] leading-tight">
-                  {artist?.name || 'Artist'}
-                </h3>
-                {artist?.country && (
-                  <p className="catalog-body-th text-[9px] text-[#666666] leading-none">
-                    {artist.country}
-                  </p>
-                )}
-                {artist?.email && (
-                  <p className="catalog-body-th text-[8.5px] text-[#888888] leading-none truncate">
-                    {artist.email}
-                  </p>
-                )}
-              </div>
+            {/* 1. Artist Photo & Flag (Top Right) */}
+            <div className="flex items-center gap-2 justify-end mb-1">
+              {flagUrl && (
+                <div className="relative w-6 h-4 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-xs bg-[#F5F5F5]">
+                  <img src={flagUrl} alt={artist?.country || 'Flag'} className="w-full h-full object-cover" />
+                </div>
+              )}
+              {hasRealPhoto ? (
+                <div className="relative w-14 h-16 rounded-md overflow-hidden bg-[#1A1A1A] border border-[#DDD] shadow-xs">
+                  <img
+                    src={optimizedPhotoUrl}
+                    alt={artist?.name || 'Artist'}
+                    onError={() => setPhotoError(true)}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-14 h-16 bg-[#EFEFEF] border border-[#D0D0D0] rounded-md flex flex-col items-center justify-center shadow-xs">
+                  <span className="catalog-heading-th text-lg font-bold text-[#555]">
+                    {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* 3. Artwork Details (ถัดลงมา จัดชิดขวา) */}
-            <div className="space-y-1 text-right w-full border-t border-[#EAE6DE] pt-2">
-              <h2 className="catalog-heading-th font-serif text-xs font-bold text-[#1A1918] leading-snug line-clamp-2">
+            {/* 2. Artist Details (ชื่อ & ข้อมูลศิลปิน จัดชิดขวา) */}
+            <div className="text-right w-full space-y-0.5">
+              <h3 className="catalog-heading-th text-xs font-bold text-[#111111] leading-tight">
+                {artist?.name || 'Artist'}
+              </h3>
+              {artist?.country && (
+                <p className="catalog-body-th text-[9px] text-[#666666] leading-tight">
+                  {artist.country}
+                </p>
+              )}
+              {artist?.email && (
+                <p className="catalog-body-th text-[8.5px] text-[#888888] leading-tight truncate">
+                  {artist.email}
+                </p>
+              )}
+            </div>
+
+            {/* 3. Artwork Details (รายละเอียดผลงาน ต่อเนื่องกัน ไม่เว้นช่องว่าง จัดชิดขวา) */}
+            <div className="text-right w-full space-y-0.5 pt-1">
+              <h2 className="catalog-heading-th font-serif text-xs font-bold text-[#1A1918] leading-tight line-clamp-2">
                 {artwork.title}
               </h2>
-              <div className="space-y-0.5 text-[8.5px] text-[#555555]">
-                {artwork.medium && (
-                  <p className="catalog-body-th leading-tight">
-                    <span className="text-[#888]">เทคนิค: </span>
-                    <strong className="text-[#222] font-semibold">{artwork.medium}</strong>
-                  </p>
-                )}
-                {artwork.dimensions && (
-                  <p className="catalog-body-th leading-tight">
-                    <span className="text-[#888]">ขนาด: </span>
-                    <strong className="text-[#222] font-semibold">{artwork.dimensions}</strong>
-                  </p>
-                )}
-                {artwork.yearCreated && (
-                  <p className="catalog-body-th leading-tight">
-                    <span className="text-[#888]">ปี: </span>
-                    <span>{artwork.yearCreated}</span>
-                  </p>
-                )}
-                {artwork.price && (
-                  <p className="catalog-body-th font-bold text-[#8C6D3F] pt-0.5">
-                    {formatPrice(artwork.price)}
-                  </p>
-                )}
-              </div>
+              {artwork.medium && (
+                <p className="catalog-body-th text-[8.5px] text-[#444444] leading-tight">
+                  เทคนิค: <span className="text-[#111] font-medium">{artwork.medium}</span>
+                </p>
+              )}
+              {artwork.dimensions && (
+                <p className="catalog-body-th text-[8.5px] text-[#444444] leading-tight">
+                  ขนาด: <span className="text-[#111] font-medium">{artwork.dimensions}</span>
+                </p>
+              )}
+              {artwork.yearCreated && (
+                <p className="catalog-body-th text-[8.5px] text-[#666666] leading-tight">
+                  ปี: <span>{artwork.yearCreated}</span>
+                </p>
+              )}
+              {artwork.price && (
+                <p className="catalog-body-th text-[9px] font-bold text-[#8C6D3F] leading-tight">
+                  {formatPrice(artwork.price)}
+                </p>
+              )}
             </div>
 
-            {/* 4. Concept / Curatorial Note (ถัดลงมา จัดชิดขวา) */}
-            <div className="w-full text-right border-t border-[#EAE6DE] pt-1.5 pb-1">
-              <span className="catalog-heading-th text-[7.5px] uppercase tracking-wider text-[#8C6D3F] font-bold block mb-0.5">
-                Concept &amp; Statement
-              </span>
-              <p className="catalog-body-th text-[8px] text-[#444444] leading-relaxed italic text-right line-clamp-4 bg-[#FAF9F7] p-1.5 rounded border border-[#EFEBE3]">
-                {artwork.description || 'ผลงานสร้างสรรค์อันทรงคุณค่าที่สะท้อนถึงมุมมองทางศิลปะและแรงบันดาลใจร่วมสมัย'}
-              </p>
-            </div>
+            {/* 4. Concept / Curatorial Note (ต่อเนื่องกัน ไม่เว้นช่องว่าง จัดชิดขวา) */}
+            {artwork.description && (
+              <div className="text-right w-full pt-1">
+                <p className="catalog-body-th text-[8px] text-[#444444] leading-relaxed italic text-right line-clamp-6">
+                  {artwork.description}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Bottom Footer & Page Number */}
-        <div className="pt-2 border-t border-[#E0E0E0] flex items-center justify-between text-[8px] text-[#666666]">
+        <div className="pt-2 border-t border-[#EAE5DC] flex items-center justify-between text-[8px] text-[#666666] mt-2">
           <span className="catalog-body-th truncate max-w-[150mm]">{plateFooter}</span>
           <span className="font-mono text-[#333333] font-bold text-[9px]">{pageNumber}</span>
         </div>
