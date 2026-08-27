@@ -17,6 +17,7 @@ interface CatalogReaderModalProps {
   footerGraphicType: 'wave_gold' | 'wave_mono' | 'line_gold' | 'custom_image' | 'none';
   customFooterImageUrl?: string;
   selectedPageModalIndex: number;
+  paperSize?: 'a4' | 'square8x8';
   onClose: () => void;
   onSelectPageIndex: (index: number) => void;
   onPrintSinglePage: (index: number) => void;
@@ -31,6 +32,7 @@ export function CatalogReaderModal({
   footerGraphicType,
   customFooterImageUrl,
   selectedPageModalIndex,
+  paperSize = 'a4',
   onClose,
   onSelectPageIndex,
   onPrintSinglePage,
@@ -79,6 +81,9 @@ export function CatalogReaderModal({
           <span className="text-xs font-mono font-bold px-2.5 py-1 bg-[#8C6D3F]/30 text-[#E5D2B8] rounded border border-[#8C6D3F]/40">
             หน้า {selectedPageModalIndex + 1} / {totalPages}
           </span>
+          <span className="text-[10px] font-mono text-[#D4AF37] bg-white/5 px-2 py-0.5 rounded border border-white/10">
+            {paperSize === 'square8x8' ? '🔲 8×8 นิ้ว (Square)' : '📄 มาตรฐาน A4'}
+          </span>
         </div>
 
         {/* Center: Previous / Next Controls */}
@@ -104,28 +109,28 @@ export function CatalogReaderModal({
           </button>
         </div>
 
-        {/* Right: Print Single Page Button & Close */}
+        {/* Right: Print Single Page & Close Button */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => onPrintSinglePage(selectedPageModalIndex)}
-            className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-lg text-xs font-bold shadow-md transition-all active:scale-95 ring-1 ring-white/20 cursor-pointer"
-            title={`พิมพ์เฉพาะหน้านี้ (หน้า ${selectedPageModalIndex + 1}) ออกเป็น PDF Vector (Ctrl+P)`}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8C6D3F] hover:bg-[#A3804C] text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
+            title="พิมพ์เฉพาะหน้านี้ (Ctrl+P)"
           >
-            <Printer className="w-4 h-4 text-[#FFFDF9]" />
-            <span>🖨️ พิมพ์หน้านี้ (หน้า {selectedPageModalIndex + 1})</span>
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">พิมพ์หน้านี้</span>
           </button>
 
           <button
             onClick={onClose}
-            className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-            title="ปิดหน้าอ่าน (ESC)"
+            className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-colors cursor-pointer text-white/80 hover:text-white"
+            title="ปิด (ESC)"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Modal Main Scrollable Viewer Container */}
+      {/* Main Page Stage Viewport */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex items-center justify-center relative">
         {/* Side Floating Nav Arrow Buttons (Desktop) */}
         {selectedPageModalIndex > 0 && (
@@ -148,8 +153,8 @@ export function CatalogReaderModal({
           </button>
         )}
 
-        {/* Active Large A4 Page Layout Container */}
-        <div className="w-full max-w-[210mm] shadow-2xl rounded-sm my-auto text-[#1E1D1B]">
+        {/* Active Page Layout Container */}
+        <div className={`w-full ${paperSize === 'square8x8' ? 'max-w-[203.2mm]' : 'max-w-[210mm]'} shadow-2xl rounded-sm my-auto text-[#1E1D1B]`}>
           <PlateErrorBoundary pageNumber={selectedPageModalIndex + 1}>
             {selectedPageModalIndex === 0 ? (
               <CatalogCoverPage
@@ -157,6 +162,7 @@ export function CatalogReaderModal({
                 curator={curator}
                 coverFooter={coverFooter}
                 isReaderModal
+                paperSize={paperSize}
               />
             ) : hasReviewers && selectedPageModalIndex === 1 ? (
               <CatalogStatementPage
@@ -164,6 +170,7 @@ export function CatalogReaderModal({
                 curator={curator}
                 peerReviewersList={peerReviewersList}
                 plateFooter={plateFooter}
+                paperSize={paperSize}
               />
             ) : (
               (() => {
@@ -179,6 +186,7 @@ export function CatalogReaderModal({
                     footerGraphicType={footerGraphicType}
                     customFooterImageUrl={customFooterImageUrl}
                     isReaderModal
+                    paperSize={paperSize}
                   />
                 );
               })()

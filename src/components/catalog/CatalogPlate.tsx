@@ -13,6 +13,7 @@ interface CatalogPlateProps {
   footerGraphicType: 'wave_gold' | 'wave_mono' | 'line_gold' | 'custom_image' | 'none';
   customFooterImageUrl?: string;
   isReaderModal?: boolean;
+  paperSize?: 'a4' | 'square8x8';
 }
 
 export function CatalogPlate({
@@ -22,6 +23,7 @@ export function CatalogPlate({
   footerGraphicType,
   customFooterImageUrl,
   isReaderModal = false,
+  paperSize = 'a4',
 }: CatalogPlateProps) {
   const [photoError, setPhotoError] = useState(false);
   const artist = artwork.artist;
@@ -48,6 +50,132 @@ export function CatalogPlate({
 
   const flagUrl = getFlagImageUrl(artist?.country);
 
+  // ==========================================
+  // 🔲 FORMAT 2: SQUARE 8x8 INCHES (203.2 x 203.2 mm)
+  // Margins: 0.25 in (6.35 mm)
+  // Left 2/3: Artwork Image
+  // Right 1/3: Artist Photo (top right) -> Artist Details -> Artwork Details -> Concept (all right-aligned)
+  // ==========================================
+  if (paperSize === 'square8x8') {
+    return (
+      <section className="catalog-square8-page w-[203.2mm] h-[203.2mm] min-h-[203.2mm] max-h-[203.2mm] p-[6.35mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border">
+        {/* Main 2-Column Split: 2/3 Left Image & 1/3 Right Details */}
+        <div className="flex flex-row gap-4 h-[180mm] max-h-[180mm] w-full overflow-hidden">
+          
+          {/* Left Column (2/3 of Page): Artwork Image */}
+          <div className="w-2/3 h-full flex items-center justify-center bg-[#FAF9F7] rounded-lg border border-[#EFECE6] p-2 overflow-hidden">
+            <img
+              src={optimizedArtworkUrl}
+              alt={artwork.title}
+              loading={isReaderModal ? 'eager' : 'lazy'}
+              decoding="async"
+              className="max-h-full max-w-full object-contain drop-shadow-md"
+            />
+          </div>
+
+          {/* Right Column (1/3 of Page): Right-Aligned Details */}
+          <div className="w-1/3 h-full flex flex-col items-end text-right justify-between pl-1 pr-1 overflow-hidden">
+            
+            {/* 1. Artist Photo & Country Flag (Top Right) */}
+            <div className="space-y-2 flex flex-col items-end w-full">
+              <div className="flex items-center gap-2 justify-end">
+                {flagUrl && (
+                  <div className="relative w-6 h-4 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-xs bg-[#F5F5F5]">
+                    <img src={flagUrl} alt={artist?.country || 'Flag'} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                {hasRealPhoto ? (
+                  <div className="relative w-14 h-16 rounded-md overflow-hidden shadow-sm bg-[#1A1A1A] border border-[#DDD]">
+                    <img
+                      src={optimizedPhotoUrl}
+                      alt={artist?.name || 'Artist'}
+                      onError={() => setPhotoError(true)}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-14 h-16 bg-[#EFEFEF] border border-[#D0D0D0] rounded-md flex flex-col items-center justify-center shadow-xs">
+                    <span className="catalog-heading-th text-lg font-bold text-[#555]">
+                      {artist?.name?.trim().charAt(0).toUpperCase() || 'A'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Artist Details (ถัดลงมา จัดชิดขวา) */}
+              <div className="space-y-0.5 text-right w-full">
+                <h3 className="catalog-heading-th text-xs font-bold text-[#111111] leading-tight">
+                  {artist?.name || 'Artist'}
+                </h3>
+                {artist?.country && (
+                  <p className="catalog-body-th text-[9px] text-[#666666] leading-none">
+                    {artist.country}
+                  </p>
+                )}
+                {artist?.email && (
+                  <p className="catalog-body-th text-[8.5px] text-[#888888] leading-none truncate">
+                    {artist.email}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Artwork Details (ถัดลงมา จัดชิดขวา) */}
+            <div className="space-y-1 text-right w-full border-t border-[#EAE6DE] pt-2">
+              <h2 className="catalog-heading-th font-serif text-xs font-bold text-[#1A1918] leading-snug line-clamp-2">
+                {artwork.title}
+              </h2>
+              <div className="space-y-0.5 text-[8.5px] text-[#555555]">
+                {artwork.medium && (
+                  <p className="catalog-body-th leading-tight">
+                    <span className="text-[#888]">เทคนิค: </span>
+                    <strong className="text-[#222] font-semibold">{artwork.medium}</strong>
+                  </p>
+                )}
+                {artwork.dimensions && (
+                  <p className="catalog-body-th leading-tight">
+                    <span className="text-[#888]">ขนาด: </span>
+                    <strong className="text-[#222] font-semibold">{artwork.dimensions}</strong>
+                  </p>
+                )}
+                {artwork.yearCreated && (
+                  <p className="catalog-body-th leading-tight">
+                    <span className="text-[#888]">ปี: </span>
+                    <span>{artwork.yearCreated}</span>
+                  </p>
+                )}
+                {artwork.price && (
+                  <p className="catalog-body-th font-bold text-[#8C6D3F] pt-0.5">
+                    {formatPrice(artwork.price)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 4. Concept / Curatorial Note (ถัดลงมา จัดชิดขวา) */}
+            <div className="w-full text-right border-t border-[#EAE6DE] pt-1.5 pb-1">
+              <span className="catalog-heading-th text-[7.5px] uppercase tracking-wider text-[#8C6D3F] font-bold block mb-0.5">
+                Concept &amp; Statement
+              </span>
+              <p className="catalog-body-th text-[8px] text-[#444444] leading-relaxed italic text-right line-clamp-4 bg-[#FAF9F7] p-1.5 rounded border border-[#EFEBE3]">
+                {artwork.description || 'ผลงานสร้างสรรค์อันทรงคุณค่าที่สะท้อนถึงมุมมองทางศิลปะและแรงบันดาลใจร่วมสมัย'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Footer & Page Number */}
+        <div className="pt-2 border-t border-[#E0E0E0] flex items-center justify-between text-[8px] text-[#666666]">
+          <span className="catalog-body-th truncate max-w-[150mm]">{plateFooter}</span>
+          <span className="font-mono text-[#333333] font-bold text-[9px]">{pageNumber}</span>
+        </div>
+      </section>
+    );
+  }
+
+  // ==========================================
+  // 📄 FORMAT 1: STANDARD A4 (210 x 297 mm)
+  // ==========================================
   return (
     <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border">
       <div>
@@ -120,70 +248,43 @@ export function CatalogPlate({
               </p>
             </div>
 
-            <div className="space-y-0.5">
-              <h4 className="catalog-heading-th text-xs sm:text-sm font-bold text-[#000000] leading-snug">
+            <div className="border-t border-[#E8E8E8] pt-2 space-y-0.5">
+              <h4 className="catalog-heading-th font-serif text-sm font-bold text-[#111111] leading-snug">
                 {artwork.title}
               </h4>
-              <p className="catalog-body-th text-[#444444] text-[10px] leading-normal font-medium">
-                {[artwork.medium, artwork.dimensions, artwork.yearCreated ? `(${artwork.yearCreated})` : ''].filter(Boolean).join(' ')}
-              </p>
-            </div>
-
-            {(artwork.concept?.trim() || artwork.description?.trim()) && (
-              <div className="catalog-body-th pt-0.5 pb-1 text-[10px] sm:text-[11px] leading-relaxed text-[#333333] break-words">
-                <span className="font-bold text-[#000000]">Concept : </span>
-                <span>{artwork.concept?.trim() || artwork.description?.trim()}</span>
+              <div className="text-[10px] text-[#555555] space-y-0.5">
+                {artwork.medium && (
+                  <p className="catalog-body-th leading-normal">
+                    <span className="text-[#888888]">เทคนิค: </span>
+                    <span className="text-[#222222]">{artwork.medium}</span>
+                  </p>
+                )}
+                {artwork.dimensions && (
+                  <p className="catalog-body-th leading-normal">
+                    <span className="text-[#888888]">ขนาด: </span>
+                    <span className="text-[#222222]">{artwork.dimensions}</span>
+                  </p>
+                )}
+                {artwork.yearCreated && (
+                  <p className="catalog-body-th leading-normal">
+                    <span className="text-[#888888]">ปีที่สร้างสรรค์: </span>
+                    <span className="text-[#222222]">{artwork.yearCreated}</span>
+                  </p>
+                )}
+                {artwork.price && (
+                  <p className="catalog-body-th font-bold text-[#8C6D3F] pt-0.5 leading-normal">
+                    {formatPrice(artwork.price)}
+                  </p>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Footer Graphic Preset */}
-      {footerGraphicType === 'custom_image' && customFooterImageUrl ? (
-        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 flex items-end justify-center px-4 pb-2">
-          <img src={customFooterImageUrl} alt="Footer Banner" loading="lazy" className="max-h-full max-w-full object-contain" />
-        </div>
-      ) : footerGraphicType === 'wave_mono' ? (
-        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
-          <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id={`plateWaveMono-${artwork.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#444444" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#111111" stopOpacity="0.15" />
-              </linearGradient>
-            </defs>
-            <path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill={`url(#plateWaveMono-${artwork.id})`} />
-          </svg>
-        </div>
-      ) : footerGraphicType === 'line_gold' ? (
-        <div className="absolute bottom-10 left-8 right-8 border-b border-[#C5A880]/50 pointer-events-none z-0" />
-      ) : footerGraphicType !== 'none' ? (
-        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden z-0 opacity-40">
-          <svg viewBox="0 0 600 120" className="w-full h-full preserve-3d" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id={`plateWave1-${artwork.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#D0D0D0" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#B0B0B0" stopOpacity="0.2" />
-              </linearGradient>
-              <linearGradient id={`plateWave2-${artwork.id}`} x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#F5B28B" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#EFA478" stopOpacity="0.15" />
-              </linearGradient>
-            </defs>
-            <path d="M-30,120 C120,40 260,130 380,60 C480,0 560,90 630,30 L630,120 Z" fill={`url(#plateWave1-${artwork.id})`} />
-            <path d="M-30,120 C90,90 220,20 370,80 C490,140 570,60 630,70 L630,120 Z" fill={`url(#plateWave2-${artwork.id})`} />
-          </svg>
-        </div>
-      ) : null}
-
-      {/* Footer Text Bar */}
-      <div className="relative z-10 mt-3 pt-2 border-t border-[#E5E5E5] flex items-center justify-between text-[10px] text-[#777777]">
-        <span>
-          {plateFooter ? plateFooter : ''}
-          {artwork.price ? (plateFooter ? ` • ${formatPrice(artwork.price)}` : formatPrice(artwork.price)) : ''}
-        </span>
-        <span className="font-mono text-[#555555] font-semibold">{pageNumber}</span>
+      <div className="pt-4 border-t border-[#E0E0E0] flex items-center justify-between text-[10px] text-[#666666]">
+        <span className="catalog-body-th truncate max-w-[170mm]">{plateFooter}</span>
+        <span className="font-mono text-[#444444] font-bold">{pageNumber}</span>
       </div>
     </section>
   );

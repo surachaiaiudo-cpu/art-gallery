@@ -1,7 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;600;700&display=swap');
 
 .catalog-a4-page,
-.catalog-a4-page * {
+.catalog-a4-page *,
+.catalog-square8-page,
+.catalog-square8-page * {
   font-kerning: none !important;
   -webkit-font-feature-settings: "kern" 0 !important;
   font-feature-settings: "kern" 0, "liga" 0, "clig" 0 !important;
@@ -20,16 +22,13 @@
 
 @media print {
   @page {
-    size: 210mm 297mm;
+    size: auto;
     margin: 0mm !important;
   }
   *, *::before, *::after {
     box-sizing: border-box !important;
   }
   html, body {
-    width: 210mm !important;
-    min-width: 210mm !important;
-    max-width: 210mm !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
@@ -44,8 +43,6 @@
   main {
     margin: 0 !important;
     padding: 0 !important;
-    max-width: 210mm !important;
-    width: 210mm !important;
     background: #ffffff !important;
   }
   .catalog-a4-page {
@@ -56,7 +53,28 @@
     margin: 0 !important;
     padding: 15mm !important;
     box-sizing: border-box !important;
-    page-break-before: auto !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    border: none !important;
+    box-shadow: none !important;
+    background-color: #ffffff !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+
+  .catalog-square8-page {
+    width: 203.2mm !important;
+    height: 203.2mm !important;
+    min-height: 203.2mm !important;
+    max-height: 203.2mm !important;
+    margin: 0 !important;
+    padding: 6.35mm !important;
+    box-sizing: border-box !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
@@ -73,8 +91,10 @@
 
   /* Single-Page Print Overrides */
   .catalog-a4-page.print-hide-this-page,
+  .catalog-square8-page.print-hide-this-page,
   .print-hide-this-page,
-  body.print-single-mode .catalog-a4-page:not(.print-this-page-only) {
+  body.print-single-mode .catalog-a4-page:not(.print-this-page-only),
+  body.print-single-mode .catalog-square8-page:not(.print-this-page-only) {
     display: none !important;
     visibility: hidden !important;
     height: 0 !important;

@@ -10,6 +10,7 @@ interface CatalogCoverPageProps {
   curator?: User | null;
   coverFooter: string;
   isReaderModal?: boolean;
+  paperSize?: 'a4' | 'square8x8';
 }
 
 export function CatalogCoverPage({
@@ -17,11 +18,63 @@ export function CatalogCoverPage({
   curator,
   coverFooter,
   isReaderModal = false,
+  paperSize = 'a4',
 }: CatalogCoverPageProps) {
   const bannerUrl = getOptimizedImageUrl(exhibition.bannerUrl, {
     width: isReaderModal ? 1200 : 1000,
     quality: 85,
   });
+
+  if (paperSize === 'square8x8') {
+    return (
+      <section className="catalog-square8-page w-[203.2mm] h-[203.2mm] min-h-[203.2mm] max-h-[203.2mm] p-[6.35mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
+        <div className="space-y-3">
+          <div className="border-b border-[#E0E0E0] pb-2">
+            <span className="catalog-heading-th font-serif text-2xl font-bold tracking-[0.2em] text-[#000000] block">
+              ARTVARA
+            </span>
+            <span className="catalog-body-th text-[8px] uppercase tracking-widest text-[#666666] block">
+              International Art Festival &amp; Curated Exhibition
+            </span>
+          </div>
+
+          {bannerUrl && (
+            <div className="relative w-full h-[95mm] max-w-[170mm] mx-auto overflow-hidden flex items-center justify-center bg-[#FAF9F7] rounded border border-[#EAE5DC] p-1">
+              <img
+                src={bannerUrl}
+                alt={exhibition.title}
+                className="max-h-full max-w-full object-contain drop-shadow"
+              />
+            </div>
+          )}
+
+          <div className="space-y-1 max-w-[170mm] mx-auto pt-1">
+            <span className="catalog-body-th text-[10px] font-bold uppercase tracking-[0.2em] text-[#333333] block">
+              Official Exhibition Catalog (สูจิบัตร)
+            </span>
+            <h1 className="catalog-heading-th font-serif text-lg sm:text-xl font-bold text-[#000000] leading-tight">
+              {exhibition.title}
+            </h1>
+            {curator?.name && (
+              <p className="catalog-body-th text-xs text-[#444444] font-medium">
+                Curated by {curator.name}
+              </p>
+            )}
+            <div className="pt-1">
+              <span className="catalog-body-th inline-block px-3 py-0.5 text-[10px] border border-[#C5A880] text-[#8C6D3F] font-bold tracking-wider rounded-sm uppercase">
+                {formatDateRange(exhibition.startDate, exhibition.endDate)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-[#E0E0E0] flex items-center justify-between text-[8px] text-[#666666]">
+          <span className="catalog-body-th truncate max-w-[160mm]">{coverFooter}</span>
+          <span className="font-mono text-[#444444] font-bold">1</span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-center">
