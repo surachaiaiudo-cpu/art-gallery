@@ -157,24 +157,22 @@ export function Navbar({
           </div>
 
           {/* Read Catalog Icon Button with Bubble Tooltip */}
-          {exhibition?.slug && (
-            <>
-              <div className="relative group">
-                <Link
-                  href={`/catalog/${exhibition.slug}`}
-                  className="p-2 text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-full transition-colors flex items-center justify-center"
-                  aria-label={t.actions.readCatalog}
-                >
-                  <BookOpen className="w-4 h-4 text-[#8C6D3F]" />
-                </Link>
-                <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
-                  {t.actions.readCatalog}
-                </span>
-              </div>
+          <div className="relative group">
+            <Link
+              href={exhibition?.slug ? `/catalog/${exhibition.slug}` : '/catalog'}
+              className="p-2 text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-full transition-colors flex items-center justify-center"
+              aria-label={t.actions.readCatalog}
+            >
+              <BookOpen className="w-4 h-4 text-[#8C6D3F]" />
+            </Link>
+            <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
+              {t.actions.readCatalog}
+            </span>
+          </div>
 
-              {/* PDF Download Icon Button with Tooltip */}
-              <DownloadCatalogPDFButton exhibition={exhibition} variant="navbar" />
-            </>
+          {/* PDF Download Icon Button with Tooltip (when exhibition is active) */}
+          {exhibition?.slug && (
+            <DownloadCatalogPDFButton exhibition={exhibition} variant="navbar" />
           )}
 
           {/* Curator Admin Portal Icon with Bubble Tooltip */}

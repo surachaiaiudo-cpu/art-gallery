@@ -74,8 +74,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const hasReviewers = peerReviewersList.length > 0;
   const totalPages = 1 + (hasReviewers ? 1 : 0) + artworks.length;
 
-  // Reading Modes: 'flipbook' (Interactive 3D Book), 'grid3' (3-Column Preview Grid), or 'full' (Continuous Full A4 Pages)
-  const [activeViewMode, setActiveViewMode] = useState<'flipbook' | 'grid3' | 'full'>('flipbook');
+  // Reading Modes: 'grid3' (3-Column Preview Grid - Default), 'flipbook' (Interactive 3D Book), or 'full' (Continuous Full A4 Pages)
+  const [activeViewMode, setActiveViewMode] = useState<'grid3' | 'flipbook' | 'full'>('grid3');
   const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
 
   // Progressive streaming batch count for Grid View (Infinite Scroll performance)
