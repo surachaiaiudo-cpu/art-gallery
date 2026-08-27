@@ -139,7 +139,7 @@ export function CatalogPlate({
                   ปี: <span>{artwork.yearCreated}</span>
                 </p>
               )}
-              {artwork.price && (
+              {Boolean(artwork.price && Number(artwork.price) > 0) && (
                 <p className="catalog-body-th text-[9px] font-bold text-[#8C6D3F] leading-tight">
                   {formatPrice(artwork.price)}
                 </p>
@@ -264,7 +264,7 @@ export function CatalogPlate({
                     <span className="text-[#222222]">{artwork.yearCreated}</span>
                   </p>
                 )}
-                {artwork.price && (
+                {Boolean(artwork.price && Number(artwork.price) > 0) && (
                   <p className="catalog-body-th font-bold text-[#8C6D3F] pt-0.5 leading-normal">
                     {formatPrice(artwork.price)}
                   </p>
