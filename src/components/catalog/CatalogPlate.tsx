@@ -112,9 +112,9 @@ export function CatalogPlate({
                   {artist.country}
                 </p>
               )}
-              {artist?.email && (
+              {artist?.email && artist.email.trim().length > 0 && (
                 <p className="catalog-body-th text-[10.5px] text-[#777777] leading-tight truncate">
-                  {artist.email}
+                  {artist.email.trim()}
                 </p>
               )}
             </div>
@@ -126,17 +126,17 @@ export function CatalogPlate({
               </h2>
               {artwork.medium && (
                 <p className="catalog-body-th text-[11px] text-[#333333] leading-snug">
-                  เทคนิค: <span className="text-[#000] font-medium">{artwork.medium}</span>
+                  Medium: <span className="text-[#000] font-medium">{artwork.medium}</span>
                 </p>
               )}
               {artwork.dimensions && (
                 <p className="catalog-body-th text-[11px] text-[#333333] leading-snug">
-                  ขนาด: <span className="text-[#000] font-medium">{artwork.dimensions}</span>
+                  Dimensions: <span className="text-[#000] font-medium">{artwork.dimensions}</span>
                 </p>
               )}
               {artwork.yearCreated && (
                 <p className="catalog-body-th text-[11px] text-[#666666] leading-snug">
-                  ปี: <span>{artwork.yearCreated}</span>
+                  Year: <span>{artwork.yearCreated}</span>
                 </p>
               )}
               {Boolean(artwork.price && Number(artwork.price) > 0) && (
@@ -231,9 +231,9 @@ export function CatalogPlate({
               <h3 className="catalog-heading-th text-sm font-bold text-[#000000] leading-snug">
                 {artist?.name || 'Artist'}
               </h3>
-              {artist?.email && (
+              {artist?.email && artist.email.trim().length > 0 && (
                 <p className="catalog-body-th text-[#666666] text-[10px] leading-normal">
-                  {artist.email}
+                  {artist.email.trim()}
                 </p>
               )}
               <p className="catalog-body-th text-[#666666] text-[10px] leading-normal">
@@ -248,19 +248,19 @@ export function CatalogPlate({
               <div className="text-[10px] text-[#555555] space-y-0.5">
                 {artwork.medium && (
                   <p className="catalog-body-th leading-normal">
-                    <span className="text-[#888888]">เทคนิค: </span>
+                    <span className="text-[#888888]">Medium: </span>
                     <span className="text-[#222222]">{artwork.medium}</span>
                   </p>
                 )}
                 {artwork.dimensions && (
                   <p className="catalog-body-th leading-normal">
-                    <span className="text-[#888888]">ขนาด: </span>
+                    <span className="text-[#888888]">Dimensions: </span>
                     <span className="text-[#222222]">{artwork.dimensions}</span>
                   </p>
                 )}
                 {artwork.yearCreated && (
                   <p className="catalog-body-th leading-normal">
-                    <span className="text-[#888888]">ปีที่สร้างสรรค์: </span>
+                    <span className="text-[#888888]">Year: </span>
                     <span className="text-[#222222]">{artwork.yearCreated}</span>
                   </p>
                 )}
