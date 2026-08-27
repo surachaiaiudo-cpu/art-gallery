@@ -59,7 +59,7 @@ export function CatalogPlate({
   // ==========================================
   if (paperSize === 'square8x8') {
     return (
-      <section className="catalog-square8-page w-[203.2mm] h-[203.2mm] min-h-[203.2mm] max-h-[203.2mm] pt-[25.4mm] px-[6.35mm] pb-[6.35mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border">
+      <section className="catalog-square8-page w-[203.2mm] h-[203.2mm] min-h-[203.2mm] max-h-[203.2mm] pt-[25.4mm] pl-[19.05mm] pr-[6.35mm] pb-[6.35mm] bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border">
         {/* Main 2-Column Area: Left 2/3 and Right 1/3 */}
         <div className="flex flex-row gap-6 flex-1 w-full overflow-hidden">
           
@@ -77,8 +77,8 @@ export function CatalogPlate({
           {/* Right Column (1/3 of Page): Continuous Right-Aligned Information (Fonts +25%) */}
           <div className="w-1/3 h-full flex flex-col items-end text-right justify-start space-y-2 overflow-hidden pl-1 pr-1">
             
-            {/* 1. Artist Photo & Flag (Top Right) */}
-            <div className="flex items-center gap-2.5 justify-end mb-1">
+            {/* 1. Flag ON TOP OF Artist Photo (ธงชาติอยู่บนรูปศิลปิน จัดชิดขวา) */}
+            <div className="flex flex-col items-end gap-1.5 mb-1">
               {flagUrl && (
                 <div className="relative w-7 h-4.5 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-xs bg-[#F5F5F5]">
                   <img src={flagUrl} alt={artist?.country || 'Flag'} className="w-full h-full object-cover" />
