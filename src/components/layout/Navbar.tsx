@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Download, Eye, Box, BookOpen, Shield, GalleryHorizontal, Home } from 'lucide-react';
 import { Exhibition, is3DEnabled } from '@/types/exhibition';
 import { useLanguage } from '@/context/LanguageContext';
@@ -19,7 +20,10 @@ export function Navbar({
   currentMode = '2d',
   onModeChange,
 }: NavbarProps) {
+  const pathname = usePathname();
   const { lang, setLang, t } = useLanguage();
+  const isInsideSpecificExhibition = pathname?.startsWith('/exhibitions/');
+  const catalogTargetUrl = isInsideSpecificExhibition && exhibition?.slug ? `/catalog/${exhibition.slug}` : '/catalog';
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#F9F8F6]/95 backdrop-blur-md border-b border-[#E5E2DC] transition-all">
@@ -159,14 +163,14 @@ export function Navbar({
           {/* Read Catalog Icon Button with Bubble Tooltip */}
           <div className="relative group">
             <Link
-              href={exhibition?.slug ? `/catalog/${exhibition.slug}` : '/catalog'}
+              href={catalogTargetUrl}
               className="p-2 text-[#575249] hover:text-[#1A1918] hover:bg-[#EBE8E0] rounded-full transition-colors flex items-center justify-center"
-              aria-label={t.actions.readCatalog}
+              aria-label={isInsideSpecificExhibition ? t.actions.readCatalog : (lang === 'th' ? 'หอสูจิบัตร' : 'Catalogs Library')}
             >
               <BookOpen className="w-4 h-4 text-[#8C6D3F]" />
             </Link>
             <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#1A1918]/95 px-2.5 py-1 text-[11px] font-sans font-medium text-white shadow-xl opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:-bottom-9 z-50 border border-white/15">
-              {t.actions.readCatalog}
+              {isInsideSpecificExhibition ? t.actions.readCatalog : (lang === 'th' ? 'หอสูจิบัตร' : 'Catalogs Library')}
             </span>
           </div>
 

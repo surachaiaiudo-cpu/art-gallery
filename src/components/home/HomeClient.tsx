@@ -30,7 +30,7 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F4EE] text-[#1E1D1B]">
       {/* Top Header */}
-      <Navbar exhibition={featuredExhibition} />
+      <Navbar />
 
       <main className="flex-1">
         {/* Grand Lobby Welcome Hero Banner */}
