@@ -305,16 +305,17 @@ export function AdminExhibitionArtworksClient({
 
   const refreshExhibition = async () => {
     try {
-      const res = await fetch(`/api/exhibitions/${exhibition.slug}?_t=${Date.now()}`, {
-        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      const res = await fetch(`/api/admin/exhibitions/${exhibition.id}/artworks?_t=${Date.now()}`, {
+        headers: { 'Cache-Control': 'no-cache, no-store', Pragma: 'no-cache' },
         cache: 'no-store',
       });
       const data = await res.json();
-      if (data.exhibition) {
-        setExhibition(data.exhibition);
+      if (data.artworks) {
+        setArtworksList(data.artworks);
+        setExhibition((prev) => ({ ...prev, artworks: data.artworks }));
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error refreshing exhibition artworks:', err);
     }
   };
 
@@ -468,24 +469,46 @@ export function AdminExhibitionArtworksClient({
     e.preventDefault();
     if (!editingArtwork) return;
 
-    // Optimistic UI update
-    setArtworksList((prev) =>
-      prev.map((art) =>
-        art.id === editingArtwork.id
-          ? {
-              ...art,
-              title: artworkForm.title,
-              medium: artworkForm.medium,
-              dimensions: artworkForm.dimensions,
-              yearCreated: artworkForm.yearCreated,
-              imageUrl: artworkForm.imageUrl,
-              concept: artworkForm.concept,
-            }
-          : art
-      )
+    const matchedArtist = allArtists.find(
+      (a) =>
+        (artworkForm.artistId && a.id === artworkForm.artistId) ||
+        (artworkForm.artistName && a.name?.trim().toLowerCase() === artworkForm.artistName.trim().toLowerCase())
     );
 
-    setLoading(true);
+    const updatedArtist = matchedArtist || {
+      id: artworkForm.artistId || editingArtwork.artist?.id || 'artist-1',
+      name: artworkForm.artistName || editingArtwork.artist?.name || 'Artist',
+      country: editingArtwork.artist?.country || 'Thailand',
+      role: 'artist',
+    };
+
+    const updatedArt: Artwork = {
+      ...editingArtwork,
+      title: artworkForm.title,
+      medium: artworkForm.medium,
+      dimensions: artworkForm.dimensions,
+      yearCreated: artworkForm.yearCreated ? parseInt(String(artworkForm.yearCreated)) : 2026,
+      imageUrl: artworkForm.imageUrl,
+      concept: artworkForm.concept,
+      description: artworkForm.concept || artworkForm.description,
+      artistId: updatedArtist.id,
+      artist: updatedArtist as any,
+    };
+
+    // Instant local state update (0ms delay)
+    setArtworksList((prev) =>
+      prev.map((art) => (art.id === editingArtwork.id ? updatedArt : art))
+    );
+
+    setExhibition((prev) => ({
+      ...prev,
+      artworks: (prev.artworks || []).map((art) =>
+        art.id === editingArtwork.id ? updatedArt : art
+      ),
+    }));
+
+    setEditingArtwork(null);
+    showNotification('success', lang === 'th' ? 'บันทึกการแก้ไขเรียบร้อยแล้ว' : 'Artwork updated successfully');
 
     try {
       const res = await fetch('/api/admin/artworks', {
@@ -497,14 +520,12 @@ export function AdminExhibitionArtworksClient({
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to update artwork');
-      showNotification('success', lang === 'th' ? 'บันทึกรายละเอียดผลงานสำเร็จ' : 'Artwork details updated');
-      setEditingArtwork(null);
+      if (!res.ok) throw new Error('Failed to update artwork on server');
+
+      // Silently sync fresh database records in background
       await refreshExhibition();
     } catch (err: any) {
       showNotification('error', err.message);
-    } finally {
-      setLoading(false);
     }
   };
 

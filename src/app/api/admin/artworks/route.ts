@@ -140,28 +140,39 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Artwork not found' }, { status: 404 });
     }
 
-    let finalArtistId = artistId;
-    if (!finalArtistId && artistName) {
-      const existingArtist = await db.select().from(schema.users).where(eq(schema.users.name, artistName)).limit(1);
-      if (existingArtist.length > 0) {
-        finalArtistId = existingArtist[0].id;
+    let finalArtistId = artistId || existing[0].artistId;
+    if (artistName && artistName.trim()) {
+      const trimmedName = artistName.trim();
+      if (finalArtistId) {
+        // Update existing artist name
+        await db
+          .update(schema.users)
+          .set({ name: trimmedName })
+          .where(eq(schema.users.id, finalArtistId));
+      } else {
+        const existingArtist = await db
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.name, trimmedName))
+          .limit(1);
+        if (existingArtist.length > 0) {
+          finalArtistId = existingArtist[0].id;
+        }
       }
     }
 
-    const updateFields: any = {
-      title,
-      medium,
-      dimensions,
-      yearCreated: yearCreated ? parseInt(String(yearCreated)) : undefined,
-      concept: concept || description,
-      description: description || concept,
-      imageUrl,
-      status,
-    };
-
-    if (finalArtistId) {
-      updateFields.artistId = finalArtistId;
+    const updateFields: any = {};
+    if (title !== undefined) updateFields.title = title;
+    if (medium !== undefined) updateFields.medium = medium;
+    if (dimensions !== undefined) updateFields.dimensions = dimensions;
+    if (yearCreated !== undefined) updateFields.yearCreated = parseInt(String(yearCreated)) || 2026;
+    if (concept !== undefined || description !== undefined) {
+      updateFields.concept = concept || description || '';
+      updateFields.description = description || concept || '';
     }
+    if (imageUrl !== undefined) updateFields.imageUrl = imageUrl;
+    if (status !== undefined) updateFields.status = status;
+    if (finalArtistId) updateFields.artistId = finalArtistId;
 
     await db
       .update(schema.artworks)
@@ -169,7 +180,7 @@ export async function PUT(req: NextRequest) {
       .where(eq(schema.artworks.id, id));
 
     invalidateDataCache();
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id, updated: updateFields });
   } catch (error) {
     console.error('Error updating artwork:', error);
     return NextResponse.json({ error: 'Failed to update artwork', details: String(error) }, { status: 500 });

@@ -5,6 +5,64 @@ import { eq, and, or, asc } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
+// GET: Fetch artworks for an exhibition directly from D1 (fresh, no-cache)
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    let targetExhibitionId = params.id;
+    const exhRow = await db
+      .select({ id: schema.exhibitions.id })
+      .from(schema.exhibitions)
+      .where(or(eq(schema.exhibitions.id, params.id), eq(schema.exhibitions.slug, params.id)))
+      .limit(1);
+
+    if (exhRow && exhRow.length > 0) {
+      targetExhibitionId = exhRow[0].id;
+    }
+
+    const rows = await db
+      .select({
+        link: schema.exhibitionArtworks,
+        art: schema.artworks,
+        artist: schema.users,
+      })
+      .from(schema.exhibitionArtworks)
+      .innerJoin(schema.artworks, eq(schema.exhibitionArtworks.artworkId, schema.artworks.id))
+      .leftJoin(schema.users, eq(schema.artworks.artistId, schema.users.id))
+      .where(eq(schema.exhibitionArtworks.exhibitionId, targetExhibitionId))
+      .orderBy(asc(schema.exhibitionArtworks.displayOrder));
+
+    const artworks = rows.map((item: any) => {
+      let wallPos = null;
+      if (item.link.wallPosition) {
+        try {
+          wallPos = JSON.parse(item.link.wallPosition);
+        } catch {}
+      }
+      return {
+        ...item.art,
+        displayOrder: item.link.displayOrder ?? 0,
+        wallPosition: wallPos,
+        artist: item.artist || null,
+      };
+    });
+
+    return NextResponse.json(
+      { artworks },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    );
+  } catch (error: any) {
+    console.error('Error fetching exhibition artworks:', error);
+    return NextResponse.json({ error: 'Failed to fetch artworks', details: error?.message }, { status: 500 });
+  }
+}
+
 // POST: Add artwork to exhibition
 export async function POST(
   req: NextRequest,
