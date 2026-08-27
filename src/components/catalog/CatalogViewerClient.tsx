@@ -30,6 +30,7 @@ import { CatalogCoverPage } from './CatalogCoverPage';
 import { CatalogStatementPage } from './CatalogStatementPage';
 import { CatalogPlate } from './CatalogPlate';
 import { CatalogReaderModal } from './CatalogReaderModal';
+import { Catalog3DFlipbook } from './Catalog3DFlipbook';
 import { FooterEditorModal } from './FooterEditorModal';
 import { PeerReviewEditorModal } from './PeerReviewEditorModal';
 import { PlateErrorBoundary } from './PlateErrorBoundary';
@@ -73,8 +74,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const hasReviewers = peerReviewersList.length > 0;
   const totalPages = 1 + (hasReviewers ? 1 : 0) + artworks.length;
 
-  // Reading Modes: 'grid3' (3-Column Preview Grid - Default) or 'full' (Continuous Full A4 Pages)
-  const [activeViewMode, setActiveViewMode] = useState<'grid3' | 'full'>('grid3');
+  // Reading Modes: 'flipbook' (Interactive 3D Book), 'grid3' (3-Column Preview Grid), or 'full' (Continuous Full A4 Pages)
+  const [activeViewMode, setActiveViewMode] = useState<'flipbook' | 'grid3' | 'full'>('flipbook');
   const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
 
   // Progressive streaming batch count for Grid View (Infinite Scroll performance)
@@ -249,6 +250,19 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             {/* View Mode Switcher */}
             <div className="flex items-center bg-white/80 p-1 rounded-xl border border-[#DDD6C8] shadow-inner text-xs">
               <button
+                onClick={() => setActiveViewMode('flipbook')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  activeViewMode === 'flipbook'
+                    ? 'bg-[#8C6D3F] text-white shadow-sm'
+                    : 'text-[#666] hover:text-[#1A1918] hover:bg-[#F2EFE9]'
+                }`}
+                title="เปิดอ่านสมุด 3 มิติพร้อมเสียงพลิกหน้า (Interactive 3D Flipbook)"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-[#EAD8B8]" />
+                <span>สมุด 3D Flipbook</span>
+              </button>
+
+              <button
                 onClick={() => setActiveViewMode('grid3')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                   activeViewMode === 'grid3'
@@ -307,6 +321,20 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           </div>
         </div>
       </div>
+
+      {/* 3D Flipbook Reader Mode */}
+      {activeViewMode === 'flipbook' && (
+        <div className="no-print max-w-7xl mx-auto px-4 sm:px-8 py-4 flex-1">
+          <Catalog3DFlipbook
+            exhibition={exhibition}
+            peerReviewers={peerReviewersList}
+            coverFooter={coverFooter}
+            plateFooter={plateFooter}
+            onOpenZoomModal={(idx) => setSelectedPageModalIndex(idx + (hasReviewers ? 2 : 1))}
+            onBackToGrid={() => setActiveViewMode('grid3')}
+          />
+        </div>
+      )}
 
       {/* Grid 3-Column Preview Mode */}
       {activeViewMode === 'grid3' && (

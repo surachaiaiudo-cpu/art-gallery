@@ -63,6 +63,18 @@ export const inquiries = sqliteTable('inquiries', {
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const guestbookEntries = sqliteTable('guestbook_entries', {
+  id: text('id').primaryKey(),
+  exhibitionId: text('exhibition_id').notNull().references(() => exhibitions.id, { onDelete: 'cascade' }),
+  visitorName: text('visitor_name').notNull(),
+  visitorEmail: text('visitor_email'),
+  visitorCountry: text('visitor_country').default('Thailand'),
+  message: text('message').notNull(),
+  rating: integer('rating').default(5),
+  isApproved: integer('is_approved', { mode: 'boolean' }).default(true),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Exhibition = typeof exhibitions.$inferSelect;
@@ -72,3 +84,5 @@ export type NewArtwork = typeof artworks.$inferInsert;
 export type ExhibitionArtwork = typeof exhibitionArtworks.$inferSelect;
 export type Inquiry = typeof inquiries.$inferSelect;
 export type NewInquiry = typeof inquiries.$inferInsert;
+export type GuestbookEntry = typeof guestbookEntries.$inferSelect;
+export type NewGuestbookEntry = typeof guestbookEntries.$inferInsert;

@@ -28,7 +28,22 @@ import {
   ArrowLeft,
   Globe,
   AlertCircle,
+  MessageSquareHeart,
+  Trash2,
+  EyeOff,
+  Star,
 } from 'lucide-react';
+
+interface GuestbookEntryAdmin {
+  id: string;
+  visitorName: string;
+  visitorEmail: string | null;
+  visitorCountry: string | null;
+  message: string;
+  rating: number | null;
+  isApproved: boolean | null;
+  createdAt: string | null;
+}
 
 export default function AdminExhibitionHubPage({
   params,
@@ -38,6 +53,7 @@ export default function AdminExhibitionHubPage({
   const { lang } = useLanguage();
   const [exhibition, setExhibition] = useState<Exhibition | null>(null);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
+  const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntryAdmin[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Edit form state
@@ -73,6 +89,15 @@ export default function AdminExhibitionHubPage({
           const artData = await artRes.json();
           if (artData.artworks) {
             setArtworks(artData.artworks);
+          }
+        }
+
+        // Fetch guestbook entries
+        const gbRes = await fetch(`/api/admin/exhibitions/${data.exhibition.id}/guestbook`);
+        if (gbRes.ok) {
+          const gbData = await gbRes.json();
+          if (gbData.entries) {
+            setGuestbookEntries(gbData.entries);
           }
         }
       }
@@ -143,6 +168,32 @@ export default function AdminExhibitionHubPage({
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteGuestbookEntry = async (id: string) => {
+    if (!confirm(lang === 'th' ? 'ต้องการลบข้อความนี้ใช่หรือไม่?' : 'Delete this message?')) return;
+    setGuestbookEntries((prev) => prev.filter((item) => item.id !== id));
+    try {
+      await fetch(`/api/admin/exhibitions/${params.id}/guestbook?id=${id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Error deleting guestbook entry:', err);
+    }
+  };
+
+  const handleToggleGuestbookApproval = async (id: string, currentApproved: boolean | null) => {
+    const nextApproved = !currentApproved;
+    setGuestbookEntries((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, isApproved: nextApproved } : item))
+    );
+    try {
+      await fetch(`/api/admin/exhibitions/${params.id}/guestbook`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, isApproved: nextApproved }),
+      });
+    } catch (err) {
+      console.error('Error toggling guestbook approval:', err);
     }
   };
 
@@ -399,7 +450,7 @@ export default function AdminExhibitionHubPage({
                   <BookOpen className="w-6 h-6 text-emerald-300" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  Digital E-Catalog
+                  Digital 3D Flipbook & PDF
                 </span>
               </div>
 
@@ -409,8 +460,8 @@ export default function AdminExhibitionHubPage({
 
               <p className="text-xs text-[#6E685C] leading-relaxed">
                 {lang === 'th'
-                  ? 'เปิดอ่านสมุดรวมภาพผลงานนิทรรศการฉบับสมบูรณ์ (E-Catalog Book Reader) และดาวน์โหลดเอกสารไฟล์ PDF ความละเอียดสูงสำหรับพิมพ์สูจิบัตร'
-                  : 'Read the interactive E-Catalog publication and export print-ready high-resolution exhibition PDF catalog.'}
+                  ? 'เปิดอ่านสมุดรวมภาพผลงานนิทรรศการฉบับสมบูรณ์ (3D Flipbook Reader พร้อมเสียงเปิดหน้ากระดาษ) และดาวน์โหลดเอกสารไฟล์ PDF ความละเอียดสูงสำหรับพิมพ์สูจิบัตร'
+                  : 'Read the interactive 3D Flipbook publication and export print-ready high-resolution exhibition PDF catalog.'}
               </p>
             </div>
 
@@ -421,7 +472,7 @@ export default function AdminExhibitionHubPage({
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#F3EFE9] hover:bg-[#EAE5DC] text-[#1A1918] rounded-xl text-xs font-semibold transition-all"
               >
                 <BookOpen className="w-3.5 h-3.5 text-[#8C6D3F]" />
-                <span>{lang === 'th' ? 'เปิดอ่านแคตตาล็อก' : 'Read Catalog'}</span>
+                <span>{lang === 'th' ? 'เปิดอ่าน 3D Flipbook' : 'Open 3D Catalog'}</span>
               </Link>
 
               <DownloadCatalogPDFButton exhibition={exhibition} variant="secondary" />
@@ -708,6 +759,98 @@ export default function AdminExhibitionHubPage({
               <span>{lang === 'th' ? `ดูและจัดเรียงผลงานอีก ${artworks.length - 12} ชิ้นที่เหลือ` : `View remaining ${artworks.length - 12} artworks`}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
+          </div>
+        )}
+      </div>
+
+      {/* 7. Guestbook Moderation Section */}
+      <div className="bg-white rounded-2xl border border-[#E5E0D8] p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="flex items-center justify-between border-b border-[#F0EBE0] pb-4">
+          <div className="flex items-center gap-2">
+            <MessageSquareHeart className="w-5 h-5 text-[#8B1B1B]" />
+            <h2 className="font-serif text-lg font-bold text-[#1A1918]">
+              {lang === 'th' ? `จัดการสมุดเยี่ยมชมนิทรรศการ (${guestbookEntries.length} ข้อความ)` : `Guestbook Moderation (${guestbookEntries.length})`}
+            </h2>
+          </div>
+
+          <Link
+            href={`/exhibitions/${exhibition.slug}`}
+            target="_blank"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#8C6D3F] hover:underline"
+          >
+            <span>{lang === 'th' ? 'ดูสมุดเยี่ยมชมหน้าเว็บ' : 'View Public Guestbook'}</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {guestbookEntries.length === 0 ? (
+          <div className="py-10 text-center text-[#7A7468] text-xs">
+            <MessageSquareHeart className="w-8 h-8 text-[#C5A880] mx-auto mb-2 opacity-50" />
+            <p>ยังไม่มีข้อความลงชื่อในสมุดเยี่ยมชมของนิทรรศการนี้</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {guestbookEntries.map((item) => (
+              <div
+                key={item.id}
+                className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
+                  item.isApproved !== false
+                    ? 'bg-[#FAF8F5] border-[#E5DFD5]'
+                    : 'bg-neutral-100 border-neutral-300 opacity-60'
+                }`}
+              >
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#1A1918]">{item.visitorName}</span>
+                    {item.visitorCountry && (
+                      <CountryFlag country={item.visitorCountry} className="w-3.5 h-2.5 shrink-0" />
+                    )}
+                    {item.rating && (
+                      <div className="flex items-center gap-0.5 text-amber-500">
+                        {Array.from({ length: item.rating }).map((_, i) => (
+                          <Star key={i} className="w-3 h-3 fill-amber-400" />
+                        ))}
+                      </div>
+                    )}
+                    <span className="text-[10px] text-[#8A8376]">
+                      {item.createdAt ? new Date(item.createdAt).toLocaleDateString('th-TH') : ''}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#4A453C] italic font-serif">"{item.message}"</p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleToggleGuestbookApproval(item.id, item.isApproved)}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      item.isApproved !== false
+                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-900'
+                        : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900'
+                    }`}
+                  >
+                    {item.isApproved !== false ? (
+                      <>
+                        <EyeOff className="w-3 h-3" />
+                        <span>ซ่อน</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-3 h-3" />
+                        <span>แสดง</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteGuestbookEntry(item.id)}
+                    className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-800 transition-colors"
+                    title="ลบข้อความนี้"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

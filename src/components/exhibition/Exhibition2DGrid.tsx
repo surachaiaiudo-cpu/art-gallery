@@ -7,6 +7,7 @@ import { Exhibition, Artwork, getExhibitionPeerReviewers } from '@/types/exhibit
 import { ArtistIndexSidebar } from './ArtistIndexSidebar';
 import { ArtworkLightbox } from './ArtworkLightbox';
 import { ArtworkInquiryModal } from './ArtworkInquiryModal';
+import { DigitalGuestbook } from './DigitalGuestbook';
 import { useLanguage } from '@/context/LanguageContext';
 import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, Award, Calendar, Palette, GraduationCap, Users, ShieldCheck } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
@@ -454,6 +455,14 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Digital Guestbook & Signature Wall */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12">
+        <DigitalGuestbook
+          exhibitionSlug={exhibition.slug}
+          exhibitionTitle={exhibition.title}
+        />
       </div>
 
       {/* Lightbox Modal */}
