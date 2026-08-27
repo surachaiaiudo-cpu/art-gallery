@@ -295,6 +295,7 @@ export function AdminExhibitionArtworksClient({
     title: '',
     artistId: '',
     artistName: '',
+    artistCountry: 'Thailand',
     medium: '',
     dimensions: '',
     yearCreated: 2026,
@@ -455,6 +456,7 @@ export function AdminExhibitionArtworksClient({
       title: art.title,
       artistId: art.artistId || '',
       artistName: art.artist?.name || '',
+      artistCountry: art.artist?.country || 'Thailand',
       medium: art.medium || '',
       dimensions: art.dimensions || '120 x 180 cm.',
       yearCreated: art.yearCreated || 2026,
@@ -475,10 +477,10 @@ export function AdminExhibitionArtworksClient({
         (artworkForm.artistName && a.name?.trim().toLowerCase() === artworkForm.artistName.trim().toLowerCase())
     );
 
-    const updatedArtist = matchedArtist || {
-      id: artworkForm.artistId || editingArtwork.artist?.id || 'artist-1',
-      name: artworkForm.artistName || editingArtwork.artist?.name || 'Artist',
-      country: editingArtwork.artist?.country || 'Thailand',
+    const updatedArtist = {
+      id: artworkForm.artistId || matchedArtist?.id || editingArtwork.artist?.id || 'artist-1',
+      name: artworkForm.artistName || matchedArtist?.name || editingArtwork.artist?.name || 'Artist',
+      country: artworkForm.artistCountry || matchedArtist?.country || editingArtwork.artist?.country || 'Thailand',
       role: 'artist',
     };
 
@@ -1502,6 +1504,7 @@ export function AdminExhibitionArtworksClient({
                         title: '',
                         artistId: '',
                         artistName: '',
+                        artistCountry: 'Thailand',
                         medium: '',
                         dimensions: '',
                         yearCreated: 2026,
@@ -1671,6 +1674,14 @@ export function AdminExhibitionArtworksClient({
                     onChange={(e) => setArtworkForm({ ...artworkForm, artistName: e.target.value, artistId: '' })}
                     placeholder={lang === 'th' ? 'หรือพิมพ์ระบุชื่อศิลปิน...' : 'Or enter custom artist name...'}
                     className="flex-1 px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-semibold text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
+                  />
+
+                  <input
+                    type="text"
+                    value={artworkForm.artistCountry}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, artistCountry: e.target.value })}
+                    placeholder={lang === 'th' ? 'ประเทศ (เช่น Thailand, Japan)' : 'Country (e.g. Thailand)'}
+                    className="sm:w-36 px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-medium text-[#1A1918] focus:outline-none focus:ring-2 focus:ring-[#8C6D3F]"
                   />
                 </div>
               </div>

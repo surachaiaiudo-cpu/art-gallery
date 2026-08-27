@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, title, artistId, artistName, medium, dimensions, yearCreated, concept, description, imageUrl, status } = body;
+    const { id, title, artistId, artistName, artistCountry, country, medium, dimensions, yearCreated, concept, description, imageUrl, status } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Artwork ID is required' }, { status: 400 });
@@ -141,13 +141,20 @@ export async function PUT(req: NextRequest) {
     }
 
     let finalArtistId = artistId || existing[0].artistId;
+    const targetCountry = (artistCountry || country || '').trim();
+
     if (artistName && artistName.trim()) {
       const trimmedName = artistName.trim();
       if (finalArtistId) {
-        // Update existing artist name
+        // Update existing artist name and country
+        const userUpdate: any = { name: trimmedName };
+        if (targetCountry) {
+          userUpdate.country = targetCountry;
+          userUpdate.flagEmoji = getCountryFlagEmoji(targetCountry);
+        }
         await db
           .update(schema.users)
-          .set({ name: trimmedName })
+          .set(userUpdate)
           .where(eq(schema.users.id, finalArtistId));
       } else {
         const existingArtist = await db
@@ -157,8 +164,19 @@ export async function PUT(req: NextRequest) {
           .limit(1);
         if (existingArtist.length > 0) {
           finalArtistId = existingArtist[0].id;
+          if (targetCountry) {
+            await db
+              .update(schema.users)
+              .set({ country: targetCountry, flagEmoji: getCountryFlagEmoji(targetCountry) })
+              .where(eq(schema.users.id, finalArtistId));
+          }
         }
       }
+    } else if (finalArtistId && targetCountry) {
+      await db
+        .update(schema.users)
+        .set({ country: targetCountry, flagEmoji: getCountryFlagEmoji(targetCountry) })
+        .where(eq(schema.users.id, finalArtistId));
     }
 
     const updateFields: any = {};

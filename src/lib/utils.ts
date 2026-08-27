@@ -27,32 +27,42 @@ export function formatDateRange(startDateStr: string, endDateStr: string): strin
 
 /**
  * Formats artwork dimensions cleanly in Centimeters (ซม. / cm.).
- * Always displays in Centimeters (e.g., "120 × 180 ซม." / "120 × 180 cm.").
+ * Accurately preserves centimeters (e.g. 9 x 24 cm -> 9 × 24 ซม., 120 x 180 cm -> 120 × 180 ซม.)
  */
 export function formatDimensionsInCm(dimStr?: string | null, lang: string = 'th'): string {
   if (!dimStr) return lang === 'th' ? '120 × 180 ซม.' : '120 × 180 cm.';
 
   const unit = lang === 'th' ? 'ซม.' : 'cm.';
+  const str = dimStr.trim();
 
-  // Look for two numbers
-  const matches = dimStr.match(/(\d+(?:\.\d+)?)\s*(?:x|×|X)\s*(\d+(?:\.\d+)?)/);
+  // Check if string explicitly mentions meters (e.g., "1.5 x 2.0 m" or "1.5 ม.")
+  const isExplicitMeters = /\b(m|meters?|เมตร|ม\.)\b/i.test(str) && !/\b(cm|ซม)\b/i.test(str);
+
+  // Look for 2 or 3 numbers (Width x Height x Depth or Width x Height)
+  const matches = str.match(/(\d+(?:\.\d+)?)\s*(?:x|×|X|\*)\s*(\d+(?:\.\d+)?)(?:\s*(?:x|×|X|\*)\s*(\d+(?:\.\d+)?))?/);
   if (matches && matches[1] && matches[2]) {
-    const num1 = parseFloat(matches[1]);
-    const num2 = parseFloat(matches[2]);
+    let num1 = parseFloat(matches[1]);
+    let num2 = parseFloat(matches[2]);
+    let num3 = matches[3] ? parseFloat(matches[3]) : null;
 
-    // If entered in meters (e.g. 1.2 x 1.8), convert to cm
-    const w = num1 < 10 ? Math.round(num1 * 100) : Math.round(num1);
-    const h = num2 < 10 ? Math.round(num2 * 100) : Math.round(num2);
+    if (isExplicitMeters) {
+      num1 = Math.round(num1 * 100);
+      num2 = Math.round(num2 * 100);
+      if (num3 !== null) num3 = Math.round(num3 * 100);
+    }
 
-    return `${w} × ${h} ${unit}`;
+    if (num3 !== null) {
+      return `${num1} × ${num2} × ${num3} ${unit}`;
+    }
+    return `${num1} × ${num2} ${unit}`;
   }
 
-  const clean = dimStr.replace(/\s*(?:cm|ซม|m|ม)\.?/gi, '').trim();
+  const clean = str.replace(/\s*(?:cm|ซม|m|ม)\.?/gi, '').trim();
   return `${clean} ${unit}`;
 }
 
 /**
- * Parses real-world physical artwork dimensions (e.g., "120 x 180 cm.", "100 x 80 cm.", "80 x 120 cm.", "1.5 x 2.0 m")
+ * Parses real-world physical artwork dimensions (e.g., "120 x 180 cm.", "9 x 24 cm.", "1.5 x 2.0 m")
  * and converts to real 3D meter units for Three.js without distorting portrait/landscape aspect ratio.
  */
 export function parseArtworkDimensions(dimStr?: string | null): { widthMeters: number; heightMeters: number } {
@@ -60,29 +70,22 @@ export function parseArtworkDimensions(dimStr?: string | null): { widthMeters: n
     return { widthMeters: 1.5, heightMeters: 1.2 };
   }
 
-  // Look for two numbers (Width x Height or Height x Width)
-  const matches = dimStr.match(/(\d+(?:\.\d+)?)\s*(?:x|×|X|\*)\s*(\d+(?:\.\d+)?)/);
+  const str = dimStr.trim();
+  const isExplicitMeters = /\b(m|meters?|เมตร|ม\.)\b/i.test(str) && !/\b(cm|ซม)\b/i.test(str);
+
+  const matches = str.match(/(\d+(?:\.\d+)?)\s*(?:x|×|X|\*)\s*(\d+(?:\.\d+)?)/);
   if (matches && matches[1] && matches[2]) {
     const num1 = parseFloat(matches[1]);
     const num2 = parseFloat(matches[2]);
 
-    // Check if entered in meters (e.g. 1.2 x 1.8) or centimeters (e.g. 120 x 180)
-    let wMeters = num1 < 10 ? num1 : num1 / 100;
-    let hMeters = num2 < 10 ? num2 : num2 / 100;
+    let wMeters = isExplicitMeters ? num1 : (num1 > 10 ? num1 / 100 : (str.includes('.') && num1 < 4 ? num1 : num1 / 100));
+    let hMeters = isExplicitMeters ? num2 : (num2 > 10 ? num2 / 100 : (str.includes('.') && num2 < 4 ? num2 : num2 / 100));
 
-    // Safety bounds: minimum 0.25m (25 cm) to 6.0m (600 cm)
-    wMeters = Math.min(Math.max(wMeters, 0.25), 6.0);
-    hMeters = Math.min(Math.max(hMeters, 0.25), 6.0);
+    // Safety bounds: minimum 0.15m (15 cm) to 6.0m (600 cm)
+    wMeters = Math.min(Math.max(wMeters, 0.15), 6.0);
+    hMeters = Math.min(Math.max(hMeters, 0.15), 6.0);
 
     return { widthMeters: wMeters, heightMeters: hMeters };
-  }
-
-  // Single dimension fallback (e.g. "120 cm")
-  const singleMatch = dimStr.match(/(\d+(?:\.\d+)?)/);
-  if (singleMatch && singleMatch[1]) {
-    const num = parseFloat(singleMatch[1]);
-    const meters = num < 10 ? num : num / 100;
-    return { widthMeters: meters, heightMeters: meters };
   }
 
   return { widthMeters: 1.5, heightMeters: 1.2 };
