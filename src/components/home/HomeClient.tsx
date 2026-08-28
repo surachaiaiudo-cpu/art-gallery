@@ -27,6 +27,7 @@ import {
 import { formatDateRange, formatDimensionsInCm } from '@/lib/utils';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ViewInRoomModal } from '@/components/exhibition/ViewInRoomModal';
+import { CatalogSelectorModal } from '@/components/catalog/CatalogSelectorModal';
 
 interface HomeClientProps {
   exhibitions: Exhibition[];
@@ -37,6 +38,7 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all');
   const [selectedSpotlightArtwork, setSelectedSpotlightArtwork] = useState<Artwork | null>(null);
   const [isViewInRoomOpen, setIsViewInRoomOpen] = useState(false);
+  const [isCatalogSelectorOpen, setIsCatalogSelectorOpen] = useState(false);
 
   const filteredExhibitions = exhibitions.filter((exh) => {
     if (filter === 'active') return exh.status === 'active';
@@ -107,13 +109,13 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
                   </Link>
                 )}
 
-                <Link
-                  href={`/catalog/${featuredExhibition.slug}`}
-                  className="inline-flex items-center gap-2.5 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold uppercase tracking-wider backdrop-blur-md border border-white/20 hover:border-[#C5A880]/50 transition-all shadow-lg"
+                <button
+                  onClick={() => setIsCatalogSelectorOpen(true)}
+                  className="inline-flex items-center gap-2.5 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold uppercase tracking-wider backdrop-blur-md border border-white/20 hover:border-[#C5A880]/50 transition-all shadow-lg cursor-pointer active:scale-95"
                 >
                   <BookOpen className="w-4 h-4 text-[#C5A880]" />
-                  <span>{lang === 'th' ? 'เปิดอ่านสูจิบัตรดิจิทัล' : 'Digital Catalog'}</span>
-                </Link>
+                  <span>{lang === 'th' ? 'เลือกเปิดอ่านสูจิบัตร' : 'Select E-Catalog'}</span>
+                </button>
 
                 <Link
                   href={`/exhibitions/${featuredExhibition.slug}?mode=2d`}
@@ -487,6 +489,15 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
           artwork={selectedSpotlightArtwork}
           isOpen={isViewInRoomOpen}
           onClose={() => setIsViewInRoomOpen(false)}
+        />
+      )}
+
+      {/* Exhibition Catalog Selector Modal */}
+      {isCatalogSelectorOpen && (
+        <CatalogSelectorModal
+          exhibitions={exhibitions}
+          isOpen={isCatalogSelectorOpen}
+          onClose={() => setIsCatalogSelectorOpen(false)}
         />
       )}
     </div>
