@@ -69,6 +69,9 @@ import {
   Square,
   Frame,
   Percent,
+  Upload,
+  FolderOpen,
+  RefreshCw,
 } from 'lucide-react';
 
 interface CatalogDesignerStudioProps {
@@ -171,6 +174,21 @@ export function CatalogDesignerStudio({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccessToast, setSaveSuccessToast] = useState<boolean>(false);
   const [isPresetModalOpen, setIsPresetModalOpen] = useState<boolean>(false);
+  const [customPresets, setCustomPresets] = useState<CatalogTemplateConfig[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('artvara_custom_catalog_presets');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+      }
+    }
+    return [];
+  });
+  const [isSavePresetModalOpen, setIsSavePresetModalOpen] = useState<boolean>(false);
+  const [newPresetName, setNewPresetName] = useState<string>('');
+  const [newPresetDesc, setNewPresetDesc] = useState<string>('');
   const [isCmykModalOpen, setIsCmykModalOpen] = useState<boolean>(false);
   const [showMarginGuide, setShowMarginGuide] = useState<boolean>(true);
   const [isMarginModalOpen, setIsMarginModalOpen] = useState<boolean>(false);
@@ -198,16 +216,34 @@ export function CatalogDesignerStudio({
     initialBlockH: number;
   } | null>(null);
 
-  // Update template when switching exhibition
+  // Update template when switching exhibition or when exhibitions are loaded from server
   useEffect(() => {
     if (currentExhibition) {
-      const loadedTpl = getExhibitionCatalogTemplate(currentExhibition);
+      let loadedTpl = getExhibitionCatalogTemplate(currentExhibition);
+
+      // Check if local browser storage has a saved layout for this exhibition
+      if (typeof window !== 'undefined') {
+        const localSaved = localStorage.getItem(`artvara_catalog_template_${currentExhibition.id}`);
+        if (localSaved) {
+          try {
+            const parsed = JSON.parse(localSaved);
+            if (parsed && Array.isArray(parsed.blocks) && parsed.blocks.length > 0) {
+              const serverUpdated = (loadedTpl as any)?.updatedAt || '';
+              const localUpdated = (parsed as any)?.updatedAt || '';
+              if (!serverUpdated || localUpdated >= serverUpdated) {
+                loadedTpl = parsed;
+              }
+            }
+          } catch {}
+        }
+      }
+
       setTemplate(loadedTpl);
       setSelectedBlockId(null);
       setHistory([loadedTpl]);
       setHistoryIndex(0);
     }
-  }, [selectedExhibitionId]);
+  }, [selectedExhibitionId, exhibitions]);
 
   // Selected Block Object
   const selectedBlock = template.blocks.find((b) => b.id === selectedBlockId) || null;
@@ -620,6 +656,7 @@ export function CatalogDesignerStudio({
   }, [dragState, template]);
 
   // Save template to exhibition themeConfig
+  // Save template to exhibition themeConfig (DB + LocalStorage + In-Memory State)
   const handleSaveTemplate = async () => {
     if (!currentExhibition) return;
     setIsSaving(true);
@@ -635,11 +672,15 @@ export function CatalogDesignerStudio({
         } catch {}
       }
 
-      currentTheme.catalogTemplate = {
+      const nowIso = new Date().toISOString();
+      const templateWithMeta = {
         ...template,
-        updatedAt: new Date().toISOString(),
+        updatedAt: nowIso,
       };
 
+      currentTheme.catalogTemplate = templateWithMeta;
+
+      // 1. Save to database via API
       const res = await fetch('/api/admin/exhibitions', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -649,17 +690,137 @@ export function CatalogDesignerStudio({
         }),
       });
 
+      // 2. Save backup to browser localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          `artvara_catalog_template_${currentExhibition.id}`,
+          JSON.stringify(templateWithMeta)
+        );
+      }
+
+      // 3. Update in-memory exhibitions state so changes persist immediately without full page reload
+      setExhibitions((prev) =>
+        prev.map((exh) =>
+          exh.id === currentExhibition.id
+            ? {
+                ...exh,
+                themeConfig: JSON.stringify(currentTheme),
+              }
+            : exh
+        )
+      );
+
       if (res.ok) {
         setSaveSuccessToast(true);
         setTimeout(() => setSaveSuccessToast(false), 3500);
       } else {
-        alert('บันทึกเทมเพลตไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+        alert('บันทึกลงฐานข้อมูลไม่สำเร็จ แต่บันทึกสำรองในเบราว์เซอร์เรียบร้อยแล้ว');
       }
     } catch (err) {
       console.error(err);
-      alert('เกิดข้อผิดพลาดในการบันทึก: ' + String(err));
+      // Even if network fails, localStorage is saved
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          `artvara_catalog_template_${currentExhibition.id}`,
+          JSON.stringify({ ...template, updatedAt: new Date().toISOString() })
+        );
+      }
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ (บันทึกสำรองไว้ในเครื่องแล้ว)');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Reload saved template from DB or local storage
+  const handleReloadSavedTemplate = () => {
+    if (!currentExhibition) return;
+    let finalTpl = getExhibitionCatalogTemplate(currentExhibition);
+    if (typeof window !== 'undefined') {
+      const localSaved = localStorage.getItem(`artvara_catalog_template_${currentExhibition.id}`);
+      if (localSaved) {
+        try {
+          const parsed = JSON.parse(localSaved);
+          if (parsed && Array.isArray(parsed.blocks) && parsed.blocks.length > 0) {
+            finalTpl = parsed;
+          }
+        } catch {}
+      }
+    }
+    setTemplate(finalTpl);
+    setHistory([finalTpl]);
+    setHistoryIndex(0);
+    setSelectedBlockId(null);
+    setSaveSuccessToast(true);
+    setTimeout(() => setSaveSuccessToast(false), 3000);
+  };
+
+  // Export template configuration as JSON file
+  const handleExportJSON = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(template, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `catalog-template-${currentExhibition?.slug || 'artvara'}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  // Import template configuration from JSON file
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    if (e.target.files && e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], 'UTF-8');
+      fileReader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target?.result as string);
+          if (parsed && Array.isArray(parsed.blocks) && parsed.blocks.length > 0) {
+            updateTemplateWithHistory(parsed);
+            alert('นำเข้าไฟล์เลย์เอาต์สำเร็จแล้ว!');
+          } else {
+            alert('โครงสร้างไฟล์ JSON ไม่ถูกต้องสำหรับเทมเพลตสูจิบัตร');
+          }
+        } catch (err) {
+          alert('ไม่สามารถอ่านไฟล์ JSON ได้: ' + String(err));
+        }
+      };
+    }
+  };
+
+  // Save current template as a new reusable Custom Preset
+  const handleSaveAsNewPreset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPresetName.trim()) return;
+
+    const newPreset: CatalogTemplateConfig = {
+      ...template,
+      id: `custom-preset-${Date.now()}`,
+      name: newPresetName.trim(),
+      description: newPresetDesc.trim() || `แม่แบบส่วนตัว สร้างเมื่อ ${new Date().toLocaleDateString('th-TH')}`,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updated = [newPreset, ...customPresets];
+    setCustomPresets(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('artvara_custom_catalog_presets', JSON.stringify(updated));
+    }
+
+    setNewPresetName('');
+    setNewPresetDesc('');
+    setIsSavePresetModalOpen(false);
+    setSaveSuccessToast(true);
+    setTimeout(() => setSaveSuccessToast(false), 3000);
+  };
+
+  // Delete custom preset
+  const handleDeleteCustomPreset = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('คุณต้องการลบแม่แบบนี้ใช่หรือไม่?')) {
+      const updated = customPresets.filter((p) => p.id !== id);
+      setCustomPresets(updated);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('artvara_custom_catalog_presets', JSON.stringify(updated));
+      }
     }
   };
 
@@ -946,6 +1107,40 @@ export function CatalogDesignerStudio({
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
+
+          <div className="h-3.5 w-px bg-white/10 mx-1" />
+
+          {/* Reload Saved Template */}
+          <button
+            onClick={handleReloadSavedTemplate}
+            className="p-1 text-[#A59F92] hover:text-[#C5A880] cursor-pointer"
+            title="โหลดเลย์เอาต์ที่บันทึกไว้ล่าสุด (Reload Saved Layout)"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Export JSON file */}
+          <button
+            onClick={handleExportJSON}
+            className="p-1 text-[#A59F92] hover:text-[#C5A880] cursor-pointer"
+            title="ส่งออกไฟล์เลย์เอาต์ (.json) เก็บไว้ในเครื่อง"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Import JSON file */}
+          <label
+            className="p-1 text-[#A59F92] hover:text-[#C5A880] cursor-pointer flex items-center"
+            title="นำเข้าไฟล์เลย์เอาต์ (.json) จากเครื่อง"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportJSON}
+              className="hidden"
+            />
+          </label>
         </div>
 
         {/* Right Pill: Presets, Live Link, Save Button */}
@@ -976,9 +1171,10 @@ export function CatalogDesignerStudio({
             onClick={handleSaveTemplate}
             disabled={isSaving}
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow-2xl transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            title="บันทึกเลย์เอาต์ลงฐานข้อมูลและเครื่องเพื่อใช้งานจริง"
           >
             <Save className="w-3.5 h-3.5" />
-            <span>{isSaving ? 'บันทึก...' : 'บันทึก'}</span>
+            <span>{isSaving ? 'กำลังบันทึก...' : 'บันทึก'}</span>
           </button>
         </div>
       </header>
@@ -1990,46 +2186,195 @@ export function CatalogDesignerStudio({
       )}
 
       {/* ========================================================================= */}
-      {/* 🌟 PRESET TEMPLATES MODAL */}
+      {/* 🌟 PRESET TEMPLATES MODAL (แม่แบบมาตรฐาน & แม่แบบที่คุณบันทึกไว้) */}
       {/* ========================================================================= */}
       {isPresetModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#141413] border border-[#C5A880]/30 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up">
+          <div className="bg-[#141413] border border-[#C5A880]/30 rounded-3xl w-full max-w-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up">
             <div className="p-5 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#C5A880]" />
-                <h3 className="text-sm font-bold text-[#FAF9F6]">เลือกแม่แบบสำเร็จรูป (Built-in Presets)</h3>
+                <h3 className="text-sm font-bold text-[#FAF9F6]">เลือกและจัดการแม่แบบสูจิบัตร (Catalog Templates)</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setIsPresetModalOpen(false);
+                    setIsSavePresetModalOpen(true);
+                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>บันทึกเป็นแม่แบบใหม่</span>
+                </button>
+                <button
+                  onClick={() => setIsPresetModalOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
+              {/* 1. Custom Presets Section */}
+              {customPresets.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#C5A880] uppercase tracking-wider">
+                      <FolderOpen className="w-4 h-4" />
+                      <span>แม่แบบที่คุณบันทึกไว้ ({customPresets.length})</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {customPresets.map((preset) => (
+                      <div
+                        key={preset.id}
+                        onClick={() => handleSelectPreset(preset)}
+                        className="group p-4 rounded-2xl bg-[#1C1A17] hover:bg-[#25221D] border border-[#C5A880]/30 hover:border-[#8B1B1B] cursor-pointer transition-all flex flex-col justify-between relative shadow"
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <span className="text-sm font-bold text-[#FAF9F6] group-hover:text-[#C5A880] transition-colors line-clamp-1">
+                              {preset.name}
+                            </span>
+                            <button
+                              onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
+                              className="p-1 rounded-md text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                              title="ลบแม่แบบนี้"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="text-[11px] text-[#A59F92] mb-1 line-clamp-1 font-sans">
+                            {preset.description || 'แม่แบบกำหนดเอง'}
+                          </div>
+                          <div className="text-xs text-[#737067] mb-3 font-mono">
+                            {preset.pageWidthInches}&quot; × {preset.pageHeightInches}&quot; ({preset.paperSize})
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-[#C5A880] font-semibold border-t border-white/5 pt-2">
+                          <span className="text-[11px] text-[#A59F92]">{preset.blocks.length} องค์ประกอบ</span>
+                          <span className="group-hover:translate-x-1 transition-transform text-[11px]">ใช้แม่แบบนี้ →</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Built-in Standard Presets */}
+              <div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#A59F92] uppercase tracking-wider mb-3">
+                  <Sparkles className="w-4 h-4 text-[#C5A880]" />
+                  <span>แม่แบบมาตรฐาน (Built-in Standard Presets)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {BUILTIN_CATALOG_PRESETS.map((preset) => (
+                    <div
+                      key={preset.id}
+                      onClick={() => handleSelectPreset(preset)}
+                      className="group p-4 rounded-2xl bg-[#1F1C17] hover:bg-[#2A2722] border border-white/10 hover:border-[#8B1B1B] cursor-pointer transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="text-sm font-bold text-[#FAF9F6] group-hover:text-[#C5A880] transition-colors mb-1">
+                          {preset.name}
+                        </div>
+                        <div className="text-xs text-[#A59F92] mb-1 font-sans">
+                          {preset.description}
+                        </div>
+                        <div className="text-xs text-[#737067] mb-3 font-mono">
+                          {preset.pageWidthInches}&quot; × {preset.pageHeightInches}&quot; ({preset.paperSize})
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-[#C5A880] font-semibold border-t border-white/5 pt-2">
+                        <span className="text-[11px] text-[#A59F92]">{preset.blocks.length} องค์ประกอบ</span>
+                        <span className="group-hover:translate-x-1 transition-transform text-[11px]">เลือกแม่แบบนี้ →</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 💾 SAVE AS NEW PRESET MODAL */}
+      {/* ========================================================================= */}
+      {isSavePresetModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#141413] border border-[#C5A880]/40 rounded-3xl w-full max-w-md p-6 shadow-2xl animate-slide-up">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#C5A880]" />
+                <h3 className="text-sm font-bold text-[#FAF9F6]">บันทึกเป็นแม่แบบใหม่ (Save as Preset)</h3>
               </div>
               <button
-                onClick={() => setIsPresetModalOpen(false)}
-                className="p-1.5 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
+                onClick={() => setIsSavePresetModalOpen(false)}
+                className="p-1 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {BUILTIN_CATALOG_PRESETS.map((preset) => (
-                <div
-                  key={preset.id}
-                  onClick={() => handleSelectPreset(preset)}
-                  className="group p-4 rounded-2xl bg-[#1F1C17] hover:bg-[#2A2722] border border-[#C5A880]/20 hover:border-[#8B1B1B] cursor-pointer transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="text-sm font-bold text-[#FAF9F6] group-hover:text-[#C5A880] transition-colors mb-1">
-                      {preset.name}
-                    </div>
-                    <div className="text-xs text-[#A59F92] mb-3 font-mono">
-                      {preset.pageWidthInches}&quot; × {preset.pageHeightInches}&quot; ({preset.paperSize})
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-[#C5A880] font-semibold">
-                    <span>{preset.blocks.length} องค์ประกอบ</span>
-                    <span className="group-hover:translate-x-1 transition-transform">เลือกแม่แบบนี้ →</span>
-                  </div>
+            <form onSubmit={handleSaveAsNewPreset} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#C5A880] mb-1.5">
+                  ชื่อแม่แบบใหม่ (Preset Name) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="เช่น สูจิบัตรเพาะช่าง โมเดิร์น 2026"
+                  value={newPresetName}
+                  onChange={(e) => setNewPresetName(e.target.value)}
+                  className="w-full bg-[#1F1C17] border border-[#C5A880]/30 focus:border-[#C5A880] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF9F6] focus:outline-none placeholder-neutral-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#A59F92] mb-1.5">
+                  คำอธิบายเพิ่มเติม (Description)
+                </label>
+                <input
+                  type="text"
+                  placeholder="เช่น เลย์เอาต์จัดวางรูปศิลปินชิดขวา ธงชาติ 1cm"
+                  value={newPresetDesc}
+                  onChange={(e) => setNewPresetDesc(e.target.value)}
+                  className="w-full bg-[#1F1C17] border border-white/10 focus:border-[#C5A880] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF9F6] focus:outline-none placeholder-neutral-500"
+                />
+              </div>
+
+              <div className="p-3 bg-[#1F1C17] rounded-xl border border-white/5 text-xs text-[#A59F92] space-y-1">
+                <div className="flex justify-between">
+                  <span>ขนาดกระดาษ:</span>
+                  <span className="font-mono text-[#FAF9F6]">{template.pageWidthInches}&quot; × {template.pageHeightInches}&quot; ({template.paperSize})</span>
                 </div>
-              ))}
-            </div>
+                <div className="flex justify-between">
+                  <span>จำนวนองค์ประกอบ:</span>
+                  <span className="font-mono text-[#FAF9F6]">{template.blocks.length} บล็อก</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSavePresetModalOpen(false)}
+                  className="px-4 py-2 rounded-full text-xs text-[#A59F92] hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow-lg transition-all cursor-pointer active:scale-95"
+                >
+                  บันทึกแม่แบบ
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
