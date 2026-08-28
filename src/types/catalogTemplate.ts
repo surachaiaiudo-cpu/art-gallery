@@ -198,8 +198,8 @@ export const PRESET_SQUARE_8X8_MODERN: CatalogTemplateConfig = {
       label: 'ภาพถ่ายศิลปิน',
       xInches: 6.125,
       yInches: 1.375,
-      widthInches: 1.625,
-      heightInches: 2.0,
+      widthInches: 1.5,
+      heightInches: 1.5,
       zIndex: 2,
       style: {
         borderRadius: 8,
@@ -333,8 +333,8 @@ export const PRESET_SQUARE_10X10_GRAND: CatalogTemplateConfig = {
       label: 'ภาพถ่ายศิลปิน',
       xInches: 0.75,
       yInches: 7.25,
-      widthInches: 1.75,
-      heightInches: 2.0,
+      widthInches: 1.5,
+      heightInches: 1.5,
       zIndex: 2,
       style: {
         borderRadius: 8,
@@ -465,8 +465,8 @@ export const PRESET_A4_PORTRAIT_CLASSIC: CatalogTemplateConfig = {
       label: 'ภาพถ่ายศิลปิน',
       xInches: 0.75,
       yInches: 7.5,
-      widthInches: 1.75,
-      heightInches: 2.25,
+      widthInches: 1.5,
+      heightInches: 1.5,
       zIndex: 2,
       style: {
         borderRadius: 6,
@@ -615,8 +615,8 @@ export const PRESET_A4_LANDSCAPE_PANORAMA: CatalogTemplateConfig = {
       label: 'ภาพถ่ายศิลปิน',
       xInches: 8.25,
       yInches: 0.75,
-      widthInches: 2.25,
-      heightInches: 2.75,
+      widthInches: 1.5,
+      heightInches: 1.5,
       zIndex: 2,
       style: {
         borderRadius: 8,
@@ -786,8 +786,8 @@ export const PRESET_MINIMALIST_CLEAN: CatalogTemplateConfig = {
       label: 'ภาพถ่ายศิลปิน',
       xInches: 7.75,
       yInches: 7.75,
-      widthInches: 1.75,
-      heightInches: 1.75,
+      widthInches: 1.5,
+      heightInches: 1.5,
       zIndex: 2,
       style: {
         borderRadius: 9999, // Circle

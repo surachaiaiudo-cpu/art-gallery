@@ -443,7 +443,11 @@ export function CatalogDynamicPlate({
           const leftPct = (block.xInches / widthInches) * 100;
           const topPct = (block.yInches / heightInches) * 100;
           const widthPct = (block.widthInches / widthInches) * 100;
-          const heightPct = (block.heightInches / heightInches) * 100;
+          const effectiveHeightInches =
+            block.type === 'artist_photo'
+              ? Math.min(block.heightInches, 1.5)
+              : block.heightInches;
+          const heightPct = (effectiveHeightInches / heightInches) * 100;
 
           const isSelected = selectedBlockId === block.id;
           const s = block.style || {};

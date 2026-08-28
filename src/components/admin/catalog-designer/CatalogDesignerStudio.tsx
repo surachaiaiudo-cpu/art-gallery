@@ -84,7 +84,7 @@ const AVAILABLE_MODULES: {
   description: string;
 }[] = [
   { type: 'artwork_image', label: 'ภาพผลงาน', icon: ImageIcon, defaultW: 5.0, defaultH: 5.0, description: 'ภาพถ่ายผลงานศิลปะความละเอียดสูง' },
-  { type: 'artist_photo', label: 'ภาพศิลปิน', icon: User, defaultW: 1.5, defaultH: 2.0, description: 'รูปโปรไฟล์ศิลปินผู้สร้างสรรค์' },
+  { type: 'artist_photo', label: 'ภาพศิลปิน', icon: User, defaultW: 1.25, defaultH: 1.5, description: 'รูปโปรไฟล์ศิลปิน (สูงไม่เกิน 1.5 นิ้ว)' },
   { type: 'country_flag', label: 'ธงชาติ', icon: Flag, defaultW: 0.75, defaultH: 0.5, description: 'ธงชาติประเทศของศิลปิน' },
   { type: 'artwork_title', label: 'ชื่องานศิลปะ', icon: Type, defaultW: 3.5, defaultH: 0.5, description: 'ชื่อผลงานศิลปกรรม' },
   { type: 'artist_name', label: 'ชื่อศิลปิน', icon: User, defaultW: 3.5, defaultH: 0.5, description: 'ชื่อ-นามสกุล ศิลปิน' },
@@ -355,14 +355,20 @@ export function CatalogDesignerStudio({
     updates: Partial<CatalogBlockElement>,
     commitHistory = false
   ) => {
+    const targetBlock = template.blocks.find((b) => b.id === blockId);
+    const sanitizedUpdates = { ...updates };
+    if (targetBlock?.type === 'artist_photo' && typeof sanitizedUpdates.heightInches === 'number') {
+      sanitizedUpdates.heightInches = Math.min(sanitizedUpdates.heightInches, 1.5);
+    }
+
     const updatedBlocks = template.blocks.map((b) => {
       if (b.id === blockId) {
         return {
           ...b,
-          ...updates,
+          ...sanitizedUpdates,
           style: {
             ...b.style,
-            ...(updates.style || {}),
+            ...(sanitizedUpdates.style || {}),
           },
         };
       }
