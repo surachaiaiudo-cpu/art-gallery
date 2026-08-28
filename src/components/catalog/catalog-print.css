@@ -92,12 +92,16 @@
     justify-content: space-between !important;
   }
 
-  /* Single-Page Print Overrides */
+  /* Single-Page Print Overrides - Instant Zero-Lag Layout */
   .catalog-a4-page.print-hide-this-page,
   .catalog-square8-page.print-hide-this-page,
+  .catalog-dynamic-page.print-hide-this-page,
   .print-hide-this-page,
+  body.print-single-mode main > *:not(.print-this-page-only),
   body.print-single-mode .catalog-a4-page:not(.print-this-page-only),
-  body.print-single-mode .catalog-square8-page:not(.print-this-page-only) {
+  body.print-single-mode .catalog-square8-page:not(.print-this-page-only),
+  body.print-single-mode .catalog-dynamic-page:not(.print-this-page-only),
+  body.print-single-mode [data-plate-id]:not(.print-this-page-only) {
     display: none !important;
     visibility: hidden !important;
     height: 0 !important;
@@ -105,6 +109,18 @@
     max-height: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
     overflow: hidden !important;
+  }
+
+  body.print-single-mode main > .print-this-page-only,
+  body.print-single-mode .catalog-a4-page.print-this-page-only,
+  body.print-single-mode .catalog-square8-page.print-this-page-only,
+  body.print-single-mode .catalog-dynamic-page.print-this-page-only {
+    display: block !important;
+    visibility: visible !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 }

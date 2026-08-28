@@ -15,8 +15,29 @@ export function usePrintEngine(exhibition: Exhibition) {
 
     // Mark single page for print
     document.body.classList.add('print-single-mode');
-    const pages = document.querySelectorAll<HTMLElement>('main .catalog-a4-page');
-    pages.forEach((page, idx) => {
+
+    // Get all top-level page containers inside main (Cover, Statement, and Plates)
+    const mainElement = document.querySelector('main');
+    const directChildren = mainElement ? (Array.from(mainElement.children) as HTMLElement[]) : [];
+
+    // Also query all individual page elements
+    const pageElements = document.querySelectorAll<HTMLElement>(
+      'main .catalog-a4-page, main .catalog-square8-page, main .catalog-dynamic-page, main [data-plate-id]'
+    );
+
+    // Tag direct children of main
+    directChildren.forEach((child, idx) => {
+      if (idx === pageIndex) {
+        child.classList.add('print-this-page-only');
+        child.classList.remove('print-hide-this-page');
+      } else {
+        child.classList.add('print-hide-this-page');
+        child.classList.remove('print-this-page-only');
+      }
+    });
+
+    // Tag individual page cards
+    pageElements.forEach((page, idx) => {
       if (idx === pageIndex) {
         page.classList.add('print-this-page-only');
         page.classList.remove('print-hide-this-page');
@@ -29,7 +50,10 @@ export function usePrintEngine(exhibition: Exhibition) {
     const cleanup = () => {
       document.title = originalTitle;
       document.body.classList.remove('print-single-mode');
-      pages.forEach((page) => {
+      directChildren.forEach((child) => {
+        child.classList.remove('print-this-page-only', 'print-hide-this-page');
+      });
+      pageElements.forEach((page) => {
         page.classList.remove('print-this-page-only', 'print-hide-this-page');
       });
       window.removeEventListener('afterprint', cleanup);
