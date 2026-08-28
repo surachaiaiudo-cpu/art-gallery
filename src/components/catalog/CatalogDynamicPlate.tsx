@@ -505,6 +505,7 @@ export function CatalogDynamicPlate({
   return (
     <section
       data-plate-id={artwork.id}
+      data-paper={template.paperSize || 'a4_portrait'}
       className={`catalog-dynamic-page relative overflow-hidden transition-all select-none box-border ${
         isPrintMode ? 'print-exact-page' : 'shadow-xl mx-auto border border-[#E0E0E0]'
       }`}

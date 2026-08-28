@@ -44,15 +44,34 @@
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
+
+  /* Reset all Tailwind space-y margins between pages */
+  main > *,
+  main > :not([hidden]) ~ :not([hidden]) {
+    margin: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 0 !important;
+  }
+
+  .catalog-dynamic-page,
   .catalog-a4-page {
     width: 210mm !important;
     height: 297mm !important;
     min-height: 297mm !important;
     max-height: 297mm !important;
     margin: 0 !important;
-    padding: 15mm !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
     box-sizing: border-box !important;
+    page-break-before: auto !important;
+    break-before: auto !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
@@ -62,6 +81,10 @@
     background-color: #ffffff !important;
     position: relative !important;
     overflow: hidden !important;
+  }
+
+  .catalog-a4-page {
+    padding: 15mm !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
@@ -73,6 +96,8 @@
     min-height: 203.2mm !important;
     max-height: 203.2mm !important;
     margin: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
     padding-top: 25.4mm !important;
     padding-left: 19.05mm !important;
     padding-right: 6.35mm !important;
@@ -92,7 +117,50 @@
     justify-content: space-between !important;
   }
 
-  /* Single-Page Print Overrides - Instant Zero-Lag Layout */
+  .catalog-dynamic-page[data-paper="square_8x8"] {
+    width: 203.2mm !important;
+    height: 203.2mm !important;
+    min-height: 203.2mm !important;
+    max-height: 203.2mm !important;
+  }
+
+  .catalog-dynamic-page[data-paper="square_10x10"] {
+    width: 254mm !important;
+    height: 254mm !important;
+    min-height: 254mm !important;
+    max-height: 254mm !important;
+  }
+
+  .catalog-dynamic-page[data-paper="a4_landscape"] {
+    width: 297mm !important;
+    height: 210mm !important;
+    min-height: 210mm !important;
+    max-height: 210mm !important;
+  }
+
+  /* Single-Page Print Overrides - Instant Zero-Lag Flush Layout */
+  body.print-single-mode,
+  body.print-single-mode html {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  body.print-single-mode main {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  body.print-single-mode main > * {
+    margin: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+
   .catalog-a4-page.print-hide-this-page,
   .catalog-square8-page.print-hide-this-page,
   .catalog-dynamic-page.print-hide-this-page,
@@ -120,7 +188,14 @@
   body.print-single-mode .catalog-dynamic-page.print-this-page-only {
     display: block !important;
     visibility: visible !important;
-    page-break-after: auto !important;
-    break-after: auto !important;
+    margin: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+    overflow: hidden !important;
   }
 }
