@@ -16,6 +16,7 @@ interface CatalogDynamicPlateProps {
   exhibitionSlug?: string;
   onBlockClick?: (blockId: string) => void;
   selectedBlockId?: string | null;
+  onImageNaturalRatio?: (blockId: string, ratio: number) => void;
 }
 
 export function CatalogDynamicPlate({
@@ -27,6 +28,7 @@ export function CatalogDynamicPlate({
   exhibitionSlug,
   onBlockClick,
   selectedBlockId,
+  onImageNaturalRatio,
 }: CatalogDynamicPlateProps) {
   const [photoError, setPhotoError] = useState(false);
   const [artworkImgError, setArtworkImgError] = useState(false);
@@ -111,17 +113,35 @@ export function CatalogDynamicPlate({
       }
     };
 
+    const resolveBorderRadius = () => {
+      if (
+        s.borderTopLeftRadius !== undefined ||
+        s.borderTopRightRadius !== undefined ||
+        s.borderBottomRightRadius !== undefined ||
+        s.borderBottomLeftRadius !== undefined
+      ) {
+        return `${s.borderTopLeftRadius || 0}px ${s.borderTopRightRadius || 0}px ${s.borderBottomRightRadius || 0}px ${s.borderBottomLeftRadius || 0}px`;
+      }
+      return s.borderRadius !== undefined ? `${s.borderRadius}px` : undefined;
+    };
+
     switch (block.type) {
       case 'artwork_image':
         const imgJustify = s.textAlign === 'left' ? 'justify-start' : s.textAlign === 'right' ? 'justify-end' : 'justify-center';
         return (
-          <div className={`w-full h-full flex items-center ${imgJustify} overflow-hidden p-0.5`}>
+          <div className={`w-full h-full flex items-center ${imgJustify} overflow-hidden p-0`}>
             {rawArtworkUrl ? (
               <img
                 src={optimizedArtworkUrl || rawArtworkUrl}
                 alt={artwork.title || 'Artwork'}
                 loading="eager"
                 decoding="async"
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  if (img.naturalWidth && img.naturalHeight && onImageNaturalRatio) {
+                    onImageNaturalRatio(block.id, img.naturalWidth / img.naturalHeight);
+                  }
+                }}
                 onError={() => {
                   if (!artworkImgError) setArtworkImgError(true);
                 }}
@@ -129,9 +149,9 @@ export function CatalogDynamicPlate({
                   width: '100%',
                   height: '100%',
                   objectFit: s.objectFit || 'contain',
-                  borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
+                  borderRadius: resolveBorderRadius(),
                 }}
-                className="w-full h-full transition-transform duration-300"
+                className="w-full h-full transition-transform duration-300 block select-none"
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-[#F5F4F0] border border-[#DDD] text-[#999] rounded p-4 text-center">
@@ -144,24 +164,32 @@ export function CatalogDynamicPlate({
       case 'artist_photo':
         const photoJustify = s.textAlign === 'left' ? 'justify-start' : s.textAlign === 'right' ? 'justify-end' : 'justify-center';
         return (
-          <div className={`w-full h-full flex items-center ${photoJustify} overflow-hidden`}>
+          <div className={`w-full h-full flex items-center ${photoJustify} overflow-hidden p-0`}>
             {hasRealPhoto ? (
               <img
                 src={optimizedPhotoUrl}
                 alt={artist?.name || 'Artist'}
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  if (img.naturalWidth && img.naturalHeight && onImageNaturalRatio) {
+                    onImageNaturalRatio(block.id, img.naturalWidth / img.naturalHeight);
+                  }
+                }}
                 onError={() => setPhotoError(true)}
                 style={{
+                  width: '100%',
+                  height: '100%',
                   objectFit: s.objectFit || 'cover',
-                  borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
+                  borderRadius: resolveBorderRadius(),
                   borderWidth: s.borderWidth ? `${s.borderWidth}px` : undefined,
                   borderColor: s.borderColor,
                 }}
-                className="w-full h-full"
+                className="w-full h-full block select-none"
               />
             ) : (
               <div
                 style={{
-                  borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
+                  borderRadius: resolveBorderRadius(),
                   borderWidth: s.borderWidth ? `${s.borderWidth}px` : undefined,
                   borderColor: s.borderColor || '#D0D0D0',
                 }}
@@ -183,13 +211,19 @@ export function CatalogDynamicPlate({
             <img
               src={flagUrl}
               alt={artist?.country || 'Country'}
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                if (img.naturalWidth && img.naturalHeight && onImageNaturalRatio) {
+                  onImageNaturalRatio(block.id, img.naturalWidth / img.naturalHeight);
+                }
+              }}
               style={{
                 objectFit: s.objectFit || 'cover',
-                borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
+                borderRadius: resolveBorderRadius(),
                 borderWidth: s.borderWidth ? `${s.borderWidth}px` : undefined,
                 borderColor: s.borderColor || '#D0D0D0',
               }}
-              className="w-full h-full shadow-2xs"
+              className="w-full h-full shadow-2xs block select-none"
             />
           </div>
         );

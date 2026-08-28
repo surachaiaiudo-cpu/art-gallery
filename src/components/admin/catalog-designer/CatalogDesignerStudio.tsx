@@ -68,6 +68,7 @@ import {
   Pipette,
   Square,
   Frame,
+  Percent,
 } from 'lucide-react';
 
 interface CatalogDesignerStudioProps {
@@ -85,7 +86,7 @@ const AVAILABLE_MODULES: {
 }[] = [
   { type: 'artwork_image', label: 'ภาพผลงาน', icon: ImageIcon, defaultW: 5.0, defaultH: 5.0, description: 'ภาพถ่ายผลงานศิลปะความละเอียดสูง' },
   { type: 'artist_photo', label: 'ภาพศิลปิน', icon: User, defaultW: 1.25, defaultH: 1.5, description: 'รูปโปรไฟล์ศิลปิน (สูงไม่เกิน 1.5 นิ้ว)' },
-  { type: 'country_flag', label: 'ธงชาติ', icon: Flag, defaultW: 0.75, defaultH: 0.5, description: 'ธงชาติประเทศของศิลปิน' },
+  { type: 'country_flag', label: 'ธงชาติ', icon: Flag, defaultW: 0.59, defaultH: 0.3937, description: 'ธงชาติประเทศของศิลปิน (สูง 1 cm)' },
   { type: 'artwork_title', label: 'ชื่องานศิลปะ', icon: Type, defaultW: 3.5, defaultH: 0.5, description: 'ชื่อผลงานศิลปกรรม' },
   { type: 'artist_name', label: 'ชื่อศิลปิน', icon: User, defaultW: 3.5, defaultH: 0.5, description: 'ชื่อ-นามสกุล ศิลปิน' },
   { type: 'artist_email', label: 'อีเมลศิลปิน', icon: Mail, defaultW: 3.5, defaultH: 0.35, description: 'ที่อยู่อีเมลสำหรับติดต่อศิลปิน' },
@@ -357,8 +358,14 @@ export function CatalogDesignerStudio({
   ) => {
     const targetBlock = template.blocks.find((b) => b.id === blockId);
     const sanitizedUpdates = { ...updates };
-    if (targetBlock?.type === 'artist_photo' && typeof sanitizedUpdates.heightInches === 'number') {
-      sanitizedUpdates.heightInches = Math.min(sanitizedUpdates.heightInches, 1.5);
+    if (targetBlock?.type === 'artist_photo') {
+      if (typeof sanitizedUpdates.heightInches === 'number') {
+        sanitizedUpdates.heightInches = Math.min(sanitizedUpdates.heightInches, 1.5);
+        const currentAspect = (targetBlock.widthInches || 1.25) / (targetBlock.heightInches || 1.5);
+        if (sanitizedUpdates.widthInches === undefined) {
+          sanitizedUpdates.widthInches = snap(sanitizedUpdates.heightInches * currentAspect);
+        }
+      }
     }
 
     const updatedBlocks = template.blocks.map((b) => {
@@ -432,6 +439,39 @@ export function CatalogDesignerStudio({
     handleUpdateBlockProp(selectedBlockId, { yInches: centeredY }, true);
   };
 
+  // Scale selected block by percentage (+5%, -5%, +10%, -10%, etc.)
+  const handleScaleBlockPercent = (deltaPercent: number) => {
+    if (!selectedBlockId) return;
+    const current = template.blocks.find((b) => b.id === selectedBlockId);
+    if (!current) return;
+
+    const factor = 1 + deltaPercent / 100;
+    let newW = snap(Math.max(0.2, current.widthInches * factor));
+    let newH = snap(Math.max(0.15, current.heightInches * factor));
+
+    if (current.type === 'artist_photo') {
+      newH = Math.min(newH, 1.5);
+      const aspect = (current.widthInches || 1.25) / (current.heightInches || 1.5);
+      newW = snap(newH * aspect);
+    } else if (current.type === 'artwork_image' || current.type === 'country_flag') {
+      const aspect = (current.widthInches || 1) / (current.heightInches || 1);
+      newW = snap(newH * aspect);
+    }
+
+    // Keep within page boundaries
+    newW = Math.min(newW, template.pageWidthInches);
+    newH = Math.min(newH, template.pageHeightInches);
+
+    handleUpdateBlockProp(
+      selectedBlockId,
+      {
+        widthInches: newW,
+        heightInches: newH,
+      },
+      true
+    );
+  };
+
   // Layer order
   const handleBringToFront = () => {
     if (!selectedBlockId) return;
@@ -475,24 +515,78 @@ export function CatalogDesignerStudio({
         let newW = dragState.initialBlockW;
         let newH = dragState.initialBlockH;
 
-        if (dragState.resizeHandle.includes('e')) {
-          newW = snap(Math.max(0.5, dragState.initialBlockW + deltaXInches));
-        }
-        if (dragState.resizeHandle.includes('s')) {
-          newH = snap(Math.max(0.25, dragState.initialBlockH + deltaYInches));
-        }
-        if (dragState.resizeHandle.includes('w')) {
-          const possibleW = snap(dragState.initialBlockW - deltaXInches);
-          if (possibleW >= 0.5) {
-            newW = possibleW;
-            newX = snap(dragState.initialBlockX + deltaXInches);
+        const targetBlock = template.blocks.find((b) => b.id === dragState.blockId);
+        const isImageBlock = targetBlock?.type === 'artwork_image' || targetBlock?.type === 'artist_photo';
+        const aspectRatio = dragState.initialBlockW / (dragState.initialBlockH || 1);
+
+        if (isImageBlock) {
+          // Proportional scale lock: keep true aspect ratio without distortion
+          if (dragState.resizeHandle === 'se' || dragState.resizeHandle === 'e') {
+            newW = snap(Math.max(0.5, dragState.initialBlockW + deltaXInches));
+            newH = snap(newW / aspectRatio);
+          } else if (dragState.resizeHandle === 's') {
+            newH = snap(Math.max(0.25, dragState.initialBlockH + deltaYInches));
+            newW = snap(newH * aspectRatio);
+          } else if (dragState.resizeHandle === 'sw') {
+            const possibleW = snap(dragState.initialBlockW - deltaXInches);
+            if (possibleW >= 0.5) {
+              newW = possibleW;
+              newX = snap(dragState.initialBlockX + (dragState.initialBlockW - newW));
+              newH = snap(newW / aspectRatio);
+            }
+          } else if (dragState.resizeHandle === 'ne') {
+            newW = snap(Math.max(0.5, dragState.initialBlockW + deltaXInches));
+            newH = snap(newW / aspectRatio);
+            newY = snap(dragState.initialBlockY + (dragState.initialBlockH - newH));
+          } else if (dragState.resizeHandle === 'nw') {
+            const possibleW = snap(dragState.initialBlockW - deltaXInches);
+            if (possibleW >= 0.5) {
+              newW = possibleW;
+              newX = snap(dragState.initialBlockX + (dragState.initialBlockW - newW));
+              newH = snap(newW / aspectRatio);
+              newY = snap(dragState.initialBlockY + (dragState.initialBlockH - newH));
+            }
+          } else if (dragState.resizeHandle === 'w') {
+            const possibleW = snap(dragState.initialBlockW - deltaXInches);
+            if (possibleW >= 0.5) {
+              newW = possibleW;
+              newX = snap(dragState.initialBlockX + (dragState.initialBlockW - newW));
+              newH = snap(newW / aspectRatio);
+            }
+          } else if (dragState.resizeHandle === 'n') {
+            const possibleH = snap(dragState.initialBlockH - deltaYInches);
+            if (possibleH >= 0.25) {
+              newH = possibleH;
+              newY = snap(dragState.initialBlockY + (dragState.initialBlockH - newH));
+              newW = snap(newH * aspectRatio);
+            }
           }
-        }
-        if (dragState.resizeHandle.includes('n')) {
-          const possibleH = snap(dragState.initialBlockH - deltaYInches);
-          if (possibleH >= 0.25) {
-            newH = possibleH;
-            newY = snap(dragState.initialBlockY + deltaYInches);
+
+          if (targetBlock?.type === 'artist_photo' && newH > 1.5) {
+            newH = 1.5;
+            newW = snap(newH * aspectRatio);
+          }
+        } else {
+          // General rectangular box resize for text/containers
+          if (dragState.resizeHandle.includes('e')) {
+            newW = snap(Math.max(0.5, dragState.initialBlockW + deltaXInches));
+          }
+          if (dragState.resizeHandle.includes('s')) {
+            newH = snap(Math.max(0.25, dragState.initialBlockH + deltaYInches));
+          }
+          if (dragState.resizeHandle.includes('w')) {
+            const possibleW = snap(dragState.initialBlockW - deltaXInches);
+            if (possibleW >= 0.5) {
+              newW = possibleW;
+              newX = snap(dragState.initialBlockX + deltaXInches);
+            }
+          }
+          if (dragState.resizeHandle.includes('n')) {
+            const possibleH = snap(dragState.initialBlockH - deltaYInches);
+            if (possibleH >= 0.25) {
+              newH = possibleH;
+              newY = snap(dragState.initialBlockY + deltaYInches);
+            }
           }
         }
 
@@ -1014,6 +1108,21 @@ export function CatalogDesignerStudio({
                 template={template}
                 pageNumber={1}
                 selectedBlockId={selectedBlockId}
+                onImageNaturalRatio={(blockId, naturalRatio) => {
+                  if (!naturalRatio || isNaN(naturalRatio) || naturalRatio <= 0) return;
+                  const target = template.blocks.find((b) => b.id === blockId);
+                  if (!target) return;
+                  const currentRatio = target.widthInches / (target.heightInches || 1);
+                  if (Math.abs(currentRatio - naturalRatio) > 0.02) {
+                    if (target.type === 'artist_photo') {
+                      const newW = snap(target.heightInches * naturalRatio);
+                      handleUpdateBlockProp(blockId, { widthInches: newW }, false);
+                    } else if (target.type === 'country_flag') {
+                      const newW = snap(target.heightInches * naturalRatio);
+                      handleUpdateBlockProp(blockId, { widthInches: newW }, false);
+                    }
+                  }
+                }}
               />
             </div>
 
@@ -1069,6 +1178,17 @@ export function CatalogDesignerStudio({
                 const widthPx = block.widthInches * 96;
                 const heightPx = block.heightInches * 96;
 
+                const bStyle = block.style || {};
+                const cornerRadiusStyle =
+                  bStyle.borderTopLeftRadius !== undefined ||
+                  bStyle.borderTopRightRadius !== undefined ||
+                  bStyle.borderBottomRightRadius !== undefined ||
+                  bStyle.borderBottomLeftRadius !== undefined
+                    ? `${bStyle.borderTopLeftRadius || 0}px ${bStyle.borderTopRightRadius || 0}px ${bStyle.borderBottomRightRadius || 0}px ${bStyle.borderBottomLeftRadius || 0}px`
+                    : bStyle.borderRadius !== undefined
+                    ? `${bStyle.borderRadius}px`
+                    : undefined;
+
                 return (
                   <div
                     key={block.id}
@@ -1101,6 +1221,7 @@ export function CatalogDesignerStudio({
                       top: `${topPx}px`,
                       width: `${widthPx}px`,
                       height: `${heightPx}px`,
+                      borderRadius: cornerRadiusStyle,
                       zIndex: isSelected ? 50 : block.zIndex || 1,
                     }}
                   >
@@ -1280,6 +1401,254 @@ export function CatalogDesignerStudio({
               <AlignCenterVertical className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* 📏 COMPACT PERCENTAGE SCALE TYPING INPUT (ประหยัดพื้นที่) */}
+          <div className="flex items-center gap-1 bg-[#1F1C17] px-2 py-1 rounded-xl border border-white/10 text-xs">
+            <span className="text-[10px] text-[#C5A880] font-mono font-bold flex items-center gap-1">
+              <Percent className="w-3 h-3 text-[#C5A880]" />
+              <span>สเกล:</span>
+            </span>
+
+            <div className="flex items-center bg-black/40 border border-white/10 rounded-lg px-1.5 py-0.5">
+              <input
+                type="number"
+                min="10"
+                max="400"
+                step="5"
+                placeholder="100"
+                defaultValue="100"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const targetVal = parseFloat((e.target as HTMLInputElement).value);
+                    if (!isNaN(targetVal) && targetVal > 0) {
+                      handleScaleBlockPercent(targetVal - 100);
+                      (e.target as HTMLInputElement).value = '100';
+                    }
+                  }
+                }}
+                className="w-10 bg-transparent text-xs font-mono text-[#FAF9F6] text-center focus:outline-none placeholder-neutral-500"
+                title="พิมพ์ % แล้วกด Enter เพื่อย่อ/ขยาย เช่น 80 หรือ 120"
+              />
+              <span className="text-[10px] text-[#A59F92] font-mono">%</span>
+            </div>
+
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => handleScaleBlockPercent(-5)}
+                className="w-5 h-5 flex items-center justify-center rounded bg-black/40 hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] font-mono text-[10px] cursor-pointer"
+                title="ลดขนาด -5%"
+              >
+                -
+              </button>
+              <button
+                onClick={() => handleScaleBlockPercent(+5)}
+                className="w-5 h-5 flex items-center justify-center rounded bg-black/40 hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] font-mono text-[10px] cursor-pointer"
+                title="เพิ่มขนาด +5%"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="text-[10px] text-[#A59F92] font-mono px-1 border-l border-white/10 hidden md:inline">
+              {selectedBlock.widthInches.toFixed(2)}&quot;×{selectedBlock.heightInches.toFixed(2)}&quot;
+            </div>
+          </div>
+
+          {/* 🔘 CORNER RADIUS CONTROLS (ความโค้งมนของแต่ละมุม สำหรับ รูปศิลปิน, กรอบรูป, กล่องข้อความ) */}
+          {['artist_photo', 'artwork_image', 'custom_box', 'country_flag'].includes(selectedBlock.type) && (
+            <div className="flex items-center gap-1.5 bg-[#1F1C17] px-2 py-1 rounded-xl border border-white/10 text-xs">
+              <span className="text-[10px] text-[#C5A880] font-mono font-bold flex items-center gap-1">
+                <Square className="w-3 h-3 text-[#C5A880]" />
+                <span>มุมมน:</span>
+              </span>
+
+              {/* All Corners / Master Radius */}
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min="0"
+                  max="9999"
+                  value={selectedBlock.style.borderRadius ?? (selectedBlock.type === 'artist_photo' ? 8 : 0)}
+                  onChange={(e) => {
+                    const r = parseInt(e.target.value) || 0;
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      {
+                        style: {
+                          ...selectedBlock.style,
+                          borderRadius: r,
+                          borderTopLeftRadius: undefined,
+                          borderTopRightRadius: undefined,
+                          borderBottomRightRadius: undefined,
+                          borderBottomLeftRadius: undefined,
+                        },
+                      },
+                      true
+                    );
+                  }}
+                  className="w-10 bg-black/40 border border-white/10 rounded-lg px-1 py-0.5 text-xs font-mono text-[#FAF9F6] text-center focus:outline-none"
+                  title="ความโค้งมนทุกมุม (px)"
+                />
+                <span className="text-[10px] text-[#A59F92]">px</span>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex items-center gap-0.5 border-l border-white/10 pl-1">
+                <button
+                  onClick={() =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      {
+                        style: {
+                          ...selectedBlock.style,
+                          borderRadius: 0,
+                          borderTopLeftRadius: undefined,
+                          borderTopRightRadius: undefined,
+                          borderBottomRightRadius: undefined,
+                          borderBottomLeftRadius: undefined,
+                        },
+                      },
+                      true
+                    )
+                  }
+                  className="px-1.5 py-0.5 rounded text-[10px] bg-black/30 hover:bg-white/10 text-[#A59F92] hover:text-white"
+                  title="เหลี่ยมคม (0px)"
+                >
+                  เหลี่ยม
+                </button>
+                <button
+                  onClick={() =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      {
+                        style: {
+                          ...selectedBlock.style,
+                          borderRadius: 8,
+                          borderTopLeftRadius: undefined,
+                          borderTopRightRadius: undefined,
+                          borderBottomRightRadius: undefined,
+                          borderBottomLeftRadius: undefined,
+                        },
+                      },
+                      true
+                    )
+                  }
+                  className="px-1.5 py-0.5 rounded text-[10px] bg-black/30 hover:bg-white/10 text-[#A59F92] hover:text-white"
+                  title="มนมาตรฐาน (8px)"
+                >
+                  มน 8
+                </button>
+                <button
+                  onClick={() =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      {
+                        style: {
+                          ...selectedBlock.style,
+                          borderRadius: 16,
+                          borderTopLeftRadius: undefined,
+                          borderTopRightRadius: undefined,
+                          borderBottomRightRadius: undefined,
+                          borderBottomLeftRadius: undefined,
+                        },
+                      },
+                      true
+                    )
+                  }
+                  className="px-1.5 py-0.5 rounded text-[10px] bg-black/30 hover:bg-white/10 text-[#A59F92] hover:text-white"
+                  title="มนมาก (16px)"
+                >
+                  มน 16
+                </button>
+                <button
+                  onClick={() =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      {
+                        style: {
+                          ...selectedBlock.style,
+                          borderRadius: 9999,
+                          borderTopLeftRadius: undefined,
+                          borderTopRightRadius: undefined,
+                          borderBottomRightRadius: undefined,
+                          borderBottomLeftRadius: undefined,
+                        },
+                      },
+                      true
+                    )
+                  }
+                  className="px-1.5 py-0.5 rounded text-[10px] bg-black/30 hover:bg-white/10 text-[#A59F92] hover:text-white font-mono"
+                  title="วงกลม / ทรงรี (9999px)"
+                >
+                  วงกลม
+                </button>
+              </div>
+
+              {/* 4 Corners Specific (TL, TR, BR, BL) */}
+              <div className="flex items-center gap-0.5 border-l border-white/10 pl-1.5" title="กำหนดความโค้งมนแยก 4 มุม: บนซ้าย, บนขวา, ล่างขวา, ล่างซ้าย">
+                <input
+                  type="number"
+                  placeholder="TL"
+                  value={selectedBlock.style.borderTopLeftRadius ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderTopLeftRadius: val } },
+                      true
+                    );
+                  }}
+                  className="w-7 bg-black/50 border border-white/10 rounded px-0.5 py-0.5 text-[9px] font-mono text-center text-[#FAF9F6] focus:outline-none"
+                  title="บนซ้าย (Top-Left px)"
+                />
+                <input
+                  type="number"
+                  placeholder="TR"
+                  value={selectedBlock.style.borderTopRightRadius ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderTopRightRadius: val } },
+                      true
+                    );
+                  }}
+                  className="w-7 bg-black/50 border border-white/10 rounded px-0.5 py-0.5 text-[9px] font-mono text-center text-[#FAF9F6] focus:outline-none"
+                  title="บนขวา (Top-Right px)"
+                />
+                <input
+                  type="number"
+                  placeholder="BR"
+                  value={selectedBlock.style.borderBottomRightRadius ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderBottomRightRadius: val } },
+                      true
+                    );
+                  }}
+                  className="w-7 bg-black/50 border border-white/10 rounded px-0.5 py-0.5 text-[9px] font-mono text-center text-[#FAF9F6] focus:outline-none"
+                  title="ล่างขวา (Bottom-Right px)"
+                />
+                <input
+                  type="number"
+                  placeholder="BL"
+                  value={selectedBlock.style.borderBottomLeftRadius ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderBottomLeftRadius: val } },
+                      true
+                    );
+                  }}
+                  className="w-7 bg-black/50 border border-white/10 rounded px-0.5 py-0.5 text-[9px] font-mono text-center text-[#FAF9F6] focus:outline-none"
+                  title="ล่างซ้าย (Bottom-Left px)"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Typography (For text blocks) */}
           {['artwork_title', 'artist_name', 'artist_email', 'medium', 'dimensions', 'year_created', 'price', 'concept', 'page_number', 'custom_text'].includes(

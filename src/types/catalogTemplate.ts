@@ -99,7 +99,11 @@ export interface BlockStyle {
   
   // Image & Box
   objectFit?: 'contain' | 'cover' | 'fill';
-  borderRadius?: number; // in pixels
+  borderRadius?: number; // in pixels (all corners)
+  borderTopLeftRadius?: number; // in pixels
+  borderTopRightRadius?: number; // in pixels
+  borderBottomRightRadius?: number; // in pixels
+  borderBottomLeftRadius?: number; // in pixels
   borderWidth?: number; // in pixels
   borderColor?: string;
   borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
@@ -181,9 +185,9 @@ export const PRESET_SQUARE_8X8_MODERN: CatalogTemplateConfig = {
       type: 'country_flag',
       label: 'ธงชาติ',
       xInches: 6.875,
-      yInches: 0.75,
-      widthInches: 0.875,
-      heightInches: 0.5,
+      yInches: 0.85,
+      widthInches: 0.59,
+      heightInches: 0.3937,
       zIndex: 2,
       style: {
         borderRadius: 2,
@@ -482,8 +486,8 @@ export const PRESET_A4_PORTRAIT_CLASSIC: CatalogTemplateConfig = {
       label: 'ธงชาติ',
       xInches: 2.75,
       yInches: 7.5,
-      widthInches: 0.75,
-      heightInches: 0.45,
+      widthInches: 0.59,
+      heightInches: 0.3937,
       zIndex: 2,
       style: {
         borderRadius: 2,

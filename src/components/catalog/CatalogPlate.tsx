@@ -80,7 +80,7 @@ export function CatalogPlate({
             {/* 1. Flag ON TOP OF Artist Photo (ธงชาติอยู่บนรูปศิลปิน จัดชิดขวา) */}
             <div className="flex flex-col items-end gap-1.5 mb-1">
               {flagUrl && (
-                <div className="relative w-7 h-4.5 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-xs bg-[#F5F5F5]">
+                <div className="relative h-[10mm] w-[15mm] rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-xs bg-[#F5F5F5]">
                   <img src={flagUrl} alt={artist?.country || 'Flag'} className="w-full h-full object-cover" />
                 </div>
               )}
@@ -186,9 +186,9 @@ export function CatalogPlate({
         {/* Artist & Artwork Metadata */}
         <div className="relative z-10 flex flex-row items-start gap-5 pt-1">
           <div className="shrink-0 w-20 flex flex-col items-start">
-            {/* Flag */}
+            {/* Flag (1 cm / 10 mm Height) */}
             {flagUrl && (
-              <div className="relative w-9 h-5 rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-sm mb-2 bg-[#F5F5F5]">
+              <div className="relative h-[10mm] w-[15mm] rounded-[2px] overflow-hidden border border-[#D0D0D0] shadow-sm mb-2 bg-[#F5F5F5]">
                 <img
                   src={flagUrl}
                   alt={artist?.country || 'Flag'}
