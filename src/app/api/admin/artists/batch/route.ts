@@ -4,7 +4,7 @@ import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
 import { cleanEmail, cleanText } from '@/lib/utils';
 import { findMatchingArtist } from '@/lib/artistMatcher';
-import { getCountryFlagEmoji } from '@/lib/countryUtils';
+import { getCountryFlagEmoji, normalizeCountryName } from '@/lib/countryUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       const item: ArtistImportRow = artists[i];
       const cleanName = cleanText(item.name || '');
       const cleanE = cleanEmail(item.email || '');
-      const cleanCountry = cleanText(item.country || 'Thailand');
+      const cleanCountry = normalizeCountryName(cleanText(item.country || 'Thailand'));
 
       if (!cleanName) {
         skipped.push(item.name || `Row #${i + 1}`);

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq, inArray } from 'drizzle-orm';
 import { getAllArtistsWithStats, invalidateDataCache } from '@/lib/data';
+import { getCountryFlagEmoji, normalizeCountryName } from '@/lib/countryUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,19 +66,8 @@ export async function POST(req: NextRequest) {
       cleanEmail = `${slug}@artvara.gallery`;
     }
 
-    // Auto flag emoji detection if not provided
-    let flag = flagEmoji;
-    if (!flag) {
-      const cLower = (country || '').toLowerCase();
-      if (cLower.includes('thai')) flag = '🇹🇭';
-      else if (cLower.includes('japan')) flag = '🇯🇵';
-      else if (cLower.includes('ital')) flag = '🇮🇹';
-      else if (cLower.includes('france')) flag = '🇫🇷';
-      else if (cLower.includes('austr')) flag = '🇦🇺';
-      else if (cLower.includes('us') || cLower.includes('america')) flag = '🇺🇸';
-      else if (cLower.includes('uk') || cLower.includes('brit')) flag = '🇬🇧';
-      else flag = '🌐';
-    }
+    const normalizedCountry = normalizeCountryName(country || 'Thailand');
+    const flag = flagEmoji || getCountryFlagEmoji(normalizedCountry);
 
     // Check if artist with this email already exists
     const existing = await db.select().from(schema.users).where(eq(schema.users.email, cleanEmail)).limit(1);
@@ -87,8 +77,8 @@ export async function POST(req: NextRequest) {
         .update(schema.users)
         .set({
           name: name.trim(),
-          country: country ? country.trim() : existing[0].country,
-          flagEmoji: flag || existing[0].flagEmoji,
+          country: normalizedCountry,
+          flagEmoji: flag,
           bio: bio !== undefined ? bio.trim() : existing[0].bio,
           avatarUrl: avatarUrl || existing[0].avatarUrl,
           socialLinks: typeof socialLinks === 'string' ? socialLinks : JSON.stringify(socialLinks || {}),
@@ -104,7 +94,7 @@ export async function POST(req: NextRequest) {
       name: name.trim(),
       email: cleanEmail,
       role: 'artist',
-      country: country ? country.trim() : 'Thailand',
+      country: normalizedCountry,
       flagEmoji: flag,
       bio: bio ? bio.trim() : '',
       avatarUrl: avatarUrl || '',

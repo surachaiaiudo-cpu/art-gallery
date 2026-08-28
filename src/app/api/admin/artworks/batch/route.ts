@@ -2,7 +2,7 @@ export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/db';
 import { eq } from 'drizzle-orm';
-import { getCountryFlagEmoji } from '@/lib/countryUtils';
+import { getCountryFlagEmoji, normalizeCountryName } from '@/lib/countryUtils';
 import { findMatchingArtist } from '@/lib/artistMatcher';
 import { invalidateDataCache } from '@/lib/data';
 
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
       const artistName = (row.artistName || '').trim() || 'ศิลปินร่วมแสดง';
       const title = (row.title || '').trim() || (artistName ? `ผลงานของ ${artistName}` : 'ผลงานศิลปกรรม');
-      const artistCountry = (row.artistCountry || '').trim() || 'Thailand';
+      const artistCountry = normalizeCountryName((row.artistCountry || '').trim() || 'Thailand');
 
       // Smart Artist Detection: match against all existing + newly created in this batch
       const matchedArtist = findMatchingArtist(candidateArtists, {

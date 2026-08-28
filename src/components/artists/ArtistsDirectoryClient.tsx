@@ -23,7 +23,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react';
-import { CountryFlag } from '@/components/ui/CountryFlag';
+import { CountryFlag, normalizeCountryName, getCountryDisplayName } from '@/components/ui/CountryFlag';
 import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 
 interface ArtistWithStats extends User {
@@ -50,7 +50,7 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
       const params = new URLSearchParams(window.location.search);
       const c = params.get('country');
       if (c) {
-        setSelectedCountry(c);
+        setSelectedCountry(normalizeCountryName(c));
       }
     }
   }, []);
@@ -58,29 +58,34 @@ export function ArtistsDirectoryClient({ artists }: ArtistsDirectoryClientProps)
   const countries = useMemo(() => {
     const set = new Set<string>();
     artists.forEach((a) => {
-      if (a.country && a.country.trim()) set.add(a.country.trim());
+      if (a.country && a.country.trim()) {
+        set.add(normalizeCountryName(a.country));
+      }
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'th'));
   }, [artists]);
 
   const countryArtistsList = useMemo(() => {
     if (selectedCountry === 'all') return artists;
-    return artists.filter((a) => (a.country || 'Thailand').trim() === selectedCountry);
+    return artists.filter((a) => normalizeCountryName(a.country) === selectedCountry);
   }, [artists, selectedCountry]);
 
   const filteredArtists = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     const filtered = artists.filter((artist) => {
+      const canonicalCountry = normalizeCountryName(artist.country);
+      const displayCountry = getCountryDisplayName(artist.country, lang);
       const matchesQuery =
         !q ||
         artist.name.toLowerCase().includes(q) ||
-        (artist.country || '').toLowerCase().includes(q) ||
+        canonicalCountry.toLowerCase().includes(q) ||
+        displayCountry.toLowerCase().includes(q) ||
         (artist.email || '').toLowerCase().includes(q) ||
         (artist.bio || '').toLowerCase().includes(q) ||
         artist.previewArtworks.some((art) => art.title.toLowerCase().includes(q));
 
       const matchesCountry =
-        selectedCountry === 'all' || (artist.country || 'Thailand').trim() === selectedCountry;
+        selectedCountry === 'all' || canonicalCountry === selectedCountry;
 
       return matchesQuery && matchesCountry;
     });

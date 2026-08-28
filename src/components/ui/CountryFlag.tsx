@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
-import { getCountryCode, getCountryFlagEmoji, getFlagImageUrl, COUNTRY_CODE_MAP, ISO3_TO_ISO2 } from '@/lib/countryUtils';
+import { getCountryCode, getCountryFlagEmoji, getFlagImageUrl, COUNTRY_CODE_MAP, ISO3_TO_ISO2, normalizeCountryName, getCountryDisplayName } from '@/lib/countryUtils';
 
-export { getCountryCode, getCountryFlagEmoji, getFlagImageUrl, COUNTRY_CODE_MAP, ISO3_TO_ISO2 };
+export { getCountryCode, getCountryFlagEmoji, getFlagImageUrl, COUNTRY_CODE_MAP, ISO3_TO_ISO2, normalizeCountryName, getCountryDisplayName };
 
 interface CountryFlagProps {
   country?: string | null;

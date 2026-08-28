@@ -11,7 +11,7 @@ import { DigitalGuestbook } from './DigitalGuestbook';
 import { ViewInRoomModal } from './ViewInRoomModal';
 import { useLanguage } from '@/context/LanguageContext';
 import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, Award, Calendar, Palette, GraduationCap, Users, ShieldCheck, Frame, Search, X, BookOpen, Box, SlidersHorizontal, ArrowUpDown, Check, RotateCcw } from 'lucide-react';
-import { CountryFlag } from '@/components/ui/CountryFlag';
+import { CountryFlag, normalizeCountryName, getCountryDisplayName } from '@/components/ui/CountryFlag';
 import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 import { TooltipBubble } from '@/components/ui/TooltipBubble';
 import { formatDateRange, formatDimensionsInCm } from '@/lib/utils';
@@ -63,16 +63,20 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
     return Array.from(set);
   }, [artworks]);
 
-  // Unique countries available in this exhibition
+  // Unique countries available in this exhibition (deduplicated & canonical)
   const availableCountries = useMemo(() => {
-    const set = new Set<string>();
+    const map = new Map<string, string>();
     for (const art of artworks) {
       if (art.artist?.country?.trim()) {
-        set.add(art.artist.country.trim());
+        const canonical = normalizeCountryName(art.artist.country);
+        const display = getCountryDisplayName(art.artist.country, lang);
+        map.set(canonical, display);
       }
     }
-    return Array.from(set);
-  }, [artworks]);
+    return Array.from(map.entries())
+      .map(([canonical, display]) => ({ canonical, display }))
+      .sort((a, b) => a.display.localeCompare(b.display, 'th'));
+  }, [artworks, lang]);
 
   // Active filters count
   const activeFiltersCount = useMemo(() => {
@@ -119,7 +123,7 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
       list = list.filter((art) => art.medium?.trim() === selectedMedium);
     }
     if (selectedCountry !== 'all') {
-      list = list.filter((art) => art.artist?.country?.trim() === selectedCountry);
+      list = list.filter((art) => normalizeCountryName(art.artist?.country) === selectedCountry);
     }
     if (selectedSize !== 'all') {
       list = list.filter((art) => checkSizeMatch(art.dimensions ?? undefined, selectedSize));
@@ -439,7 +443,7 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                 {selectedCountry !== 'all' && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-[#C5A880] text-xs text-[#1A1918] font-medium shadow-xs">
                     <CountryFlag country={selectedCountry} size="xs" />
-                    <span>{selectedCountry}</span>
+                    <span>{getCountryDisplayName(selectedCountry, lang)}</span>
                     <button onClick={() => setSelectedCountry('all')} className="text-neutral-400 hover:text-red-500 cursor-pointer">
                       <X className="w-3 h-3" />
                     </button>
@@ -562,16 +566,16 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                       </button>
                       {availableCountries.map((c) => (
                         <button
-                          key={c}
-                          onClick={() => setSelectedCountry(c)}
+                          key={c.canonical}
+                          onClick={() => setSelectedCountry(c.canonical)}
                           className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                            selectedCountry === c
+                            selectedCountry === c.canonical
                               ? 'bg-[#8C6D3F] text-white shadow-xs'
                               : 'bg-white hover:bg-[#FAF6EE] text-[#4A453C] border border-[#E5DFD3]'
                           }`}
                         >
-                          <CountryFlag country={c} size="xs" />
-                          <span>{c}</span>
+                          <CountryFlag country={c.canonical} size="xs" />
+                          <span>{c.display}</span>
                         </button>
                       ))}
                     </div>

@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { User } from '@/types/exhibition';
 import { ChevronRight, ChevronDown, Users, Search, Globe, ChevronUp } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
-import { CountryFlag } from '@/components/ui/CountryFlag';
+import { CountryFlag, normalizeCountryName, getCountryDisplayName } from '@/components/ui/CountryFlag';
 
 interface ArtistIndexSidebarProps {
   artists: User[];
@@ -25,25 +25,27 @@ export function ArtistIndexSidebar({
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCountries, setExpandedCountries] = useState<Record<string, boolean>>({});
 
-  // Group artists by country
+  // Group artists by normalized canonical country
   const countryGroups = useMemo(() => {
-    const map = new Map<string, User[]>();
+    const map = new Map<string, { displayName: string; canonicalName: string; artists: User[] }>();
     artists.forEach((artist) => {
-      const c = (artist.country && artist.country.trim()) ? artist.country.trim() : (lang === 'th' ? 'อื่นๆ' : 'Other');
-      if (!map.has(c)) {
-        map.set(c, []);
+      const canonical = normalizeCountryName(artist.country);
+      const display = getCountryDisplayName(artist.country, lang);
+      if (!map.has(canonical)) {
+        map.set(canonical, { displayName: display, canonicalName: canonical, artists: [] });
       }
-      map.get(c)!.push(artist);
+      map.get(canonical)!.artists.push(artist);
     });
 
     // Sort countries alphabetically
-    return Array.from(map.entries())
-      .map(([country, list]) => ({
-        country,
-        artists: list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'th')),
-        totalArtworks: list.reduce((sum, a) => sum + (artworksCountByArtist[a.id] || 0), 0),
+    return Array.from(map.values())
+      .map((g) => ({
+        country: g.canonicalName,
+        displayName: g.displayName,
+        artists: g.artists.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'th')),
+        totalArtworks: g.artists.reduce((sum, a) => sum + (artworksCountByArtist[a.id] || 0), 0),
       }))
-      .sort((a, b) => a.country.localeCompare(b.country, 'th'));
+      .sort((a, b) => a.displayName.localeCompare(b.displayName, 'th'));
   }, [artists, artworksCountByArtist, lang]);
 
   // Auto-expand the country of selected artist
@@ -51,11 +53,11 @@ export function ArtistIndexSidebar({
     if (selectedArtistId) {
       const selectedArtist = artists.find((a) => a.id === selectedArtistId);
       if (selectedArtist) {
-        const c = (selectedArtist.country && selectedArtist.country.trim()) ? selectedArtist.country.trim() : (lang === 'th' ? 'อื่นๆ' : 'Other');
-        setExpandedCountries((prev) => ({ ...prev, [c]: true }));
+        const canonical = normalizeCountryName(selectedArtist.country);
+        setExpandedCountries((prev) => ({ ...prev, [canonical]: true }));
       }
     }
-  }, [selectedArtistId, artists, lang]);
+  }, [selectedArtistId, artists]);
 
   const toggleCountry = (country: string) => {
     setExpandedCountries((prev) => ({
@@ -171,7 +173,7 @@ export function ArtistIndexSidebar({
                 >
                   <div className="flex items-center gap-2 truncate min-w-0">
                     <CountryFlag country={group.country} size="xs" shape="rounded" />
-                    <span className="truncate text-xs font-semibold">{group.country}</span>
+                    <span className="truncate text-xs font-semibold">{group.displayName || group.country}</span>
                     <span className="text-[10px] text-[#8C8477] font-mono shrink-0">
                       ({group.artists.length})
                     </span>

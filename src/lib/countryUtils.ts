@@ -965,3 +965,156 @@ export function getFlagImageUrl(countryName?: string | null): string {
 
   return `https://flagcdn.com/w80/${code}.png`;
 }
+
+export const CANONICAL_COUNTRY_NAMES_EN: Record<string, string> = {
+  th: 'Thailand',
+  jp: 'Japan',
+  kr: 'South Korea',
+  cn: 'China',
+  tw: 'Taiwan',
+  hk: 'Hong Kong',
+  sg: 'Singapore',
+  my: 'Malaysia',
+  vn: 'Vietnam',
+  id: 'Indonesia',
+  ph: 'Philippines',
+  mm: 'Myanmar',
+  kh: 'Cambodia',
+  la: 'Laos',
+  in: 'India',
+  pk: 'Pakistan',
+  bd: 'Bangladesh',
+  lk: 'Sri Lanka',
+  np: 'Nepal',
+  us: 'USA',
+  gb: 'United Kingdom',
+  fr: 'France',
+  de: 'Germany',
+  it: 'Italy',
+  es: 'Spain',
+  nl: 'Netherlands',
+  ru: 'Russia',
+  pl: 'Poland',
+  gr: 'Greece',
+  tr: 'Turkey',
+  eg: 'Egypt',
+  au: 'Australia',
+  ca: 'Canada',
+  br: 'Brazil',
+  mx: 'Mexico',
+  krd: 'Kurdistan',
+  tibet: 'Tibet',
+  ir: 'Iran',
+  iq: 'Iraq',
+  sa: 'Saudi Arabia',
+  ae: 'UAE',
+  ch: 'Switzerland',
+  at: 'Austria',
+  be: 'Belgium',
+  se: 'Sweden',
+  no: 'Norway',
+  dk: 'Denmark',
+  fi: 'Finland',
+  ie: 'Ireland',
+  pt: 'Portugal',
+  nz: 'New Zealand',
+  za: 'South Africa',
+  ar: 'Argentina',
+  cl: 'Chile',
+  co: 'Colombia',
+  pe: 'Peru',
+};
+
+export const CANONICAL_COUNTRY_NAMES_TH: Record<string, string> = {
+  th: 'ไทย',
+  jp: 'ญี่ปุ่น',
+  kr: 'เกาหลีใต้',
+  cn: 'จีน',
+  tw: 'ไต้หวัน',
+  hk: 'ฮ่องกง',
+  sg: 'สิงคโปร์',
+  my: 'มาเลเซีย',
+  vn: 'เวียดนาม',
+  id: 'อินโดนีเซีย',
+  ph: 'ฟิลิปปินส์',
+  mm: 'เมียนมา',
+  kh: 'กัมพูชา',
+  la: 'ลาว',
+  in: 'อินเดีย',
+  pk: 'ปากีสถาน',
+  bd: 'บังกลาเทศ',
+  lk: 'ศรีลังกา',
+  np: 'เนปาล',
+  us: 'สหรัฐอเมริกา',
+  gb: 'สหราชอาณาจักร',
+  fr: 'ฝรั่งเศส',
+  de: 'เยอรมนี',
+  it: 'อิตาลี',
+  es: 'สเปน',
+  nl: 'เนเธอร์แลนด์',
+  ru: 'รัสเซีย',
+  pl: 'โปแลนด์',
+  gr: 'กรีซ',
+  tr: 'ตุรกี',
+  eg: 'อียิปต์',
+  au: 'ออสเตรเลีย',
+  ca: 'แคนาดา',
+  br: 'บราซิล',
+  mx: 'เม็กซิโก',
+  krd: 'เคอร์ดิสถาน',
+  tibet: 'ทิเบต',
+  ir: 'อิหร่าน',
+  iq: 'อิรัก',
+  sa: 'ซาอุดีอาระเบีย',
+  ae: 'สหรัฐอาหรับเอมิเรตส์',
+  ch: 'สวิตเซอร์แลนด์',
+  at: 'ออสเตรีย',
+  be: 'เบลเยียม',
+  se: 'สวีเดน',
+  no: 'นอร์เวย์',
+  dk: 'เดนมาร์ก',
+  fi: 'ฟินแลนด์',
+  ie: 'ไอร์แลนด์',
+  pt: 'โปรตุเกส',
+  nz: 'นิวซีแลนด์',
+  za: 'แอฟริกาใต้',
+  ar: 'อาร์เจนตินา',
+  cl: 'ชิลี',
+  co: 'โคลอมเบีย',
+  pe: 'เปรู',
+};
+
+/**
+ * Normalizes raw country strings (e.g. "thailand", "Thailand", "THAI", "vietnam", "VietNam", "usa", "USA")
+ * into a single canonical country name (e.g. "Thailand", "Vietnam", "USA")
+ */
+export function normalizeCountryName(countryName?: string | null): string {
+  if (!countryName || !countryName.trim()) return 'Other';
+  const clean = countryName.trim();
+  const code = getCountryCode(clean);
+  if (code && CANONICAL_COUNTRY_NAMES_EN[code]) {
+    return CANONICAL_COUNTRY_NAMES_EN[code];
+  }
+  // Otherwise proper Title Case
+  return clean
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/**
+ * Returns localized country display name (e.g. "ไทย" or "Thailand")
+ */
+export function getCountryDisplayName(countryName?: string | null, lang: 'th' | 'en' = 'en'): string {
+  if (!countryName || !countryName.trim()) return lang === 'th' ? 'อื่นๆ' : 'Other';
+  const code = getCountryCode(countryName);
+  if (code) {
+    if (lang === 'th' && CANONICAL_COUNTRY_NAMES_TH[code]) {
+      return CANONICAL_COUNTRY_NAMES_TH[code];
+    }
+    if (CANONICAL_COUNTRY_NAMES_EN[code]) {
+      return CANONICAL_COUNTRY_NAMES_EN[code];
+    }
+  }
+  return normalizeCountryName(countryName);
+}
