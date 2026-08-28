@@ -920,10 +920,11 @@ export function CatalogDesignerStudio({
         onClick={() => setSelectedBlockId(null)}
         className="w-full h-full overflow-auto p-12 flex flex-col items-center justify-center relative custom-scrollbar cursor-default"
       >
-        {/* Sample Artwork Switcher Pill (Floating Top-Center) */}
+        {/* Sample Artwork Switcher Pill (Floating Bottom-Right Corner) */}
         <div
           onClick={(e) => e.stopPropagation()}
-          className="fixed top-18 z-30 flex items-center gap-2.5 bg-[#141413]/95 backdrop-blur-xl px-3.5 py-1.5 rounded-full border border-[#C5A880]/30 shadow-2xl"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-[#141413]/90 backdrop-blur-xl px-3 py-1.5 rounded-full border border-[#C5A880]/40 shadow-floating text-xs transition-all hover:bg-[#141413] hover:border-[#C5A880]"
+          title="ตัวอย่างผลงานที่นำมาพรีวิวบนแม่แบบ (Sample Artwork)"
         >
           <button
             onClick={() =>
@@ -931,22 +932,24 @@ export function CatalogDesignerStudio({
                 (prev) => (prev - 1 + (exhibitionArtworks.length || 1)) % (exhibitionArtworks.length || 1)
               )
             }
-            className="p-1 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
+            className="p-1 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] transition-colors"
+            title="ผลงานก่อนหน้า"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <span className="text-xs font-medium text-[#FAF9F6] truncate max-w-[200px]">
+          <span className="text-[11px] font-medium text-[#FAF9F6] truncate max-w-[140px] sm:max-w-[200px]" title={activeArtwork.title}>
             {activeArtwork.title}
           </span>
           <button
             onClick={() =>
               setSampleArtworkIndex((prev) => (prev + 1) % (exhibitionArtworks.length || 1))
             }
-            className="p-1 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
+            className="p-1 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] transition-colors"
+            title="ผลงานถัดไป"
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[10px] text-[#C5A880] font-mono">
+          <span className="text-[10px] text-[#C5A880] font-mono font-bold pl-1 border-l border-white/10">
             ({exhibitionArtworks.length > 0 ? sampleArtworkIndex + 1 : 1}/{exhibitionArtworks.length || 1})
           </span>
         </div>
