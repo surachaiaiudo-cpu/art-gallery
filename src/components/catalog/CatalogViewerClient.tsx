@@ -82,7 +82,12 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   // Reading Modes: 'grid3' (3-Column Preview Grid - Default), 'flipbook' (Interactive 3D Book), or 'full' (Continuous Full A4 Pages)
   const [activeViewMode, setActiveViewMode] = useState<'grid3' | 'flipbook' | 'full'>('grid3');
   const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
-  const [paperSize, setPaperSize] = useState<'a4' | 'square8x8'>('a4');
+  
+  // Paper size is automatically determined from admin's configured catalog template
+  const paperSize: 'a4' | 'square8x8' =
+    customTemplate?.paperSize === 'square_8x8' || customTemplate?.paperSize === 'square_10x10'
+      ? 'square8x8'
+      : 'a4';
 
   // Progressive streaming batch count for Grid View (Infinite Scroll performance)
   const [visibleCount, setVisibleCount] = useState(24);
@@ -253,33 +258,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Paper Size Switcher (A4 vs 8x8" Square) */}
-            <div className="flex items-center bg-white/80 p-1 rounded-xl border border-[#DDD6C8] shadow-inner text-xs">
-              <button
-                onClick={() => setPaperSize('a4')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  paperSize === 'a4'
-                    ? 'bg-[#1A1918] text-white shadow-xs'
-                    : 'text-[#666] hover:text-[#1A1918]'
-                }`}
-                title="ขนาดกระดาษมาตรฐาน A4 (210 × 297 มม.)"
-              >
-                <span>📄 A4</span>
-              </button>
-
-              <button
-                onClick={() => setPaperSize('square8x8')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  paperSize === 'square8x8'
-                    ? 'bg-[#1A1918] text-white shadow-xs'
-                    : 'text-[#666] hover:text-[#1A1918]'
-                }`}
-                title="ขนาดจัตุรัส 8 × 8 นิ้ว (203.2 × 203.2 มม.) ขอบข้าง 0.25 นิ้ว รูปภาพ 2/3 ด้านซ้าย"
-              >
-                <span>🔲 8×8" นิ้ว</span>
-              </button>
-            </div>
-
             {/* View Mode Switcher */}
             <div className="flex items-center bg-white/80 p-1 rounded-xl border border-[#DDD6C8] shadow-inner text-xs">
               <button
