@@ -10,9 +10,10 @@ import { ArtworkInquiryModal } from './ArtworkInquiryModal';
 import { DigitalGuestbook } from './DigitalGuestbook';
 import { ViewInRoomModal } from './ViewInRoomModal';
 import { useLanguage } from '@/context/LanguageContext';
-import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, Award, Calendar, Palette, GraduationCap, Users, ShieldCheck, Frame } from 'lucide-react';
+import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, Award, Calendar, Palette, GraduationCap, Users, ShieldCheck, Frame, Search, X, BookOpen, Box, SlidersHorizontal, ArrowUpDown, Check, RotateCcw } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
+import { TooltipBubble } from '@/components/ui/TooltipBubble';
 import { formatDateRange, formatDimensionsInCm } from '@/lib/utils';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
 
@@ -23,6 +24,13 @@ interface Exhibition2DGridProps {
 export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
   const { lang, t } = useLanguage();
   const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedMedium, setSelectedMedium] = useState<string>('all');
+  const [selectedSize, setSelectedSize] = useState<string>('all');
+  const [selectedCountry, setSelectedCountry] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('default');
+  const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
+
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
   const [roomModalArtwork, setRoomModalArtwork] = useState<Artwork | null>(null);
   const [inquiryArtwork, setInquiryArtwork] = useState<Artwork | null>(null);
@@ -44,11 +52,98 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
     return map;
   }, [artworks]);
 
-  // Filter artworks
+  // Unique mediums available in this exhibition
+  const availableMediums = useMemo(() => {
+    const set = new Set<string>();
+    for (const art of artworks) {
+      if (art.medium?.trim()) {
+        set.add(art.medium.trim());
+      }
+    }
+    return Array.from(set);
+  }, [artworks]);
+
+  // Unique countries available in this exhibition
+  const availableCountries = useMemo(() => {
+    const set = new Set<string>();
+    for (const art of artworks) {
+      if (art.artist?.country?.trim()) {
+        set.add(art.artist.country.trim());
+      }
+    }
+    return Array.from(set);
+  }, [artworks]);
+
+  // Active filters count
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (selectedArtistId) count++;
+    if (selectedMedium !== 'all') count++;
+    if (selectedSize !== 'all') count++;
+    if (selectedCountry !== 'all') count++;
+    if (sortBy !== 'default') count++;
+    if (searchQuery.trim()) count++;
+    return count;
+  }, [selectedArtistId, selectedMedium, selectedSize, selectedCountry, sortBy, searchQuery]);
+
+  // Clear all filters
+  const handleClearAllFilters = () => {
+    setSelectedArtistId(null);
+    setSearchQuery('');
+    setSelectedMedium('all');
+    setSelectedSize('all');
+    setSelectedCountry('all');
+    setSortBy('default');
+  };
+
+  // Helper to parse dimensions string and check size
+  function checkSizeMatch(dimensions: string | undefined, sizeFilter: string) {
+    if (sizeFilter === 'all' || !dimensions) return true;
+    const matches = dimensions.match(/\d+(\.\d+)?/g);
+    if (!matches || matches.length === 0) return true;
+    const nums = matches.map(Number);
+    const maxDim = Math.max(...nums);
+    if (sizeFilter === 'small') return maxDim < 50;
+    if (sizeFilter === 'medium') return maxDim >= 50 && maxDim <= 120;
+    if (sizeFilter === 'large') return maxDim > 120;
+    return true;
+  }
+
+  // Filter artworks by all facets and sorting
   const filteredArtworks = useMemo(() => {
-    if (!selectedArtistId) return artworks;
-    return artworks.filter((art) => art.artistId === selectedArtistId);
-  }, [artworks, selectedArtistId]);
+    let list = [...artworks];
+    if (selectedArtistId) {
+      list = list.filter((art) => art.artistId === selectedArtistId);
+    }
+    if (selectedMedium !== 'all') {
+      list = list.filter((art) => art.medium?.trim() === selectedMedium);
+    }
+    if (selectedCountry !== 'all') {
+      list = list.filter((art) => art.artist?.country?.trim() === selectedCountry);
+    }
+    if (selectedSize !== 'all') {
+      list = list.filter((art) => checkSizeMatch(art.dimensions ?? undefined, selectedSize));
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (art) =>
+          (art.title && art.title.toLowerCase().includes(q)) ||
+          (art.artist?.name && art.artist.name.toLowerCase().includes(q)) ||
+          (art.medium && art.medium.toLowerCase().includes(q)) ||
+          (art.artist?.country && art.artist.country.toLowerCase().includes(q))
+      );
+    }
+    // Sorting
+    if (sortBy === 'title_asc') {
+      list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    } else if (sortBy === 'artist_asc') {
+      list.sort((a, b) => (a.artist?.name || '').localeCompare(b.artist?.name || ''));
+    } else if (sortBy === 'year_desc') {
+      list.sort((a, b) => (parseInt(String(b.yearCreated || '0'), 10) || 0) - (parseInt(String(a.yearCreated || '0'), 10) || 0));
+    }
+    return list;
+  }, [artworks, selectedArtistId, selectedMedium, selectedCountry, selectedSize, searchQuery, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -100,15 +195,25 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
             </div>
           </div>
 
-          {/* Curator Statement Toggle Button */}
+          {/* Curator Statement Toggle Button with Tooltip Bubble */}
           {exhibition.curatorNote && (
-            <button
-              onClick={() => setShowCuratorNote(!showCuratorNote)}
-              className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#1A1918] bg-white hover:bg-[#FAF8F5] border border-[#C5A880] rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-105 active:scale-95 self-start lg:self-end"
+            <TooltipBubble
+              content={showCuratorNote ? (lang === 'th' ? 'ซ่อนคำนำภัณฑารักษ์' : 'Hide Curatorial Statement') : (lang === 'th' ? 'อ่านคำนำภัณฑารักษ์ (Curator Statement)' : 'Read Curatorial Statement')}
+              position="left"
             >
-              <Info className="w-4 h-4 text-[#8C6D3F]" />
-              <span>{showCuratorNote ? (lang === 'th' ? 'ซ่อนคำนำภัณฑารักษ์' : 'Hide Statement') : (lang === 'th' ? 'คำนำภัณฑารักษ์' : 'Curator Statement')}</span>
-            </button>
+              <button
+                onClick={() => setShowCuratorNote(!showCuratorNote)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 ${
+                  showCuratorNote
+                    ? 'bg-[#8C6D3F] text-white border border-[#8C6D3F] shadow-md'
+                    : 'bg-white hover:bg-[#FAF8F5] text-[#1A1918] border border-[#C5A880]'
+                }`}
+                aria-label="Curator Statement"
+              >
+                <Info className={`w-4 h-4 ${showCuratorNote ? 'text-white' : 'text-[#8C6D3F]'}`} />
+                <span className="hidden sm:inline">{showCuratorNote ? (lang === 'th' ? 'ซ่อนคำนำ' : 'Hide') : (lang === 'th' ? 'คำนำภัณฑารักษ์' : 'Curator Note')}</span>
+              </button>
+            </TooltipBubble>
           )}
         </div>
 
@@ -207,47 +312,301 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
 
         {/* Right: Artwork Presentation (1-Column by Default for Full Immersive View) */}
         <div className="flex-1">
-          {/* Top Bar: Count & Column Mode Switcher */}
-          <div className="flex items-center justify-between mb-8 border-b border-[#E8E2D6] pb-4">
-            <div className="text-xs text-[#7A746A] tracking-wider uppercase">
-              {t.actions.showing} <span className="font-semibold text-[#1A1918]">{filteredArtworks.length}</span> {t.actions.items}
-              {selectedArtistId && (
-                <button
-                  onClick={() => setSelectedArtistId(null)}
-                  className="ml-3 text-[#8C7149] hover:underline font-semibold"
-                >
-                  {t.actions.clearFilter}
-                </button>
-              )}
+          {/* Top Bar: Search, Faceted Filter Button, Count & Column Mode Switcher */}
+          <div className="space-y-3 mb-8 border-b border-[#E8E2D6] pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Quick Search Input */}
+                <div className="relative flex items-center">
+                  <Search className="w-3.5 h-3.5 text-[#8C6D3F] absolute left-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={lang === 'th' ? 'ค้นหาผลงาน / ศิลปิน...' : 'Search artworks / artists...'}
+                    className="pl-8 pr-7 py-1.5 bg-white border border-[#D5CEC0] focus:border-[#8C6D3F] rounded-full text-xs text-[#1A1918] placeholder-[#9C9588] focus:outline-none shadow-xs w-44 sm:w-56 transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 p-0.5 rounded-full text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                      title="ล้างคำค้นหา"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Faceted Filter Toggle Button */}
+                <TooltipBubble content={lang === 'th' ? 'ตัวกรองเชิงลึก (เทคนิค, ขนาด, สัญชาติ, เรียงลำดับ)' : 'Faceted Filters (Medium, Size, Country, Sort)'}>
+                  <button
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 border ${
+                      isFilterOpen || activeFiltersCount > 0
+                        ? 'bg-[#1A1918] text-white border-[#1A1918]'
+                        : 'bg-white hover:bg-[#FAF8F5] text-[#4A453C] border-[#D5CEC0]'
+                    }`}
+                    aria-label="Toggle Filters"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>{lang === 'th' ? 'ตัวกรอง' : 'Filters'}</span>
+                    {activeFiltersCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-[#C5A880] text-[#1A1918] text-[10px] font-bold flex items-center justify-center font-mono">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </button>
+                </TooltipBubble>
+
+                <div className="text-xs text-[#7A746A] tracking-wider uppercase font-medium">
+                  {t.actions.showing} <span className="font-bold text-[#1A1918]">{filteredArtworks.length}</span> {t.actions.items}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                {/* E-Catalog Link with Tooltip Bubble */}
+                <TooltipBubble content={lang === 'th' ? 'เปิดอ่านสูจิบัตรออนไลน์ (E-Catalog)' : 'Open E-Catalog'}>
+                  <Link
+                    href={`/catalog/${exhibition.slug}`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF6EE] hover:bg-[#F2ECE0] text-[#8C6D3F] border border-[#E5D7BF] rounded-lg text-xs font-bold transition-all shadow-xs"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span className="hidden sm:inline">{lang === 'th' ? 'สูจิบัตร' : 'Catalog'}</span>
+                  </Link>
+                </TooltipBubble>
+
+                {/* Layout Toggle (1 Column Large vs Multi-grid) with Tooltip Bubbles */}
+                <div className="flex items-center bg-[#EAE5DA] p-1 rounded-lg border border-[#D5CEC0] text-xs font-semibold gap-1">
+                  <TooltipBubble content={lang === 'th' ? 'แสดงภาพขนาดใหญ่เต็มตา 1 คอลัมน์' : '1-Column Full Size View'}>
+                    <button
+                      onClick={() => setColumnMode('single')}
+                      className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                        columnMode === 'single'
+                          ? 'bg-[#1A1918] text-white shadow-sm'
+                          : 'text-[#696356] hover:text-[#1A1918]'
+                      }`}
+                      aria-label="1 Column View"
+                    >
+                      <LayoutList className="w-4 h-4" />
+                    </button>
+                  </TooltipBubble>
+                  <TooltipBubble content={lang === 'th' ? 'แสดงแบบตารางภาพ (Grid)' : 'Grid View'}>
+                    <button
+                      onClick={() => setColumnMode('grid')}
+                      className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                        columnMode === 'grid'
+                          ? 'bg-[#1A1918] text-white shadow-sm'
+                          : 'text-[#696356] hover:text-[#1A1918]'
+                      }`}
+                      aria-label="Grid View"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </button>
+                  </TooltipBubble>
+                </div>
+              </div>
             </div>
 
-            {/* Layout Toggle (1 Column Large vs Multi-grid) */}
-            <div className="flex items-center bg-[#EAE5DA] p-1 rounded-lg border border-[#D5CEC0] text-xs font-semibold">
-              <button
-                onClick={() => setColumnMode('single')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${
-                  columnMode === 'single'
-                    ? 'bg-[#1A1918] text-white shadow-sm'
-                    : 'text-[#696356] hover:text-[#1A1918]'
-                }`}
-                title={lang === 'th' ? 'แสดงภาพขนาดใหญ่เต็มตา 1 คอลัมน์' : '1-Column Full Size View'}
-              >
-                <LayoutList className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? '1 คอลัมน์ (ภาพใหญ่เต็มตา)' : '1 Column (Full View)'}</span>
-              </button>
-              <button
-                onClick={() => setColumnMode('grid')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${
-                  columnMode === 'grid'
-                    ? 'bg-[#1A1918] text-white shadow-sm'
-                    : 'text-[#696356] hover:text-[#1A1918]'
-                }`}
-                title={lang === 'th' ? 'แสดงแบบตารางย่อ' : 'Grid View'}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>{lang === 'th' ? 'ตารางภาพ' : 'Grid'}</span>
-              </button>
-            </div>
+            {/* Active Filter Pills Bar (Clean & Dismissable) */}
+            {activeFiltersCount > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-[11px] text-[#8C8477] font-semibold">
+                  {lang === 'th' ? 'ตัวกรองที่เลือก:' : 'Active:'}
+                </span>
+
+                {selectedMedium !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-[#C5A880] text-xs text-[#1A1918] font-medium shadow-xs">
+                    <span>{selectedMedium}</span>
+                    <button onClick={() => setSelectedMedium('all')} className="text-neutral-400 hover:text-red-500 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedSize !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-[#C5A880] text-xs text-[#1A1918] font-medium shadow-xs">
+                    <span>
+                      {selectedSize === 'small' ? (lang === 'th' ? 'ขนาดเล็ก (< 50 ซม.)' : 'Small (< 50cm)') :
+                       selectedSize === 'medium' ? (lang === 'th' ? 'ขนาดกลาง (50 - 120 ซม.)' : 'Medium (50 - 120cm)') :
+                       (lang === 'th' ? 'ขนาดใหญ่ (> 120 ซม.)' : 'Large (> 120cm)')}
+                    </span>
+                    <button onClick={() => setSelectedSize('all')} className="text-neutral-400 hover:text-red-500 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedCountry !== 'all' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-[#C5A880] text-xs text-[#1A1918] font-medium shadow-xs">
+                    <CountryFlag country={selectedCountry} size="xs" />
+                    <span>{selectedCountry}</span>
+                    <button onClick={() => setSelectedCountry('all')} className="text-neutral-400 hover:text-red-500 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {sortBy !== 'default' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-[#C5A880] text-xs text-[#1A1918] font-medium shadow-xs">
+                    <ArrowUpDown className="w-3 h-3 text-[#8C6D3F]" />
+                    <span>
+                      {sortBy === 'title_asc' ? (lang === 'th' ? 'เรียงตามชื่อผลงาน (A-Z)' : 'Title A-Z') :
+                       sortBy === 'artist_asc' ? (lang === 'th' ? 'เรียงตามชื่อศิลปิน (A-Z)' : 'Artist A-Z') :
+                       (lang === 'th' ? 'เรียงตามปีที่สร้าง (ใหม่สุด)' : 'Newest Year')}
+                    </span>
+                    <button onClick={() => setSortBy('default')} className="text-neutral-400 hover:text-red-500 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedArtistId && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-[#C5A880] text-xs text-[#1A1918] font-medium shadow-xs">
+                    <span>{artists.find(a => a.id === selectedArtistId)?.name || 'Artist'}</span>
+                    <button onClick={() => setSelectedArtistId(null)} className="text-neutral-400 hover:text-red-500 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+
+                <button
+                  onClick={handleClearAllFilters}
+                  className="text-xs text-[#8C6D3F] hover:text-[#5C4524] underline font-bold ml-1 cursor-pointer flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>{lang === 'th' ? 'ล้างทั้งหมด' : 'Clear all'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Collapsible Faceted Filter Drawer (Minimalist Swiss Grid) */}
+            {isFilterOpen && (
+              <div className="p-4 sm:p-6 bg-gradient-to-br from-[#FAF8F5] to-[#F5EFEB] border border-[#DDD7CC] rounded-2xl shadow-sm space-y-4 animate-slide-up mt-2">
+                {/* 1. Medium / Technique Row */}
+                {availableMediums.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#8C6D3F] block">
+                      {lang === 'th' ? '🎨 เทคนิค / วัสดุ (Medium)' : '🎨 Medium / Technique'}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        onClick={() => setSelectedMedium('all')}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                          selectedMedium === 'all'
+                            ? 'bg-[#1A1918] text-white shadow-xs'
+                            : 'bg-white hover:bg-[#FAF6EE] text-[#4A453C] border border-[#E5DFD3]'
+                        }`}
+                      >
+                        {lang === 'th' ? 'ทั้งหมด' : 'All'}
+                      </button>
+                      {availableMediums.map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setSelectedMedium(m)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                            selectedMedium === m
+                              ? 'bg-[#8C6D3F] text-white shadow-xs'
+                              : 'bg-white hover:bg-[#FAF6EE] text-[#4A453C] border border-[#E5DFD3]'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Dimensions / Size Row */}
+                <div className="space-y-1.5 pt-1 border-t border-[#EAE4D8]">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#8C6D3F] block">
+                    {lang === 'th' ? '📐 ขนาดผลงาน (Artwork Scale)' : '📐 Artwork Scale'}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {[
+                      { id: 'all', labelTh: 'ทุกขนาด', labelEn: 'All Sizes' },
+                      { id: 'small', labelTh: 'ขนาดเล็ก (< 50 ซม.)', labelEn: 'Small (< 50cm)' },
+                      { id: 'medium', labelTh: 'ขนาดกลาง (50 - 120 ซม.)', labelEn: 'Medium (50 - 120cm)' },
+                      { id: 'large', labelTh: 'ขนาดใหญ่ (> 120 ซม.)', labelEn: 'Large (> 120cm)' },
+                    ].map((sz) => (
+                      <button
+                        key={sz.id}
+                        onClick={() => setSelectedSize(sz.id)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                          selectedSize === sz.id
+                            ? 'bg-[#8C6D3F] text-white shadow-xs'
+                            : 'bg-white hover:bg-[#FAF6EE] text-[#4A453C] border border-[#E5DFD3]'
+                        }`}
+                      >
+                        {lang === 'th' ? sz.labelTh : sz.labelEn}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Country / Nationality Row */}
+                {availableCountries.length > 1 && (
+                  <div className="space-y-1.5 pt-1 border-t border-[#EAE4D8]">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#8C6D3F] block">
+                      {lang === 'th' ? '🌍 สัญชาติศิลปิน (Nationality)' : '🌍 Nationality'}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        onClick={() => setSelectedCountry('all')}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                          selectedCountry === 'all'
+                            ? 'bg-[#1A1918] text-white shadow-xs'
+                            : 'bg-white hover:bg-[#FAF6EE] text-[#4A453C] border border-[#E5DFD3]'
+                        }`}
+                      >
+                        {lang === 'th' ? 'ทุกสัญชาติ' : 'All Countries'}
+                      </button>
+                      {availableCountries.map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => setSelectedCountry(c)}
+                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                            selectedCountry === c
+                              ? 'bg-[#8C6D3F] text-white shadow-xs'
+                              : 'bg-white hover:bg-[#FAF6EE] text-[#4A453C] border border-[#E5DFD3]'
+                          }`}
+                        >
+                          <CountryFlag country={c} size="xs" />
+                          <span>{c}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Sorting Row */}
+                <div className="space-y-1.5 pt-1 border-t border-[#EAE4D8]">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#8C6D3F] block">
+                    {lang === 'th' ? '⚡ เรียงลำดับการแสดงผล (Sort By)' : '⚡ Sort By'}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {[
+                      { id: 'default', labelTh: 'ลำดับสูจิบัตร (Default Plate)', labelEn: 'Default Plate Order' },
+                      { id: 'title_asc', labelTh: 'ชื่อผลงาน (A-Z / ก-ฮ)', labelEn: 'Title (A-Z)' },
+                      { id: 'artist_asc', labelTh: 'ชื่อศิลปิน (A-Z / ก-ฮ)', labelEn: 'Artist (A-Z)' },
+                      { id: 'year_desc', labelTh: 'ปีที่สร้าง (ใหม่สุด)', labelEn: 'Year Created (Newest)' },
+                    ].map((st) => (
+                      <button
+                        key={st.id}
+                        onClick={() => setSortBy(st.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                          sortBy === st.id
+                            ? 'bg-[#1A1918] text-white shadow-xs'
+                            : 'bg-white hover:bg-[#FAF6EE] text-[#4A453C] border border-[#E5DFD3]'
+                        }`}
+                      >
+                        {sortBy === st.id && <Check className="w-3 h-3 text-[#C5A880]" />}
+                        <span>{lang === 'th' ? st.labelTh : st.labelEn}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {filteredArtworks.length === 0 ? (
@@ -296,30 +655,33 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                         priority={idx < 2}
                       />
 
-                      {/* Zoom Prompt & View in Room Floating Overlays */}
+                      {/* Zoom Prompt & View in Room Floating Overlays with Tooltip Bubbles */}
                       <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRoomModalArtwork(artwork);
-                          }}
-                          className="flex items-center gap-1.5 px-3.5 py-2 bg-[#C5A880] hover:bg-[#B39366] text-[#121110] text-xs font-bold rounded-full transition-all shadow-lg active:scale-95"
-                          title={lang === 'th' ? 'จำลองแขวนบนผนังห้อง' : 'View in Room'}
-                        >
-                          <Frame className="w-3.5 h-3.5" />
-                          <span>{lang === 'th' ? '🛋️ เทียบสเกลห้อง' : 'View in Room'}</span>
-                        </button>
+                        <TooltipBubble content={lang === 'th' ? 'จำลองแขวนบนผนังห้อง (View in Room)' : 'View in Room'} position="top">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRoomModalArtwork(artwork);
+                            }}
+                            className="w-10 h-10 flex items-center justify-center bg-[#C5A880] hover:bg-[#B39366] text-[#121110] rounded-full transition-all shadow-lg active:scale-95 cursor-pointer"
+                            aria-label="View in Room"
+                          >
+                            <Frame className="w-4 h-4" />
+                          </button>
+                        </TooltipBubble>
 
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedArtwork(artwork);
-                          }}
-                          className="flex items-center gap-1.5 px-3.5 py-2 bg-black/80 hover:bg-black text-white text-xs font-medium rounded-full backdrop-blur border border-white/20 transition-all shadow-lg"
-                        >
-                          <Maximize2 className="w-3.5 h-3.5 text-[#C5A880]" />
-                          <span>{t.actions.zoomInspect}</span>
-                        </button>
+                        <TooltipBubble content={t.actions.zoomInspect} position="top">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedArtwork(artwork);
+                            }}
+                            className="w-10 h-10 flex items-center justify-center bg-black/80 hover:bg-black text-[#C5A880] rounded-full backdrop-blur border border-white/20 transition-all shadow-lg active:scale-95 cursor-pointer"
+                            aria-label="Zoom In"
+                          >
+                            <Maximize2 className="w-4 h-4" />
+                          </button>
+                        </TooltipBubble>
                       </div>
                     </div>
 
@@ -385,28 +747,32 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                             {t.specs.concept} / Curatorial Statement:
                           </span>
                           <p className="text-xs sm:text-sm text-[#474239] leading-relaxed font-serif italic">
-                            "{artwork.concept?.trim() || artwork.description?.trim()}"
+                            &quot;{artwork.concept?.trim() || artwork.description?.trim()}&quot;
                           </p>
                         </div>
                       )}
 
-                      {/* Action Triggers */}
-                      <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-                        <button
-                          onClick={() => setSelectedArtwork(artwork)}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#2C2925] border border-[#D5CEC0] rounded-lg text-xs font-semibold uppercase tracking-wider transition-all"
-                        >
-                          <Maximize2 className="w-3.5 h-3.5 text-[#8C6D3F]" />
-                          <span>{t.actions.zoomInspect}</span>
-                        </button>
+                      {/* Footer Actions: HD Zoom & Inquire with Tooltip Bubbles */}
+                      <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+                        <TooltipBubble content={t.actions.zoomInspect} position="top">
+                          <button
+                            onClick={() => setSelectedArtwork(artwork)}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-[#FAF8F5] hover:bg-[#EFEBE2] text-[#2C2925] border border-[#D5CEC0] rounded-xl text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer active:scale-95"
+                          >
+                            <Maximize2 className="w-4 h-4 text-[#8C6D3F]" />
+                            <span>{t.actions.zoomInspect}</span>
+                          </button>
+                        </TooltipBubble>
 
-                        <button
-                          onClick={() => setInquiryArtwork(artwork)}
-                          className="flex items-center gap-2 px-6 py-2.5 bg-[#1A1918] hover:bg-[#33302C] text-white rounded-lg text-xs font-semibold uppercase tracking-wider shadow transition-all active:scale-98"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>{t.actions.inquireCurator}</span>
-                        </button>
+                        <TooltipBubble content={lang === 'th' ? 'สอบถามข้อมูล / สนใจซื้อผลงานชิ้นนี้' : 'Inquire / Purchase Artwork'} position="top">
+                          <button
+                            onClick={() => setInquiryArtwork(artwork)}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-[#1A1918] hover:bg-[#8B1B1B] text-[#D4AF37] hover:text-white border border-[#D4AF37]/30 rounded-xl text-xs font-semibold uppercase tracking-wider shadow-md transition-all active:scale-98 cursor-pointer"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            <span>{t.actions.inquireCurator}</span>
+                          </button>
+                        </TooltipBubble>
                       </div>
                     </div>
                   </article>

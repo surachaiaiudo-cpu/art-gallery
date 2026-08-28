@@ -33,6 +33,7 @@ import { CatalogPlate } from './CatalogPlate';
 import { CatalogDynamicPlate } from './CatalogDynamicPlate';
 import { getExhibitionCatalogTemplate, CatalogTemplateConfig } from '@/types/catalogTemplate';
 import { CatalogReaderModal } from './CatalogReaderModal';
+import { TooltipBubble } from '@/components/ui/TooltipBubble';
 import { Catalog3DFlipbook } from './Catalog3DFlipbook';
 import { FooterEditorModal } from './FooterEditorModal';
 import { PeerReviewEditorModal } from './PeerReviewEditorModal';
@@ -257,90 +258,104 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* View Mode Switcher */}
-            <div className="flex items-center bg-white/80 p-1 rounded-xl border border-[#DDD6C8] shadow-inner text-xs">
-              <button
-                onClick={() => setActiveViewMode('flipbook')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  activeViewMode === 'flipbook'
-                    ? 'bg-[#8C6D3F] text-white shadow-sm'
-                    : 'text-[#666] hover:text-[#1A1918] hover:bg-[#F2EFE9]'
-                }`}
-                title="เปิดอ่านสมุด 3 มิติพร้อมเสียงพลิกหน้า (Interactive 3D Flipbook)"
-              >
-                <BookOpen className="w-3.5 h-3.5 text-[#EAD8B8]" />
-                <span>สมุด 3D Flipbook</span>
-              </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* View Mode Switcher with Tooltip Bubbles */}
+            <div className="flex items-center bg-white/80 p-1 rounded-xl border border-[#DDD6C8] shadow-inner text-xs gap-1">
+              <TooltipBubble content="เปิดอ่านสมุด 3 มิติพร้อมเสียงพลิกหน้า (3D Flipbook)" position="bottom">
+                <button
+                  onClick={() => setActiveViewMode('flipbook')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    activeViewMode === 'flipbook'
+                      ? 'bg-[#8C6D3F] text-white shadow-sm'
+                      : 'text-[#666] hover:text-[#1A1918] hover:bg-[#F2EFE9]'
+                  }`}
+                  aria-label="3D Flipbook"
+                >
+                  <BookOpen className="w-4 h-4 text-[#EAD8B8]" />
+                  <span className="hidden sm:inline">3D Flipbook</span>
+                </button>
+              </TooltipBubble>
 
-              <button
-                onClick={() => setActiveViewMode('grid3')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  activeViewMode === 'grid3'
-                    ? 'bg-[#8C6D3F] text-white shadow-sm'
-                    : 'text-[#666] hover:text-[#1A1918] hover:bg-[#F2EFE9]'
-                }`}
-                title="มุมมองแบบตาราง 3 คอลัมน์ (Grid 3 View)"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>มุมมองตาราง</span>
-              </button>
+              <TooltipBubble content="มุมมองแบบตารางภาพ (Grid 3 View)" position="bottom">
+                <button
+                  onClick={() => setActiveViewMode('grid3')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    activeViewMode === 'grid3'
+                      ? 'bg-[#8C6D3F] text-white shadow-sm'
+                      : 'text-[#666] hover:text-[#1A1918] hover:bg-[#F2EFE9]'
+                  }`}
+                  aria-label="Grid View"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  <span className="hidden sm:inline">ตารางภาพ</span>
+                </button>
+              </TooltipBubble>
 
-              <button
-                onClick={() => setActiveViewMode('full')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  activeViewMode === 'full'
-                    ? 'bg-[#8C6D3F] text-white shadow-sm'
-                    : 'text-[#666] hover:text-[#1A1918] hover:bg-[#F2EFE9]'
-                }`}
-                title="มุมมองหน้า A4 ต่อเนื่อง (Continuous Full A4 View)"
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>มุมมองหน้าเต็ม</span>
-              </button>
+              <TooltipBubble content="มุมมองหน้าสูจิบัตรต่อเนื่อง (Continuous Full Page View)" position="bottom">
+                <button
+                  onClick={() => setActiveViewMode('full')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    activeViewMode === 'full'
+                      ? 'bg-[#8C6D3F] text-white shadow-sm'
+                      : 'text-[#666] hover:text-[#1A1918] hover:bg-[#F2EFE9]'
+                  }`}
+                  aria-label="Full Page View"
+                >
+                  <Layers className="w-4 h-4" />
+                  <span className="hidden sm:inline">หน้าเต็ม</span>
+                </button>
+              </TooltipBubble>
             </div>
 
             {/* Peer Reviewer & Footer Editor Buttons (Only visible in Curator / Admin Mode) */}
             {isAdmin && (
               <>
-                <Link
-                  href={`/admin/catalog-designer?exhibition=${exhibition.id}`}
-                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-[#8B1B1B]/10 hover:bg-[#8B1B1B]/20 text-[#8B1B1B] border border-[#8B1B1B]/30 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
-                  title="เปิดเครื่องมือออกแบบ Drag & Drop Catalog Designer Studio"
-                >
-                  <Sparkles className="w-4 h-4 text-[#8B1B1B]" />
-                  <span>ออกแบบแม่แบบสูจิบัตร (Studio)</span>
-                </Link>
+                <TooltipBubble content="เปิดสตูดิโอจัดหน้าสูจิบัตร (Catalog Designer Studio)" position="bottom">
+                  <Link
+                    href={`/admin/catalog-designer?exhibition=${exhibition.id}`}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-[#8B1B1B]/10 hover:bg-[#8B1B1B]/20 text-[#8B1B1B] border border-[#8B1B1B]/30 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                    aria-label="Designer Studio"
+                  >
+                    <Sparkles className="w-4 h-4 text-[#8B1B1B]" />
+                    <span className="hidden md:inline">ออกแบบสูจิบัตร</span>
+                  </Link>
+                </TooltipBubble>
 
-                <button
-                  onClick={() => setIsPeerReviewModalOpen(true)}
-                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
-                  title="จัดการรายนามคณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (Curator Only)"
-                >
-                  <GraduationCap className="w-4 h-4 text-amber-700" />
-                  <span>ผู้ทรงคุณวุฒิ ({peerReviewersList.length})</span>
-                </button>
+                <TooltipBubble content={`จัดการรายนามคณะกรรมการผู้ทรงคุณวุฒิประเมินผลงาน (${peerReviewersList.length} ท่าน)`} position="bottom">
+                  <button
+                    onClick={() => setIsPeerReviewModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                    aria-label="Peer Reviewers"
+                  >
+                    <GraduationCap className="w-4 h-4 text-amber-700" />
+                    <span className="hidden lg:inline">ผู้ทรงคุณวุฒิ ({peerReviewersList.length})</span>
+                  </button>
+                </TooltipBubble>
 
-                <button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
-                  title="แก้ไขข้อความ Footer ท้ายหน้าสูจิบัตร (Curator Only)"
-                >
-                  <Edit3 className="w-4 h-4 text-amber-700" />
-                  <span>ตั้งค่า Footer</span>
-                </button>
+                <TooltipBubble content="แก้ไขข้อความ Footer ท้ายหน้าสูจิบัตร" position="bottom">
+                  <button
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                    aria-label="Footer Settings"
+                  >
+                    <Edit3 className="w-4 h-4 text-amber-700" />
+                    <span className="hidden lg:inline">ตั้งค่า Footer</span>
+                  </button>
+                </TooltipBubble>
               </>
             )}
 
-            {/* Save Vector PDF 100% Button */}
-            <button
-              onClick={handleSaveVectorPDF100Percent}
-              className="flex items-center space-x-2 px-4 py-2 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
-              title="บันทึกสูจิบัตรทั้งเล่มเป็นไฟล์ PDF Vector A4 คมชัด 100%"
-            >
-              <Printer className="w-4 h-4" />
-              <span>บันทึกเป็น PDF (ทั้งเล่ม)</span>
-            </button>
+            {/* Save Vector PDF 100% Button with Tooltip Bubble */}
+            <TooltipBubble content="บันทึกสูจิบัตรทั้งเล่มเป็นไฟล์ PDF Vector คมชัด 100%" position="bottom">
+              <button
+                onClick={handleSaveVectorPDF100Percent}
+                className="flex items-center gap-2 px-4 py-2 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                aria-label="Save PDF"
+              >
+                <Printer className="w-4 h-4" />
+                <span>PDF (ทั้งเล่ม)</span>
+              </button>
+            </TooltipBubble>
           </div>
         </div>
       </div>
@@ -376,57 +391,53 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {/* 1. Cover Page Thumbnail Card */}
             <div
               onClick={() => setSelectedPageModalIndex(0)}
-              className="bg-white border-2 border-[#DDD6C8] hover:border-[#8C6D3F] rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col justify-between"
+              className="bg-white border border-[#DDD7CC] hover:border-[#8C6D3F] rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col justify-between p-5 space-y-4"
             >
-              <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 bg-[#8C6D3F] text-white rounded text-[10px] font-mono font-bold uppercase">
-                    หน้า 1 • หน้าปก
-                  </span>
-                  <span className="text-[10px] text-[#8C6D3F] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ZoomIn className="w-3.5 h-3.5" />
-                    เปิดอ่านหน้าใหญ่
-                  </span>
-                </div>
-
-                <div className="aspect-[210/160] bg-[#FAF8F5] rounded-xl overflow-hidden border border-[#EBE6DC] flex items-center justify-center p-2">
-                  {exhibition.bannerUrl ? (
-                    <img
-                      src={getOptimizedImageUrl(exhibition.bannerUrl, { width: 380, quality: 75 })}
-                      alt={exhibition.title}
-                      loading="lazy"
-                      decoding="async"
-                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="text-center font-serif text-sm font-bold text-[#8C6D3F]">
-                      ARTVARA COVER
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-1 pt-1">
-                  <span className="catalog-heading-th text-[10px] uppercase tracking-wider text-[#8C6D3F] font-bold block">
-                    ARTVARA Official Catalog
-                  </span>
-                  <h3 className="catalog-heading-th font-serif text-sm font-bold text-[#1A1918] line-clamp-2 leading-snug">
-                    {exhibition.title}
-                  </h3>
-                  {curator?.name && (
-                    <p className="catalog-body-th text-[11px] text-[#666]">
-                      Curated by: {curator.name}
-                    </p>
-                  )}
-                </div>
+              {/* Top Row: Page Badge & Rollover Reveal */}
+              <div className="flex items-center justify-between">
+                <span className="px-2.5 py-1 bg-[#FAF6EE] text-[#8C6D3F] border border-[#E5D7BF] rounded-full text-[10px] font-mono font-bold tracking-wider uppercase">
+                  หน้า 1 • หน้าปก
+                </span>
+                <span className="text-[11px] text-[#8C6D3F] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-1 group-hover:translate-x-0">
+                  <ZoomIn className="w-3.5 h-3.5" />
+                  <span>เปิดอ่านหน้าใหญ่</span>
+                </span>
               </div>
 
-              <div className="bg-[#FAF8F5] px-4 py-2.5 border-t border-[#EFEBE3] flex items-center justify-between text-xs text-[#8C6D3F] font-semibold">
-                <span>🔍 คลิกเพื่อเปิดอ่านหน้าปก</span>
-                <span className="group-hover:translate-x-1 transition-transform">→</span>
+              {/* Cover Image Container */}
+              <div className="aspect-[210/160] bg-[#FAF8F5] rounded-xl overflow-hidden border border-[#EBE6DC] flex items-center justify-center p-3">
+                {exhibition.bannerUrl ? (
+                  <img
+                    src={getOptimizedImageUrl(exhibition.bannerUrl, { width: 380, quality: 75 })}
+                    alt={exhibition.title}
+                    loading="lazy"
+                    decoding="async"
+                    className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="text-center font-serif text-sm font-bold text-[#8C6D3F]">
+                    ARTVARA COVER
+                  </div>
+                )}
+              </div>
+
+              {/* Cover Info */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[10px] uppercase tracking-widest text-[#8C6D3F] font-bold block">
+                  Official Exhibition Catalog
+                </span>
+                <h3 className="font-serif text-base font-bold text-[#1A1918] group-hover:text-[#8C6D3F] transition-colors line-clamp-2 leading-snug">
+                  {exhibition.title}
+                </h3>
+                {curator?.name && (
+                  <p className="text-xs text-[#6B655A] font-medium">
+                    {curator.name}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -434,54 +445,48 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             {hasReviewers && (
               <div
                 onClick={() => setSelectedPageModalIndex(1)}
-                className="bg-white border-2 border-[#DDD6C8] hover:border-[#8C6D3F] rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col justify-between"
+                className="bg-white border border-[#DDD7CC] hover:border-[#8C6D3F] rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col justify-between p-5 space-y-4"
               >
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 bg-[#8C6D3F] text-white rounded text-[10px] font-mono font-bold uppercase">
-                      หน้า 2 • ผู้ทรงคุณวุฒิ
-                    </span>
-                    <span className="text-[10px] text-[#8C6D3F] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ZoomIn className="w-3.5 h-3.5" />
-                      เปิดอ่านหน้าใหญ่
-                    </span>
-                  </div>
-
-                  <div className="aspect-[210/160] bg-[#FAF8F5] rounded-xl overflow-hidden border border-[#EBE6DC] p-3 flex flex-col justify-between">
-                    <div className="space-y-1.5">
-                      <span className="catalog-heading-th text-[9px] font-bold text-[#555] uppercase block">
-                        คณะกรรมการผู้ทรงคุณวุฒิ ({peerReviewersList.length} ท่าน)
-                      </span>
-                      <div className="space-y-1">
-                        {peerReviewersList.slice(0, 3).map((r, i) => (
-                          <div key={i} className="text-[10px] text-[#333] flex items-center gap-1.5 truncate">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#8C6D3F] shrink-0" />
-                            <span className="font-semibold truncate">{[r.academicTitle, r.name].filter(Boolean).join(' ')}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {exhibition.curatorNote && (
-                      <p className="text-[9px] text-[#777] italic line-clamp-2 border-t border-[#E8E2D6] pt-1">
-                        &quot;{exhibition.curatorNote}&quot;
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-0.5 pt-1">
-                    <span className="catalog-heading-th text-xs font-bold text-[#1A1918] block">
-                      คณะกรรมการผู้ทรงคุณวุฒิ &amp; คำนำภัณฑารักษ์
-                    </span>
-                    <p className="catalog-body-th text-[10px] text-[#777]">
-                      Peer Review Committee &amp; Curatorial Statement
-                    </p>
-                  </div>
+                {/* Top Row: Page Badge & Rollover Reveal */}
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-1 bg-[#FAF6EE] text-[#8C6D3F] border border-[#E5D7BF] rounded-full text-[10px] font-mono font-bold tracking-wider uppercase">
+                    หน้า 2 • ผู้ทรงคุณวุฒิ
+                  </span>
+                  <span className="text-[11px] text-[#8C6D3F] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-1 group-hover:translate-x-0">
+                    <ZoomIn className="w-3.5 h-3.5" />
+                    <span>เปิดอ่านหน้าใหญ่</span>
+                  </span>
                 </div>
 
-                <div className="bg-[#FAF8F5] px-4 py-2.5 border-t border-[#EFEBE3] flex items-center justify-between text-xs text-[#8C6D3F] font-semibold">
-                  <span>🔍 คลิกเพื่อเปิดอ่านหน้านี้</span>
-                  <span className="group-hover:translate-x-1 transition-transform">→</span>
+                <div className="aspect-[210/160] bg-[#FAF8F5] rounded-xl overflow-hidden border border-[#EBE6DC] p-4 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold text-[#8C6D3F] uppercase tracking-wider block">
+                      คณะกรรมการผู้ทรงคุณวุฒิ ({peerReviewersList.length} ท่าน)
+                    </span>
+                    <div className="space-y-1.5">
+                      {peerReviewersList.slice(0, 3).map((r, i) => (
+                        <div key={i} className="text-[11px] text-[#3A362F] flex items-center gap-2 truncate font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#8C6D3F] shrink-0" />
+                          <span className="truncate">{[r.academicTitle, r.name].filter(Boolean).join(' ')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {exhibition.curatorNote && (
+                    <p className="text-[10px] text-[#6E685C] italic line-clamp-2 border-t border-[#E8E2D6] pt-2 font-serif">
+                      &quot;{exhibition.curatorNote}&quot;
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <h3 className="font-serif text-base font-bold text-[#1A1918] group-hover:text-[#8C6D3F] transition-colors line-clamp-1 leading-snug">
+                    คณะกรรมการผู้ทรงคุณวุฒิ &amp; คำนำภัณฑารักษ์
+                  </h3>
+                  <p className="text-xs text-[#7A7468] font-medium">
+                    Peer Review Committee &amp; Curatorial Statement
+                  </p>
                 </div>
               </div>
             )}
@@ -497,64 +502,57 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
                 <div
                   key={art.id}
                   onClick={() => setSelectedPageModalIndex(pageIdx)}
-                  className="bg-white border-2 border-[#DDD6C8] hover:border-[#8C6D3F] rounded-2xl shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col justify-between"
+                  className="bg-white border border-[#DDD7CC] hover:border-[#8C6D3F] rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col justify-between p-5 space-y-4"
                 >
-                  <div className="p-4 space-y-3">
-                    {/* Top Row: Page Badge & Hover hint */}
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 bg-[#FAF3E8] text-[#8C6D3F] border border-[#E0D5C1] rounded text-[10px] font-mono font-bold">
-                        หน้า #{pageNum}
-                      </span>
-                      <span className="text-[10px] text-[#8C6D3F] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ZoomIn className="w-3.5 h-3.5" />
-                        เปิดอ่านหน้าใหญ่
-                      </span>
-                    </div>
-
-                    {/* Artwork Image Container */}
-                    <div className="relative aspect-[210/160] bg-[#FAF8F5] rounded-xl overflow-hidden border border-[#EBE6DC] flex items-center justify-center p-2">
-                      <img
-                        src={optimizedThumbUrl}
-                        alt={art.title}
-                        loading="lazy"
-                        decoding="async"
-                        className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-
-                    {/* Artist & Artwork Info */}
-                    <div className="space-y-1.5 pt-1">
-                      <div className="flex items-center gap-2">
-                        {/* Flag */}
-                        <div className="relative w-6 h-3.5 rounded-[2px] overflow-hidden border border-[#DDD] shrink-0 bg-[#F5F5F5]">
-                          <img
-                            src={getFlagImageUrl(artist?.country)}
-                            alt={artist?.country || 'Flag'}
-                            loading="lazy"
-                            decoding="async"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        {/* Artist Name */}
-                        <h4 className="catalog-heading-th text-xs font-bold text-[#1A1918] truncate">
-                          {artist?.name || 'Artist'}
-                        </h4>
-                      </div>
-
-                      {/* Artwork Title */}
-                      <h5 className="catalog-heading-th text-xs font-bold text-[#333] line-clamp-1">
-                        {art.title}
-                      </h5>
-
-                      <p className="catalog-body-th text-[10px] text-[#777] line-clamp-1">
-                        {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
-                      </p>
-                    </div>
+                  {/* Top Row: Page Badge & Rollover Reveal */}
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-1 bg-[#FAF6EE] text-[#8C6D3F] border border-[#E5D7BF] rounded-full text-[10px] font-mono font-bold">
+                      หน้า #{pageNum}
+                    </span>
+                    <span className="text-[11px] text-[#8C6D3F] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-1 group-hover:translate-x-0">
+                      <ZoomIn className="w-3.5 h-3.5" />
+                      <span>เปิดอ่านหน้าใหญ่</span>
+                    </span>
                   </div>
 
-                  <div className="bg-[#FAF8F5] px-4 py-2.5 border-t border-[#EFEBE3] flex items-center justify-between text-xs text-[#8C6D3F] font-semibold">
-                    <span>🔍 คลิกเพื่อเปิดอ่านหน้าใหญ่</span>
-                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  {/* Artwork Image Container */}
+                  <div className="relative aspect-[210/160] bg-[#FAF8F5] rounded-xl overflow-hidden border border-[#EBE6DC] flex items-center justify-center p-3">
+                    <img
+                      src={optimizedThumbUrl}
+                      alt={art.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+
+                  {/* Artist & Artwork Info */}
+                  <div className="space-y-2 pt-1">
+                    {/* Artist Row */}
+                    <div className="flex items-center gap-2">
+                      <div className="relative w-5 h-3.5 rounded-[2px] overflow-hidden border border-[#DDD] shrink-0 bg-[#F5F5F5]">
+                        <img
+                          src={getFlagImageUrl(artist?.country)}
+                          alt={artist?.country || 'Flag'}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-[#1A1918] group-hover:text-[#8C6D3F] transition-colors truncate">
+                        {artist?.name || 'Artist'}
+                      </span>
+                    </div>
+
+                    {/* Artwork Title */}
+                    <h3 className="font-serif text-base font-bold text-[#1A1918] line-clamp-1 leading-snug">
+                      {art.title}
+                    </h3>
+
+                    {/* Specs / Dimensions / Medium */}
+                    <p className="text-[11px] text-[#6E685C] font-mono line-clamp-1">
+                      {[art.medium, art.dimensions, art.yearCreated ? `(${art.yearCreated})` : ''].filter(Boolean).join(' ')}
+                    </p>
                   </div>
                 </div>
               );

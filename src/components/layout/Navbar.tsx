@@ -7,6 +7,7 @@ import { Download, Eye, Box, BookOpen, Shield, GalleryHorizontal, Home, Sparkles
 import { Exhibition, is3DEnabled } from '@/types/exhibition';
 import { useLanguage } from '@/context/LanguageContext';
 import { DownloadCatalogPDFButton } from '@/components/catalog/DownloadCatalogPDFButton';
+import { TooltipBubble } from '@/components/ui/TooltipBubble';
 
 interface NavbarProps {
   exhibition?: Exhibition | null;
@@ -64,51 +65,54 @@ export function Navbar({
         {onModeChange && (
           <div className="flex items-center bg-[#1E1C1A]/90 p-1.5 rounded-full border border-[#C5A880]/30 shadow-2xl gap-1.5 backdrop-blur-md">
             {/* 2D Mode */}
-            <div className="relative group">
+            <TooltipBubble content={t.modes.grid} position="bottom">
               <button
                 onClick={() => onModeChange('2d')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 cursor-pointer ${
                   currentMode === '2d'
                     ? 'bg-[#C5A880] text-[#141210] shadow-md font-bold'
                     : 'text-neutral-300 hover:text-white hover:bg-white/10'
                 }`}
+                aria-label={t.modes.grid}
               >
                 <Eye className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">{t.modes.grid}</span>
               </button>
-            </div>
+            </TooltipBubble>
 
             {/* Carousel Mode */}
-            <div className="relative group">
+            <TooltipBubble content={t.modes.carousel} position="bottom">
               <button
                 onClick={() => onModeChange('carousel')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 cursor-pointer ${
                   currentMode === 'carousel'
                     ? 'bg-[#C5A880] text-[#141210] shadow-md font-bold'
                     : 'text-neutral-300 hover:text-white hover:bg-white/10'
                 }`}
+                aria-label={t.modes.carousel}
               >
                 <GalleryHorizontal className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">{t.modes.carousel}</span>
               </button>
-            </div>
+            </TooltipBubble>
 
             {/* 3D Mode */}
             {is3DEnabled(exhibition) && (
-              <div className="relative group">
+              <TooltipBubble content={t.modes.room3d} position="bottom">
                 <button
                   onClick={() => onModeChange('3d')}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 cursor-pointer ${
                     currentMode === '3d'
                       ? 'bg-gradient-to-r from-[#8B1B1B] to-[#A82828] text-white shadow-[0_0_12px_rgba(139,27,27,0.5)] font-bold border border-[#D4AF37]/50'
                       : 'text-[#E6D7B8] hover:text-white hover:bg-white/10'
                   }`}
+                  aria-label={t.modes.room3d}
                 >
                   <Box className="w-3.5 h-3.5 text-[#D4AF37]" />
                   <span className="hidden sm:inline">{t.modes.room3d}</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
                 </button>
-              </div>
+              </TooltipBubble>
             )}
           </div>
         )}
@@ -119,7 +123,7 @@ export function Navbar({
           <div className="flex items-center bg-black/40 rounded-full p-0.5 border border-white/15 text-xs font-bold font-sans">
             <button
               onClick={() => setLang('th')}
-              className={`px-2.5 py-1 rounded-full transition-all ${
+              className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
                 lang === 'th'
                   ? 'bg-[#C5A880] text-[#141210] shadow-sm font-extrabold'
                   : 'text-neutral-400 hover:text-white'
@@ -129,7 +133,7 @@ export function Navbar({
             </button>
             <button
               onClick={() => setLang('en')}
-              className={`px-2.5 py-1 rounded-full transition-all ${
+              className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
                 lang === 'en'
                   ? 'bg-[#C5A880] text-[#141210] shadow-sm font-extrabold'
                   : 'text-neutral-400 hover:text-white'
@@ -139,37 +143,46 @@ export function Navbar({
             </button>
           </div>
 
-          {/* Artists Directory Button */}
-          <Link
-            href="/artists"
-            className="p-2 text-neutral-300 hover:text-white hover:bg-white/10 rounded-full transition-all flex items-center justify-center border border-transparent hover:border-white/10"
-            title={lang === 'th' ? 'ทำเนียบศิลปิน' : 'Artists Directory'}
-          >
-            <span className="text-sm">👨‍🎨</span>
-          </Link>
+          {/* Artists Directory Button with Tooltip */}
+          <TooltipBubble content={lang === 'th' ? 'ทำเนียบศิลปิน' : 'Artists Directory'} position="bottom">
+            <Link
+              href="/artists"
+              className="p-2 text-neutral-300 hover:text-white hover:bg-white/10 rounded-full transition-all flex items-center justify-center border border-transparent hover:border-white/10"
+              aria-label={lang === 'th' ? 'ทำเนียบศิลปิน' : 'Artists Directory'}
+            >
+              <span className="text-sm">👨‍🎨</span>
+            </Link>
+          </TooltipBubble>
 
-          {/* Read Catalog Button */}
-          <Link
-            href={catalogTargetUrl}
-            className="p-2 text-[#C5A880] hover:text-white hover:bg-[#C5A880]/20 rounded-full transition-all flex items-center justify-center border border-[#C5A880]/30"
-            title={isInsideSpecificExhibition ? t.actions.readCatalog : (lang === 'th' ? 'หอสูจิบัตร' : 'Catalogs Library')}
+          {/* Read Catalog Button with Tooltip */}
+          <TooltipBubble
+            content={isInsideSpecificExhibition ? t.actions.readCatalog : (lang === 'th' ? 'หอสูจิบัตรดิจิทัล' : 'Digital Catalogs Library')}
+            position="bottom"
           >
-            <BookOpen className="w-4 h-4" />
-          </Link>
+            <Link
+              href={catalogTargetUrl}
+              className="p-2 text-[#C5A880] hover:text-white hover:bg-[#C5A880]/20 rounded-full transition-all flex items-center justify-center border border-[#C5A880]/30"
+              aria-label={t.actions.readCatalog}
+            >
+              <BookOpen className="w-4 h-4" />
+            </Link>
+          </TooltipBubble>
 
           {/* PDF Download Button if exhibition active */}
           {exhibition?.slug && (
             <DownloadCatalogPDFButton exhibition={exhibition} variant="navbar" />
           )}
 
-          {/* Curator Admin Portal */}
-          <Link
-            href="/admin"
-            className="p-2 text-neutral-400 hover:text-white hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
-            title="Curator Admin Studio"
-          >
-            <Shield className="w-4 h-4 text-[#C5A880]" />
-          </Link>
+          {/* Curator Admin Portal with Tooltip */}
+          <TooltipBubble content={lang === 'th' ? 'สตูดิโอผู้ดูแลระบบ (Curator Admin)' : 'Curator Admin Studio'} position="bottom">
+            <Link
+              href="/admin"
+              className="p-2 text-neutral-400 hover:text-white hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"
+              aria-label="Curator Admin"
+            >
+              <Shield className="w-4 h-4 text-[#C5A880]" />
+            </Link>
+          </TooltipBubble>
         </div>
       </div>
     </header>

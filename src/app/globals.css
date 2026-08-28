@@ -6,9 +6,8 @@
 
 @layer base {
   :root {
-    --font-prompt: 'Prompt', -apple-system, BlinkMacSystemFont, 'Noto Sans Thai', 'Thonburi', sans-serif;
-    --font-sukhumvit: var(--font-prompt);
-    --font-maitree: var(--font-maitree, 'Maitree'), 'Maitree', 'Noto Serif Thai', Georgia, serif;
+    --font-prompt: 'Prompt', -apple-system, BlinkMacSystemFont, 'Noto Sans Thai', 'Inter', sans-serif;
+    --font-maitree: 'Maitree', 'Cinzel', 'Noto Serif Thai', Georgia, serif;
     --background: #f7f6f2;
     --foreground: #181716;
   }
@@ -16,31 +15,32 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-maitree);
+    font-family: var(--font-prompt);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     overflow-x: hidden;
   }
 
-  /* หัวข้อทั้งหมดใช้ Prompt */
-  h1, h2, h3, h4, h5, h6,
-  .font-heading,
-  .font-prompt,
-  .font-sukhumvit,
-  .font-serif {
-    font-family: var(--font-prompt) !important;
-  }
-
-  /* เนื้อหา ข้อความ และย่อหน้าใช้ Maitree */
-  p, span, div, a, button, input, textarea, select, label,
-  .font-body,
-  .font-maitree {
-    font-family: var(--font-maitree);
-  }
-
-  /* รักษา Prompt สำหรับหัวเรื่องและแท็กเฉพาะ */
-  h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
+  /* Headings and Titles */
+  h1, h2, h3, h4, h5, h6 {
     font-family: inherit;
+    letter-spacing: -0.01em;
+  }
+
+  /* Generic text tags inherit clean default font */
+  p, span, div, a, button, input, textarea, select, label {
+    font-family: inherit;
+  }
+
+  /* Editorial & Museum serif typography */
+  .font-serif {
+    font-family: var(--font-maitree) !important;
+  }
+
+  .font-sans,
+  .font-prompt {
+    font-family: var(--font-prompt) !important;
   }
 }
 

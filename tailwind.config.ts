@@ -46,12 +46,12 @@ const config: Config = {
         'floating': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
       },
       fontFamily: {
-        heading: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', '-apple-system', 'BlinkMacSystemFont', 'Prompt', 'Noto Sans Thai', 'sans-serif'],
-        sukhumvit: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', '-apple-system', 'BlinkMacSystemFont', 'Prompt', 'Noto Sans Thai', 'sans-serif'],
-        sans: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', '-apple-system', 'BlinkMacSystemFont', 'Prompt', 'Noto Sans Thai', 'sans-serif'],
-        body: ['var(--font-maitree)', 'Maitree', 'Noto Serif Thai', 'Georgia', 'serif'],
-        maitree: ['var(--font-maitree)', 'Maitree', 'Noto Serif Thai', 'Georgia', 'serif'],
-        serif: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', 'Prompt', 'Noto Sans Thai', 'sans-serif'],
+        heading: ['Prompt', '-apple-system', 'BlinkMacSystemFont', 'Noto Sans Thai', 'sans-serif'],
+        sans: ['Prompt', '-apple-system', 'BlinkMacSystemFont', 'Noto Sans Thai', 'Inter', 'sans-serif'],
+        prompt: ['Prompt', '-apple-system', 'BlinkMacSystemFont', 'Noto Sans Thai', 'sans-serif'],
+        serif: ['Maitree', 'Cinzel', 'Noto Serif Thai', 'Georgia', 'serif'],
+        maitree: ['Maitree', 'Noto Serif Thai', 'Georgia', 'serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
