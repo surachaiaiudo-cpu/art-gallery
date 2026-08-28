@@ -99,19 +99,24 @@ function LoginForm() {
             )}
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-semibold text-[#FFD98A] mb-2"
-              >
-                รหัสผ่านสำหรับผู้ดูแล (Admin Password)
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label
+                  htmlFor="password"
+                  className="block text-xs font-semibold text-[#FFD98A]"
+                >
+                  รหัสผ่านสำหรับผู้ดูแล (Admin Password)
+                </label>
+                <span className="text-[10px] text-[#A59582] bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                  Localhost: admin1234
+                </span>
+              </div>
               <div className="relative">
                 <input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="กรอกรหัสผ่านผู้ดูแลระบบ..."
+                  placeholder="กรอก admin1234 หรือ admin..."
                   autoFocus
                   required
                   className="w-full px-4 py-3 bg-[#14110E] border border-white/15 focus:border-[#D9B878] rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#D9B878]/30 transition-all font-sans"

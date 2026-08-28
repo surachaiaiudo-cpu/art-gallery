@@ -524,6 +524,15 @@ export function AdminExhibitionsManagerClient({
                     <Box className="w-3.5 h-3.5 text-amber-700" />
                     <span>{lang === 'th' ? 'สตูดิโอ 3D' : '3D Studio'}</span>
                   </Link>
+
+                  {/* Catalog Designer Studio Link */}
+                  <Link
+                    href={`/admin/catalog-designer?exhibition=${exh.id}`}
+                    className="flex items-center justify-center gap-1.5 py-2 bg-[#8B1B1B]/15 hover:bg-[#8B1B1B]/25 text-[#8B1B1B] border border-[#8B1B1B]/30 rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-[#8B1B1B]" />
+                    <span>{lang === 'th' ? 'ออกแบบสูจิบัตร' : 'Designer'}</span>
+                  </Link>
                 </div>
 
                 {/* Edit Exhibition & Peer Reviewers Button */}

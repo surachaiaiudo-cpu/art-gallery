@@ -30,7 +30,7 @@ export default function AdminLayout({
   const { lang, setLang, t } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
-  const is3DStudio = pathname === '/admin/3d-studio';
+  const isFullCanvas = pathname === '/admin/3d-studio' || pathname === '/admin/catalog-designer';
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -129,6 +129,14 @@ export default function AdminLayout({
             </Link>
 
             <Link
+              href="/admin/catalog-designer"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[#D4AF37] bg-[#8B1B1B]/20 border border-[#8B1B1B]/40 hover:bg-[#8B1B1B]/30 transition-colors font-bold shadow-sm"
+            >
+              <FileText className="w-4 h-4 text-[#D4AF37]" />
+              <span>{lang === 'th' ? 'ออกแบบสูจิบัตร (Catalog)' : 'Catalog Designer'}</span>
+            </Link>
+
+            <Link
               href="/admin/artists"
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
             >
@@ -214,7 +222,7 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content Area */}
-      <main className={`flex-1 overflow-hidden ${is3DStudio ? 'p-0 h-full flex flex-col' : 'p-6 sm:p-10 overflow-y-auto'}`}>
+      <main className={`flex-1 overflow-hidden ${isFullCanvas ? 'p-0 h-full flex flex-col' : 'p-6 sm:p-10 overflow-y-auto'}`}>
         {children}
       </main>
     </div>

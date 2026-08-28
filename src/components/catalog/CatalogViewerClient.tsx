@@ -22,6 +22,7 @@ import {
   Layers,
   ZoomIn,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
@@ -29,6 +30,8 @@ import { usePrintEngine } from './usePrintEngine';
 import { CatalogCoverPage } from './CatalogCoverPage';
 import { CatalogStatementPage } from './CatalogStatementPage';
 import { CatalogPlate } from './CatalogPlate';
+import { CatalogDynamicPlate } from './CatalogDynamicPlate';
+import { getExhibitionCatalogTemplate, CatalogTemplateConfig } from '@/types/catalogTemplate';
 import { CatalogReaderModal } from './CatalogReaderModal';
 import { Catalog3DFlipbook } from './Catalog3DFlipbook';
 import { FooterEditorModal } from './FooterEditorModal';
@@ -43,6 +46,7 @@ interface CatalogViewerClientProps {
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const searchParams = useSearchParams();
   const isAdmin = searchParams?.get('admin') === 'true' || searchParams?.get('preview') === 'admin';
+  const customTemplate: CatalogTemplateConfig = getExhibitionCatalogTemplate(exhibition);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeerReviewModalOpen, setIsPeerReviewModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -321,6 +325,15 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             {/* Peer Reviewer & Footer Editor Buttons (Only visible in Curator / Admin Mode) */}
             {isAdmin && (
               <>
+                <Link
+                  href={`/admin/catalog-designer?exhibition=${exhibition.id}`}
+                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-[#8B1B1B]/10 hover:bg-[#8B1B1B]/20 text-[#8B1B1B] border border-[#8B1B1B]/30 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                  title="เปิดเครื่องมือออกแบบ Drag & Drop Catalog Designer Studio"
+                >
+                  <Sparkles className="w-4 h-4 text-[#8B1B1B]" />
+                  <span>ออกแบบแม่แบบสูจิบัตร (Studio)</span>
+                </Link>
+
                 <button
                   onClick={() => setIsPeerReviewModalOpen(true)}
                   className="flex items-center space-x-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
@@ -628,14 +641,23 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           const pageNum = (hasReviewers ? idx + 2 : idx + 1) + 1;
           return (
             <PlateErrorBoundary key={art.id} pageNumber={pageNum}>
-              <CatalogPlate
-                artwork={art}
-                pageNumber={pageNum}
-                plateFooter={plateFooter}
-                footerGraphicType={footerGraphicType}
-                customFooterImageUrl={customFooterImageUrl}
-                paperSize={paperSize}
-              />
+              {customTemplate && customTemplate.blocks && customTemplate.blocks.length > 0 ? (
+                <CatalogDynamicPlate
+                  artwork={art}
+                  template={customTemplate}
+                  pageNumber={pageNum}
+                  exhibitionSlug={exhibition.slug}
+                />
+              ) : (
+                <CatalogPlate
+                  artwork={art}
+                  pageNumber={pageNum}
+                  plateFooter={plateFooter}
+                  footerGraphicType={footerGraphicType}
+                  customFooterImageUrl={customFooterImageUrl}
+                  paperSize={paperSize}
+                />
+              )}
             </PlateErrorBoundary>
           );
         })}

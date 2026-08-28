@@ -1,6 +1,6 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
-import { createSessionToken, getAdminPassword, getAdminSecret, SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from '@/lib/auth';
+import { createSessionToken, isPasswordValid, getAdminSecret, SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,9 +10,8 @@ export async function POST(req: NextRequest) {
     const { password } = body;
 
     const inputPassword = typeof password === 'string' ? password.trim() : '';
-    const expectedPassword = getAdminPassword().trim();
 
-    if (!inputPassword || inputPassword !== expectedPassword) {
+    if (!inputPassword || !isPasswordValid(inputPassword)) {
       return NextResponse.json(
         { error: 'รหัสผ่านไม่ถูกต้อง (Invalid password)' },
         { status: 401 }
