@@ -40,6 +40,38 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
   const [isViewInRoomOpen, setIsViewInRoomOpen] = useState(false);
   const [isCatalogSelectorOpen, setIsCatalogSelectorOpen] = useState(false);
 
+  // Extract all exhibition posters for background animation loop
+  const backgroundPosters = React.useMemo(() => {
+    const validExhibitions = exhibitions.filter((e) => e.status !== 'archived' && e.bannerUrl);
+    if (validExhibitions.length === 0) {
+      return [
+        {
+          id: 'default',
+          title: 'POH-CHANG Grand Lobby',
+          bannerUrl: 'https://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1600&auto=format&fit=crop',
+          slug: '',
+        },
+      ];
+    }
+    return validExhibitions.map((e) => ({
+      id: e.id,
+      title: e.title,
+      bannerUrl: e.bannerUrl!,
+      slug: e.slug,
+    }));
+  }, [exhibitions]);
+
+  const [currentPosterIndex, setCurrentPosterIndex] = useState(0);
+
+  // Auto-play loop every 6 seconds with smooth crossfade
+  React.useEffect(() => {
+    if (backgroundPosters.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentPosterIndex((prev) => (prev + 1) % backgroundPosters.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [backgroundPosters.length]);
+
   const filteredExhibitions = exhibitions.filter((exh) => {
     if (filter === 'active') return exh.status === 'active';
     if (filter === 'archived') return exh.status === 'archived';
@@ -58,24 +90,63 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
       <main className="flex-1">
         {/* ================= 1. GRAND CINEMATIC HERO SECTION ================= */}
         <section className="relative overflow-hidden min-h-[620px] lg:min-h-[720px] flex items-center justify-center border-b border-[#C5A880]/20">
-          {/* Parallax Background with Ambient Spotlight */}
-          {featuredExhibition && (
-            <div className="absolute inset-0 opacity-40 mix-blend-luminosity scale-105">
-              <Image
-                src={
-                  featuredExhibition.bannerUrl ||
-                  'https://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=1600&auto=format&fit=crop'
-                }
-                alt="ARTVARA Grand Lobby"
-                fill
-                className="object-cover transition-transform duration-1000"
-                priority
-              />
-            </div>
-          )}
+          {/* Animated Exhibition Poster Background Loop */}
+          <div className="absolute inset-0 overflow-hidden">
+            {backgroundPosters.map((poster, idx) => {
+              const isActive = idx === currentPosterIndex;
+              return (
+                <div
+                  key={poster.id}
+                  className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                    isActive ? 'opacity-40 scale-105' : 'opacity-0 scale-100 pointer-events-none'
+                  } mix-blend-luminosity`}
+                  style={{
+                    transitionProperty: 'opacity, transform',
+                    transitionDuration: isActive ? '6000ms' : '1500ms',
+                    transform: isActive ? 'scale(1.08)' : 'scale(1.0)',
+                  }}
+                >
+                  <Image
+                    src={poster.bannerUrl}
+                    alt={poster.title}
+                    fill
+                    className="object-cover"
+                    priority={idx === 0}
+                    sizes="100vw"
+                  />
+                </div>
+              );
+            })}
+          </div>
+
           {/* Radial Luxury Vignette */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#121110] via-[#121110]/80 to-black/40" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#C5A880]/20 via-transparent to-transparent pointer-events-none" />
+
+          {/* Active Background Exhibition Indicator Badge */}
+          {backgroundPosters.length > 1 && (
+            <div className="absolute bottom-6 right-6 z-20 hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-[11px] text-neutral-300 shadow-xl">
+              <span className="w-2 h-2 rounded-full bg-[#D4AF37] animate-pulse" />
+              <span className="font-sans text-[10px] uppercase tracking-wider text-[#C5A880] font-bold">
+                {lang === 'th' ? 'กำลังจัดแสดง:' : 'Now Showing:'}
+              </span>
+              <span className="max-w-[220px] truncate font-medium text-white text-xs">
+                {backgroundPosters[currentPosterIndex]?.title}
+              </span>
+              <div className="flex items-center gap-1 pl-1.5 border-l border-white/20">
+                {backgroundPosters.map((p, i) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setCurrentPosterIndex(i)}
+                    className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                      i === currentPosterIndex ? 'w-4 bg-[#C5A880]' : 'w-1.5 bg-white/30 hover:bg-white/60'
+                    }`}
+                    aria-label={`Slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Main Hero Container */}
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 flex flex-col items-start justify-center z-10">
