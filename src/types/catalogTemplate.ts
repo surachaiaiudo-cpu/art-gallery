@@ -17,7 +17,8 @@ export type BlockElementType =
   | 'qr_code'
   | 'page_number'
   | 'custom_text'
-  | 'custom_box';
+  | 'custom_box'
+  | 'footer_graphic';
 
 export interface CMYKColor {
   c: number; // 0 - 100
@@ -110,6 +111,9 @@ export interface BlockStyle {
   backgroundColor?: string;
   boxShadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
   opacity?: number;
+  imageUrl?: string;
+  footerEffect?: 'solid' | 'gradient_fade';
+  footerFadeDirection?: 'to-top' | 'to-bottom' | 'radial';
 
   // Text Prefix / Suffix
   prefixText?: string;

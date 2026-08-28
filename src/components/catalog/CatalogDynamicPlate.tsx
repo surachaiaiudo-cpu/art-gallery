@@ -445,9 +445,56 @@ export function CatalogDynamicPlate({
               borderWidth: s.borderWidth ? `${s.borderWidth}px` : undefined,
               borderColor: s.borderColor || '#E0E0E0',
               borderStyle: s.borderStyle || 'solid',
-              borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
+              borderRadius: resolveBorderRadius(),
             }}
           />
+        );
+
+      case 'footer_graphic':
+        const footerImg = block.customContent || s.imageUrl || '';
+        if (!footerImg) {
+          return (
+            <div className="w-full h-full border border-dashed border-[#C5A880]/50 rounded flex items-center justify-center text-[10px] text-[#A59F92] bg-[#FAF8F5]/30">
+              <span>+ รูปภาพ / กราฟิก Footer</span>
+            </div>
+          );
+        }
+        const isFade = s.footerEffect === 'gradient_fade';
+        const maskCss = isFade
+          ? {
+              WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 100%)',
+              maskImage: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 100%)',
+            }
+          : {};
+
+        return (
+          <div
+            className="w-full h-full overflow-hidden flex items-end justify-center"
+            style={{
+              opacity: s.opacity !== undefined ? s.opacity : 1,
+              borderRadius: resolveBorderRadius(),
+              borderWidth: s.borderWidth ? `${s.borderWidth}px` : undefined,
+              borderColor: s.borderColor,
+              ...maskCss,
+            }}
+          >
+            <img
+              src={footerImg}
+              alt="Footer Graphic"
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                if (img.naturalWidth && img.naturalHeight && onImageNaturalRatio) {
+                  onImageNaturalRatio(block.id, img.naturalWidth / img.naturalHeight);
+                }
+              }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: s.objectFit || 'cover',
+              }}
+              className="w-full h-full block select-none pointer-events-none"
+            />
+          </div>
         );
 
       default:

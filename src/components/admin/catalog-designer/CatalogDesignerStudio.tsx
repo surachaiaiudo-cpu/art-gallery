@@ -72,6 +72,7 @@ import {
   Upload,
   FolderOpen,
   RefreshCw,
+  PanelBottom,
 } from 'lucide-react';
 
 interface CatalogDesignerStudioProps {
@@ -102,6 +103,7 @@ const AVAILABLE_MODULES: {
   { type: 'page_number', label: 'เลขหน้า', icon: Hash, defaultW: 1.0, defaultH: 0.35, description: 'หมายเลขหน้าผลงาน' },
   { type: 'custom_text', label: 'ข้อความอิสระ', icon: Type, defaultW: 3.0, defaultH: 0.5, description: 'ข้อความคงที่' },
   { type: 'custom_box', label: 'กล่อง/เส้นคั่น', icon: Box, defaultW: 3.0, defaultH: 0.1, description: 'เส้นคั่นหรือกรอบลวดลาย' },
+  { type: 'footer_graphic', label: 'รูป Footer', icon: PanelBottom, defaultW: 7.0, defaultH: 0.85, description: 'ภาพ/กราฟิกท้ายหน้า (รองรับรูปปกติ และไล่น้ำหนักจากเข้มขึ้นไปบางกลืนกระดาษ)' },
 ];
 
 const MOCK_ARTWORK_SAMPLE: Artwork = {
@@ -1657,8 +1659,8 @@ export function CatalogDesignerStudio({
             </div>
           </div>
 
-          {/* 🔘 CORNER RADIUS CONTROLS (ความโค้งมนของแต่ละมุม สำหรับ รูปศิลปิน, กรอบรูป, กล่องข้อความ) */}
-          {['artist_photo', 'artwork_image', 'custom_box', 'country_flag'].includes(selectedBlock.type) && (
+          {/* 🔘 CORNER RADIUS CONTROLS (ความโค้งมนของแต่ละมุม สำหรับ รูปศิลปิน, กรอบรูป, กล่องข้อความ, รูป Footer) */}
+          {['artist_photo', 'artwork_image', 'custom_box', 'country_flag', 'footer_graphic'].includes(selectedBlock.type) && (
             <div className="flex items-center gap-1.5 bg-[#1F1C17] px-2 py-1 rounded-xl border border-white/10 text-xs">
               <span className="text-[10px] text-[#C5A880] font-mono font-bold flex items-center gap-1">
                 <Square className="w-3 h-3 text-[#C5A880]" />
@@ -1849,6 +1851,108 @@ export function CatalogDesignerStudio({
                   className="w-7 bg-black/50 border border-white/10 rounded px-0.5 py-0.5 text-[9px] font-mono text-center text-[#FAF9F6] focus:outline-none"
                   title="ล่างซ้าย (Bottom-Left px)"
                 />
+              </div>
+            </div>
+          )}
+
+          {/* 🖼️ FOOTER GRAPHIC CONTROLS (ใส่รูปปกติ หรือ ไล่น้ำหนักจากเข้มขึ้นไปบางกลืนกระดาษ) */}
+          {selectedBlock.type === 'footer_graphic' && (
+            <div className="flex items-center gap-2 pl-2 border-l border-white/10 text-xs">
+              {/* Upload Image for Footer */}
+              <label
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#1F1C17] hover:bg-white/10 border border-[#C5A880]/30 hover:border-[#C5A880] rounded-xl text-[#C5A880] text-xs font-semibold cursor-pointer transition-all"
+                title="อัปโหลดรูปภาพ / แบนเนอร์ Footer จากเครื่อง"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{selectedBlock.customContent || selectedBlock.style.imageUrl ? 'เปลี่ยนรูป Footer' : 'เลือกรูป Footer'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      if (event.target?.result) {
+                        handleUpdateBlockProp(
+                          selectedBlock.id,
+                          {
+                            customContent: event.target.result as string,
+                            style: { ...selectedBlock.style, imageUrl: event.target.result as string },
+                          },
+                          true
+                        );
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                  className="hidden"
+                />
+              </label>
+
+              {/* Mode Toggle: รูปปกติ (Solid) vs ไล่น้ำหนักกลืนกระดาษ (Fade to Paper) */}
+              <div className="flex items-center bg-[#1F1C17] border border-[#C5A880]/30 rounded-xl p-0.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, footerEffect: 'solid' } },
+                      true
+                    )
+                  }
+                  className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    !selectedBlock.style.footerEffect || selectedBlock.style.footerEffect === 'solid'
+                      ? 'bg-[#8B1B1B] text-white shadow'
+                      : 'text-[#A59F92] hover:text-[#FAF9F6]'
+                  }`}
+                  title="แสดงภาพปกติ คมชัด 100%"
+                >
+                  รูปปกติ
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, footerEffect: 'gradient_fade' } },
+                      true
+                    )
+                  }
+                  className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                    selectedBlock.style.footerEffect === 'gradient_fade'
+                      ? 'bg-[#8B1B1B] text-white shadow'
+                      : 'text-[#A59F92] hover:text-[#FAF9F6]'
+                  }`}
+                  title="ไล่น้ำหนักจากเข้มขึ้นไปบาง จนกลืนเข้ากับเนื้อกระดาษอย่างนุ่มนวล"
+                >
+                  ไล่น้ำหนักกลืนกระดาษ 🌫️
+                </button>
+              </div>
+
+              {/* Opacity Control */}
+              <div className="flex items-center gap-1 bg-[#1F1C17] border border-white/10 rounded-xl px-2 py-1">
+                <span className="text-[10px] text-[#A59F92]">ความเข้ม:</span>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  step="5"
+                  value={Math.round((selectedBlock.style.opacity ?? 1) * 100)}
+                  onChange={(e) => {
+                    const op = parseInt(e.target.value) / 100;
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, opacity: op } },
+                      true
+                    );
+                  }}
+                  className="w-16 accent-[#C5A880] h-1 bg-black/40 rounded cursor-pointer"
+                  title="ปรับความโปร่งแสง / ความเข้มของภาพ Footer"
+                />
+                <span className="text-[10px] font-mono text-[#C5A880]">
+                  {Math.round((selectedBlock.style.opacity ?? 1) * 100)}%
+                </span>
               </div>
             </div>
           )}
