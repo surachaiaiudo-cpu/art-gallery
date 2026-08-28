@@ -714,7 +714,7 @@ export function AdminArtworksClient({
                           <button
                             onClick={() => handleDeleteArtwork(art)}
                             disabled={deleting}
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 transition-colors ml-1"
+                            className="p-1.5 rounded-lg text-[#7A7468] hover:text-rose-700 hover:bg-rose-100/60 disabled:opacity-30 transition-colors ml-1"
                             title={lang === 'th' ? `ลบผลงาน "${art.title}"` : `Delete "${art.title}"`}
                           >
                             <Trash2 className="w-4 h-4" />

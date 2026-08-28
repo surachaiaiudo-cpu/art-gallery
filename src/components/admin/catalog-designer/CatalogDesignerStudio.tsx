@@ -2344,7 +2344,7 @@ export function CatalogDesignerStudio({
                             </span>
                             <button
                               onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
-                              className="p-1 rounded-md text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                              className="p-1 rounded-md text-[#A59F92] hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-500/30 transition-all cursor-pointer"
                               title="ลบแม่แบบนี้"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

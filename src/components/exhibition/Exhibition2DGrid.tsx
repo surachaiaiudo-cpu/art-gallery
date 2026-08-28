@@ -114,7 +114,7 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
 
         {/* Collapsible Curator Statement Box */}
         {showCuratorNote && exhibition.curatorNote && (
-          <div className="p-6 sm:p-8 bg-[#FAF8F5] border-l-4 border-l-[#C5A880] border border-[#DDD7CC] rounded-2xl shadow-sm animate-slide-up space-y-3">
+          <div className="p-6 sm:p-8 bg-gradient-to-br from-[#FAF8F5] to-[#F5EFEB] border border-[#C5A880]/40 rounded-2xl shadow-sm animate-slide-up space-y-3">
             <div className="flex items-center justify-between border-b border-[#EAE4D8] pb-3">
               <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#8C7149] font-bold">
                 <Award className="w-4 h-4 text-[#C5A880]" />

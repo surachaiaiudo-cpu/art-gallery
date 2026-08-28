@@ -169,7 +169,7 @@ export function AdminDashboardClient({
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-rose-900 text-neutral-200 hover:text-white border border-neutral-700 hover:border-rose-500/50 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-rose-900 text-white border border-neutral-700 hover:border-rose-500/50 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-95"
             title={lang === 'th' ? 'ออกจากระบบผู้ดูแล' : 'Log out of admin'}
           >
             {loggingOut ? (

@@ -450,11 +450,15 @@ export function AdminExhibitionsManagerClient({
                           <Sparkles className="w-3.5 h-3.5 text-[#8C6D3F]" />
                           <span>{lang === 'th' ? 'การแสดงผลต่อผู้ชม:' : 'Public Visibility:'}</span>
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-neutral-200 text-neutral-700'
-                        }`}>
-                          {isActive ? (lang === 'th' ? '🟢 เปิดให้เข้าชม' : '🟢 Visible') : (lang === 'th' ? '🔒 ซ่อนเข้าคลัง' : '🔒 Hidden')}
-                        </span>
+                        {isActive ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-950">
+                            {lang === 'th' ? '🟢 เปิดให้เข้าชม' : '🟢 Visible'}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-200 text-stone-900">
+                            {lang === 'th' ? '🔒 ซ่อนเข้าคลัง' : '🔒 Hidden'}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2">

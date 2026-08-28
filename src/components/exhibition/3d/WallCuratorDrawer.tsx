@@ -145,7 +145,7 @@ export function WallCuratorDrawer({
                             onFocusSlot(slot);
                             onClose();
                           }}
-                          className="w-6 h-6 rounded-lg bg-slate-100 hover:bg-amber-100 flex items-center justify-center text-slate-600 hover:text-amber-700 transition-colors"
+                          className="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-800 hover:text-black transition-colors"
                           title="ซูมกล้อง 3D ไปที่ภาพนี้"
                         >
                           <Eye className="w-3.5 h-3.5" />
