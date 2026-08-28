@@ -211,6 +211,7 @@ export function CatalogDesignerStudio({
 
   // Selected Block Object
   const selectedBlock = template.blocks.find((b) => b.id === selectedBlockId) || null;
+  const [imageRatios, setImageRatios] = useState<Record<string, number>>({});
 
   // Active Artwork for Live Preview
   const activeArtwork: Artwork =
@@ -518,32 +519,33 @@ export function CatalogDesignerStudio({
         const targetBlock = template.blocks.find((b) => b.id === dragState.blockId);
         const isImageBlock = targetBlock?.type === 'artwork_image' || targetBlock?.type === 'artist_photo';
         const aspectRatio = dragState.initialBlockW / (dragState.initialBlockH || 1);
+        const trueRatio = (dragState.blockId && imageRatios[dragState.blockId]) || aspectRatio;
 
         if (isImageBlock) {
           // Proportional scale lock: keep true aspect ratio without distortion
           if (dragState.resizeHandle === 'se' || dragState.resizeHandle === 'e') {
             newW = snap(Math.max(0.5, dragState.initialBlockW + deltaXInches));
-            newH = snap(newW / aspectRatio);
+            newH = snap(newW / trueRatio);
           } else if (dragState.resizeHandle === 's') {
             newH = snap(Math.max(0.25, dragState.initialBlockH + deltaYInches));
-            newW = snap(newH * aspectRatio);
+            newW = snap(newH * trueRatio);
           } else if (dragState.resizeHandle === 'sw') {
             const possibleW = snap(dragState.initialBlockW - deltaXInches);
             if (possibleW >= 0.5) {
               newW = possibleW;
               newX = snap(dragState.initialBlockX + (dragState.initialBlockW - newW));
-              newH = snap(newW / aspectRatio);
+              newH = snap(newW / trueRatio);
             }
           } else if (dragState.resizeHandle === 'ne') {
             newW = snap(Math.max(0.5, dragState.initialBlockW + deltaXInches));
-            newH = snap(newW / aspectRatio);
+            newH = snap(newW / trueRatio);
             newY = snap(dragState.initialBlockY + (dragState.initialBlockH - newH));
           } else if (dragState.resizeHandle === 'nw') {
             const possibleW = snap(dragState.initialBlockW - deltaXInches);
             if (possibleW >= 0.5) {
               newW = possibleW;
               newX = snap(dragState.initialBlockX + (dragState.initialBlockW - newW));
-              newH = snap(newW / aspectRatio);
+              newH = snap(newW / trueRatio);
               newY = snap(dragState.initialBlockY + (dragState.initialBlockH - newH));
             }
           } else if (dragState.resizeHandle === 'w') {
@@ -551,20 +553,20 @@ export function CatalogDesignerStudio({
             if (possibleW >= 0.5) {
               newW = possibleW;
               newX = snap(dragState.initialBlockX + (dragState.initialBlockW - newW));
-              newH = snap(newW / aspectRatio);
+              newH = snap(newW / trueRatio);
             }
           } else if (dragState.resizeHandle === 'n') {
             const possibleH = snap(dragState.initialBlockH - deltaYInches);
             if (possibleH >= 0.25) {
               newH = possibleH;
               newY = snap(dragState.initialBlockY + (dragState.initialBlockH - newH));
-              newW = snap(newH * aspectRatio);
+              newW = snap(newH * trueRatio);
             }
           }
 
           if (targetBlock?.type === 'artist_photo' && newH > 1.5) {
             newH = 1.5;
-            newW = snap(newH * aspectRatio);
+            newW = snap(newH * trueRatio);
           }
         } else {
           // General rectangular box resize for text/containers
@@ -1110,13 +1112,18 @@ export function CatalogDesignerStudio({
                 selectedBlockId={selectedBlockId}
                 onImageNaturalRatio={(blockId, naturalRatio) => {
                   if (!naturalRatio || isNaN(naturalRatio) || naturalRatio <= 0) return;
+                  setImageRatios((prev) => ({ ...prev, [blockId]: naturalRatio }));
                   const target = template.blocks.find((b) => b.id === blockId);
                   if (!target) return;
                   const currentRatio = target.widthInches / (target.heightInches || 1);
                   if (Math.abs(currentRatio - naturalRatio) > 0.02) {
-                    if (target.type === 'artist_photo') {
-                      const newW = snap(target.heightInches * naturalRatio);
-                      handleUpdateBlockProp(blockId, { widthInches: newW }, false);
+                    if (target.type === 'artwork_image') {
+                      const newH = snap(target.widthInches / naturalRatio);
+                      handleUpdateBlockProp(blockId, { heightInches: newH }, false);
+                    } else if (target.type === 'artist_photo') {
+                      const cappedH = Math.min(target.heightInches || 1.5, 1.5);
+                      const newW = snap(cappedH * naturalRatio);
+                      handleUpdateBlockProp(blockId, { widthInches: newW, heightInches: cappedH }, false);
                     } else if (target.type === 'country_flag') {
                       const newW = snap(target.heightInches * naturalRatio);
                       handleUpdateBlockProp(blockId, { widthInches: newW }, false);
@@ -1213,7 +1220,7 @@ export function CatalogDesignerStudio({
                     }}
                     className={`absolute group cursor-move transition-shadow ${
                       isSelected
-                        ? 'ring-2 ring-[#8B1B1B] bg-[#8B1B1B]/5'
+                        ? 'ring-2 ring-[#8B1B1B]'
                         : 'hover:ring-1 hover:ring-[#8C6D3F]/60'
                     }`}
                     style={{
