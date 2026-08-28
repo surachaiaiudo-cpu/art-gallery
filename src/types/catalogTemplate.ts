@@ -133,6 +133,7 @@ export interface CatalogBlockElement {
 export interface CatalogTemplateConfig {
   id: string;
   name: string;
+  description?: string;
   paperSize: CatalogPaperSize;
   pageWidthInches: number;
   pageHeightInches: number;
