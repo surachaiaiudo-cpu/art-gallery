@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpen, Shield, ChevronDown, ChevronUp, Sparkles, Compass, Award, ExternalLink } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 interface ExhibitionPill {
@@ -39,165 +39,128 @@ export function Footer({ exhibition }: FooterProps) {
       .catch(() => {});
   }, []);
 
-  // On mobile: show max 3 pills collapsed, rest on expand
-  const MOBILE_LIMIT = 3;
+  const MOBILE_LIMIT = 4;
   const isManyExhibitions = exhibitions.length > MOBILE_LIMIT;
 
   return (
-    <footer className="w-full bg-[#EFECE6] border-t border-[#DFDBD1] mt-auto text-[#5E5950]">
-
-      {/* Main Footer Body */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-5">
-
-        {/* Top Row: Brand + Nav Links */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-
-          {/* Brand */}
-          <div className="flex flex-col gap-0.5">
-            <span className="font-serif text-xl sm:text-2xl font-bold tracking-[0.12em] text-[#8B1B1B]">
-              POH-CHANG
-            </span>
-            <span className="text-[10px] tracking-widest text-[#8C8477] uppercase">
-              {lang === 'th' ? 'หอศิลป์วิทยาลัยเพาะช่าง มทร.รัตนโกสินทร์' : 'Poh-Chang Academy of Arts, RMUTR'}
-            </span>
+    <footer className="w-full bg-[#0D0C0B] border-t border-[#C5A880]/20 mt-auto text-[#A59F92]">
+      {/* Main Luxury Footer Container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 flex flex-col gap-10">
+        
+        {/* Top Grid: Brand Statement + Nav Links + Curatorial Mission */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 border-b border-[#24211D] pb-10">
+          
+          {/* Col 1: Brand & Heritage Crest */}
+          <div className="md:col-span-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#8B1B1B] via-[#6B1414] to-[#3B0A0A] text-[#D4AF37] border border-[#D4AF37]/50 flex items-center justify-center font-serif font-bold text-sm shadow-[0_0_20px_rgba(212,175,55,0.25)] shrink-0">
+                พช
+              </div>
+              <div>
+                <span className="font-serif text-2xl font-bold tracking-[0.15em] text-[#FAF8F5] block leading-none">
+                  POH-CHANG
+                </span>
+                <span className="text-[10px] tracking-[0.2em] text-[#C5A880] uppercase block mt-1 font-semibold">
+                  {lang === 'th' ? 'หอศิลป์วิทยาลัยเพาะช่าง • มทร.รัตนโกสินทร์' : 'Academy of Arts Gallery, RMUTR'}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-400 leading-relaxed font-light max-w-md">
+              {lang === 'th'
+                ? 'ศูนย์กลางการเผยแพร่ผลงานวิจิตรศิลป์ร่วมสมัยและนิทรรศการเสมือนจริง 3 มิติ เพื่ออนุรักษ์ ต่อยอด และยกระดับสุนทรียศาสตร์สู่สากล'
+                : 'A premier virtual sanctuary and curatorial pavilion dedicated to contemporary fine arts, immersive 3D preservation, and cultural heritage.'}
+            </p>
           </div>
 
-          {/* Quick Nav Links — hidden on smallest screens, shown sm+ */}
-          <nav className="hidden sm:flex items-center gap-1 flex-wrap">
-            <Link
-              href="/"
-              className="px-3 py-1.5 text-xs font-semibold text-[#5C5548] hover:text-[#1A1918] hover:bg-[#E4DFD6] rounded-full transition-colors"
-            >
-              {lang === 'th' ? '🏛️ โถงกลาง' : '🏛️ Grand Lobby'}
-            </Link>
-            <Link
-              href="/artists"
-              className="px-3 py-1.5 text-xs font-semibold text-[#5C5548] hover:text-[#1A1918] hover:bg-[#E4DFD6] rounded-full transition-colors"
-            >
-              {lang === 'th' ? '👨‍🎨 ทำเนียบศิลปิน' : '👨‍🎨 Artists'}
-            </Link>
-            <Link
-              href="/admin"
-              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#5C5548] hover:text-[#1A1918] hover:bg-[#E4DFD6] rounded-full transition-colors"
-            >
-              <Shield className="w-3 h-3" />
-              <span>Admin</span>
-            </Link>
-          </nav>
+          {/* Col 2: Navigation Links */}
+          <div className="md:col-span-3 space-y-3">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-[#C5A880] block">
+              {lang === 'th' ? 'การนำทาง (Navigation)' : 'Navigation'}
+            </span>
+            <ul className="space-y-2 text-xs">
+              <li>
+                <Link href="/" className="hover:text-[#FAF8F5] transition-colors flex items-center gap-2">
+                  <Compass className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <span>{lang === 'th' ? 'โถงนิทรรศการกลาง (Grand Lobby)' : 'Grand Lobby'}</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/artists" className="hover:text-[#FAF8F5] transition-colors flex items-center gap-2">
+                  <span>👨‍🎨</span>
+                  <span>{lang === 'th' ? 'ทำเนียบศิลปิน (Artists Directory)' : 'Artists Directory'}</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/catalog" className="hover:text-[#FAF8F5] transition-colors flex items-center gap-2">
+                  <BookOpen className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <span>{lang === 'th' ? 'หอสูจิบัตรดิจิทัล (Catalogs Library)' : 'Digital Catalogs'}</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/admin" className="hover:text-[#FAF8F5] transition-colors flex items-center gap-2">
+                  <Shield className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <span>{lang === 'th' ? 'ระบบผู้ดูแลนิทรรศการ (Curator Portal)' : 'Curator Admin Portal'}</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 3: Curatorial Standards & Heritage */}
+          <div className="md:col-span-4 space-y-3">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-[#C5A880] block">
+              {lang === 'th' ? 'มาตรฐานวิชาการ (Curatorial Standards)' : 'Curatorial Standards'}
+            </span>
+            <div className="bg-[#161412] p-4 rounded-2xl border border-white/10 space-y-2 text-xs">
+              <div className="flex items-center gap-2 text-[#EAD8C0] font-semibold">
+                <Award className="w-4 h-4 text-[#D4AF37]" />
+                <span>{lang === 'th' ? 'การประเมินโดยผู้ทรงคุณวุฒิ' : 'Peer Review System'}</span>
+              </div>
+              <p className="text-[11px] text-neutral-400 leading-relaxed font-light">
+                {lang === 'th'
+                  ? 'ทุกผลงานได้รับการกลั่นกรองและรับรองคุณค่าทางวิชาการและสุนทรียศิลป์โดยคณะกรรมการผู้ทรงคุณวุฒิ'
+                  : 'Artworks curated and certified through rigorous academic peer-review by fine arts faculty.'}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Exhibition Pills Section */}
+        {/* Exhibition Pavilions Pill Bar */}
         {exhibitions.length > 0 && (
-          <div className="flex flex-col gap-2.5">
-
-            {/* Section Label + mobile expand toggle */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8C6D3F] flex items-center gap-1.5">
-                <BookOpen className="w-3 h-3" />
-                {lang === 'th'
-                  ? `นิทรรศการทั้งหมด (${exhibitions.length})`
-                  : `All Exhibitions (${exhibitions.length})`}
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#C5A880] flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? `ห้องนิทรรศการทั้งหมด (${exhibitions.length})` : `All Exhibition Pavilions (${exhibitions.length})`}</span>
               </span>
-
-              {/* Collapse toggle — only on mobile when many pills */}
-              {isManyExhibitions && (
-                <button
-                  onClick={() => setIsExpanded((v) => !v)}
-                  className="sm:hidden flex items-center gap-1 text-[10px] text-[#8C6D3F] font-semibold"
-                  aria-label={isExpanded ? 'Show less' : 'Show all'}
-                >
-                  {isExpanded ? (
-                    <>ย่อ <ChevronUp className="w-3 h-3" /></>
-                  ) : (
-                    <>ดูทั้งหมด <ChevronDown className="w-3 h-3" /></>
-                  )}
-                </button>
-              )}
             </div>
 
-            {/* Pills Grid — responsive */}
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {exhibitions
-                .filter((_, idx) => {
-                  // On mobile: limit unless expanded
-                  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-                  if (isMobile && isManyExhibitions && !isExpanded && idx >= MOBILE_LIMIT) {
-                    return false;
-                  }
-                  return true;
-                })
-                .map((ex) => (
-                  <Link
-                    key={ex.id}
-                    href={`/catalog/${ex.slug}`}
-                    className={`
-                      inline-flex items-center gap-1.5
-                      px-2.5 sm:px-3 py-1 sm:py-1
-                      rounded-full border
-                      text-[10px] sm:text-[11px] font-semibold
-                      transition-all active:scale-95 hover:shadow-sm
-                      max-w-[160px] sm:max-w-[220px] lg:max-w-[280px]
-                      ${
-                        exhibition?.id === ex.id
-                          ? 'bg-[#8C6D3F] border-[#8C6D3F] text-white shadow-sm'
-                          : ex.status === 'published'
-                          ? 'bg-white border-[#D5CEC0] text-[#4A443A] hover:border-[#8C6D3F] hover:text-[#8C6D3F]'
-                          : 'bg-[#F5F2ED] border-[#E0DAD0] text-[#8C8477] hover:border-[#C5BDAF]'
-                      }
-                    `}
-                    title={ex.title}
-                  >
-                    {/* Status dot */}
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                        exhibition?.id === ex.id
-                          ? 'bg-white/70'
-                          : ex.status === 'published'
-                          ? 'bg-emerald-500'
-                          : 'bg-amber-400'
-                      }`}
-                    />
-                    <span className="truncate">{ex.title}</span>
-                  </Link>
-                ))}
-
-              {/* "Show all" pill on mobile when collapsed */}
-              {isManyExhibitions && !isExpanded && (
-                <button
-                  onClick={() => setIsExpanded(true)}
-                  className="sm:hidden inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-[#C5BDAF] text-[10px] text-[#8C8477] font-semibold hover:border-[#8C6D3F] hover:text-[#8C6D3F] transition-colors"
+            <div className="flex flex-wrap gap-2">
+              {exhibitions.map((ex) => (
+                <Link
+                  key={ex.id}
+                  href={`/exhibitions/${ex.slug}`}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs transition-all ${
+                    exhibition?.id === ex.id
+                      ? 'bg-[#C5A880] border-[#C5A880] text-[#121110] font-bold shadow-md'
+                      : 'bg-[#181614] border-white/10 text-neutral-300 hover:border-[#C5A880]/50 hover:text-white'
+                  }`}
                 >
-                  +{exhibitions.length - MOBILE_LIMIT} อีก
-                </button>
-              )}
+                  <span className={`w-1.5 h-1.5 rounded-full ${ex.status === 'active' ? 'bg-emerald-400' : 'bg-neutral-500'}`} />
+                  <span className="truncate max-w-[220px]">{ex.title}</span>
+                </Link>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Mobile Quick Nav — shown only on small screens */}
-        <nav className="sm:hidden flex items-center gap-2 flex-wrap pt-1">
-          <Link
-            href="/"
-            className="px-3 py-1.5 text-[11px] font-semibold text-[#5C5548] hover:text-[#1A1918] bg-[#E8E3DA] hover:bg-[#DDD6CC] rounded-full transition-colors active:scale-95"
-          >
-            🏛️ {lang === 'th' ? 'โถงกลาง' : 'Grand Lobby'}
-          </Link>
-          <Link
-            href="/artists"
-            className="px-3 py-1.5 text-[11px] font-semibold text-[#5C5548] hover:text-[#1A1918] bg-[#E8E3DA] hover:bg-[#DDD6CC] rounded-full transition-colors active:scale-95"
-          >
-            👨‍🎨 {lang === 'th' ? 'ทำเนียบศิลปิน' : 'Artists'}
-          </Link>
-        </nav>
-
-        {/* Bottom Copyright Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 pt-4 border-t border-[#E3DDD3]">
-          <span className="text-[10px] sm:text-[11px] text-[#7A756B] text-center sm:text-left">
-            วิทยาลัยเพาะช่าง มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์ • Poh-Chang Academy of Arts, RMUTR
-          </span>
-          <span className="text-[10px] sm:text-[11px] text-[#8C8477] tracking-wide text-center sm:text-right shrink-0">
-            © {new Date().getFullYear()} POH-CHANG. All rights reserved.
-          </span>
+        {/* Bottom Copyright & RMUTR Credit */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-[#24211D] text-[11px] text-neutral-500 font-light">
+          <div>
+            วิทยาลัยเพาะช่าง มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์ (ก่อตั้ง พ.ศ. ๒๔๕๖)
+          </div>
+          <div>
+            © {new Date().getFullYear()} POH-CHANG ARTVARA. All Rights Reserved.
+          </div>
         </div>
 
       </div>

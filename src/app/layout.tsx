@@ -1,16 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { LanguageProvider } from '@/context/LanguageContext';
-import { Maitree } from 'next/font/google';
-
 import { PWARegister } from '@/components/pwa/PWARegister';
-
-const maitree = Maitree({
-  weight: ['200', '300', '400', '500', '600', '700'],
-  subsets: ['thai', 'latin'],
-  variable: '--font-maitree',
-  display: 'swap',
-});
 
 export const viewport: Viewport = {
   themeColor: '#8B1B1B',
@@ -43,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" className={maitree.variable}>
+    <html lang="th">
       <head>
         <link rel="preconnect" href="https://ik.imagekit.io" crossOrigin="" />
         <link rel="dns-prefetch" href="https://ik.imagekit.io" />
@@ -52,7 +43,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       </head>
-      <body className={`${maitree.className} min-h-screen flex flex-col bg-[#F9F8F6] text-[#1E1D1B]`}>
+      <body className="min-h-screen flex flex-col bg-[#121110] text-[#FAF8F5]">
         <LanguageProvider>{children}</LanguageProvider>
         <PWARegister />
       </body>

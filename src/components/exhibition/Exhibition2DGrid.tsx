@@ -8,8 +8,9 @@ import { ArtistIndexSidebar } from './ArtistIndexSidebar';
 import { ArtworkLightbox } from './ArtworkLightbox';
 import { ArtworkInquiryModal } from './ArtworkInquiryModal';
 import { DigitalGuestbook } from './DigitalGuestbook';
+import { ViewInRoomModal } from './ViewInRoomModal';
 import { useLanguage } from '@/context/LanguageContext';
-import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, Award, Calendar, Palette, GraduationCap, Users, ShieldCheck } from 'lucide-react';
+import { Info, Sparkles, Maximize2, MessageSquare, LayoutList, LayoutGrid, Eye, Award, Calendar, Palette, GraduationCap, Users, ShieldCheck, Frame } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 import { formatDateRange, formatDimensionsInCm } from '@/lib/utils';
@@ -23,6 +24,7 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
   const { lang, t } = useLanguage();
   const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
+  const [roomModalArtwork, setRoomModalArtwork] = useState<Artwork | null>(null);
   const [inquiryArtwork, setInquiryArtwork] = useState<Artwork | null>(null);
   const [showCuratorNote, setShowCuratorNote] = useState(false);
   const [columnMode, setColumnMode] = useState<'single' | 'grid'>('single');
@@ -294,17 +296,31 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
                         priority={idx < 2}
                       />
 
-                      {/* Zoom Prompt Floating Overlay */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedArtwork(artwork);
-                        }}
-                        className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 px-4 py-2 bg-black/75 hover:bg-black text-white text-xs font-medium rounded-full backdrop-blur border border-white/20 transition-all shadow-lg"
-                      >
-                        <Maximize2 className="w-3.5 h-3.5 text-[#C5A880]" />
-                        <span>{t.actions.zoomInspect}</span>
-                      </button>
+                      {/* Zoom Prompt & View in Room Floating Overlays */}
+                      <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRoomModalArtwork(artwork);
+                          }}
+                          className="flex items-center gap-1.5 px-3.5 py-2 bg-[#C5A880] hover:bg-[#B39366] text-[#121110] text-xs font-bold rounded-full transition-all shadow-lg active:scale-95"
+                          title={lang === 'th' ? 'จำลองแขวนบนผนังห้อง' : 'View in Room'}
+                        >
+                          <Frame className="w-3.5 h-3.5" />
+                          <span>{lang === 'th' ? '🛋️ เทียบสเกลห้อง' : 'View in Room'}</span>
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedArtwork(artwork);
+                          }}
+                          className="flex items-center gap-1.5 px-3.5 py-2 bg-black/80 hover:bg-black text-white text-xs font-medium rounded-full backdrop-blur border border-white/20 transition-all shadow-lg"
+                        >
+                          <Maximize2 className="w-3.5 h-3.5 text-[#C5A880]" />
+                          <span>{t.actions.zoomInspect}</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Curatorial Details & Concept Placard */}
@@ -484,6 +500,19 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
         isOpen={Boolean(inquiryArtwork)}
         onClose={() => setInquiryArtwork(null)}
       />
+
+      {/* View In Room Modal */}
+      {roomModalArtwork && (
+        <ViewInRoomModal
+          artwork={roomModalArtwork}
+          isOpen={Boolean(roomModalArtwork)}
+          onClose={() => setRoomModalArtwork(null)}
+          onOpenInquiry={(art) => {
+            setRoomModalArtwork(null);
+            setInquiryArtwork(art);
+          }}
+        />
+      )}
     </div>
   );
 }

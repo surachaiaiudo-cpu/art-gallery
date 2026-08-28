@@ -29,9 +29,21 @@ const config: Config = {
           dark: '#141413',
           accent: '#A47D4C',
           gold: '#C5A880',
+          champagne: '#E6D7B8',
           border: '#E2DFD7',
           muted: '#737067',
         },
+        pohchang: {
+          red: '#8B1B1B',
+          redDark: '#5E1212',
+          gold: '#D4AF37',
+          goldLight: '#EACD65',
+        },
+      },
+      boxShadow: {
+        'luxury': '0 10px 30px -10px rgba(26, 25, 24, 0.08), 0 4px 6px -2px rgba(26, 25, 24, 0.03)',
+        'luxury-hover': '0 20px 40px -15px rgba(26, 25, 24, 0.15), 0 8px 16px -4px rgba(26, 25, 24, 0.06)',
+        'floating': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
       },
       fontFamily: {
         heading: ['var(--font-sukhumvit)', 'Sukhumvit Set', 'Sukhumvit', '-apple-system', 'BlinkMacSystemFont', 'Prompt', 'Noto Sans Thai', 'sans-serif'],
@@ -44,6 +56,7 @@ const config: Config = {
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
         'slide-up': 'slideUp 0.4s ease-out',
+        'pulse-subtle': 'pulseSubtle 3s infinite ease-in-out',
       },
       keyframes: {
         fadeIn: {
@@ -53,6 +66,10 @@ const config: Config = {
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(12px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        pulseSubtle: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
         },
       },
     },

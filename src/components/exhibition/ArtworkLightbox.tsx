@@ -16,10 +16,14 @@ import {
   Maximize2,
   Minimize2,
   Sliders,
+  Frame,
+  Palette,
+  Sparkles,
 } from 'lucide-react';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ArtistAvatar } from '@/components/ui/ArtistAvatar';
 import { formatDimensionsInCm } from '@/lib/utils';
+import { ViewInRoomModal } from '@/components/exhibition/ViewInRoomModal';
 
 interface ArtworkLightboxProps {
   artwork: Artwork | null;
@@ -44,6 +48,7 @@ export function ArtworkLightbox({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isViewInRoomOpen, setIsViewInRoomOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -271,6 +276,14 @@ export function ArtworkLightbox({
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
             )}
+
+            <button
+              onClick={() => setIsViewInRoomOpen(true)}
+              className="p-1.5 rounded-full hover:bg-[#C5A880]/30 text-[#E2CEB5] hover:text-white transition-colors ml-1"
+              title={lang === 'th' ? 'จำลองแขวนบนผนังห้อง (View in Room)' : 'View in Room'}
+            >
+              <Frame className="w-3.5 h-3.5 text-[#C5A880]" />
+            </button>
           </div>
 
           {/* Minimap / Radar Viewport (Bottom Left inside canvas when zoomed) */}
@@ -377,11 +390,36 @@ export function ArtworkLightbox({
             </div>
           </div>
 
-          {/* Action button */}
-          <div className="pt-4 border-t border-[#E8E3D8]">
+          {/* Color Mood Palette Strip */}
+          <div className="bg-white rounded-xl p-3.5 border border-[#EAE4D8] mb-5 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-[#8C6D3F] flex items-center gap-1.5">
+                <Palette className="w-3.5 h-3.5" />
+                <span>{lang === 'th' ? 'พาเลตต์โทนสีผลงาน (Color Palette)' : 'Harmonic Color Palette'}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-6 flex-1 rounded-md bg-[#8B1B1B] shadow-inner" title="Crimson Ochre" />
+              <div className="h-6 flex-1 rounded-md bg-[#C5A880] shadow-inner" title="Champagne Gold" />
+              <div className="h-6 flex-1 rounded-md bg-[#2C2924] shadow-inner" title="Charcoal Noir" />
+              <div className="h-6 flex-1 rounded-md bg-[#D9D2C5] shadow-inner" title="Warm Alabaster" />
+              <div className="h-6 flex-1 rounded-md bg-[#5A6858] shadow-inner" title="Olive Sage" />
+            </div>
+          </div>
+
+          {/* Action buttons (View in Room & Inquiry) */}
+          <div className="pt-3 border-t border-[#E8E3D8] space-y-2">
+            <button
+              onClick={() => setIsViewInRoomOpen(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#C5A880] hover:bg-[#B3936A] text-[#1A1918] rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md active:scale-[0.99]"
+            >
+              <Frame className="w-4 h-4" />
+              <span>{lang === 'th' ? '🛋️ จำลองแขวนบนผนังห้อง (View in Room)' : '🛋️ View in Room (Scale Preview)'}</span>
+            </button>
+
             <button
               onClick={() => onOpenInquiry(artwork)}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#1F1D1A] hover:bg-[#38342E] text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-all shadow active:scale-[0.99]"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#1F1D1A] hover:bg-[#38342E] text-white rounded-xl text-xs font-semibold uppercase tracking-wider transition-all shadow active:scale-[0.99]"
             >
               <MessageSquare className="w-4 h-4" />
               <span>{t.actions.inquireCurator}</span>
@@ -389,6 +427,16 @@ export function ArtworkLightbox({
           </div>
         </div>
       </div>
+
+      {/* Render Interactive View In Room Modal */}
+      {isViewInRoomOpen && (
+        <ViewInRoomModal
+          artwork={artwork}
+          isOpen={isViewInRoomOpen}
+          onClose={() => setIsViewInRoomOpen(false)}
+          onOpenInquiry={onOpenInquiry}
+        />
+      )}
     </div>
   );
 }
