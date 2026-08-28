@@ -29,6 +29,7 @@ export function CatalogDynamicPlate({
   selectedBlockId,
 }: CatalogDynamicPlateProps) {
   const [photoError, setPhotoError] = useState(false);
+  const [artworkImgError, setArtworkImgError] = useState(false);
   const artist = artwork.artist;
 
   const rawAvatarUrl = artist?.avatarUrl?.trim() || '';
@@ -42,13 +43,17 @@ export function CatalogDynamicPlate({
   const resolvedPhotoUrl = isRealAvatar ? rawAvatarUrl : (artwork.imageUrl || '');
   const hasRealPhoto = resolvedPhotoUrl.length > 0 && !photoError;
 
-  const optimizedArtworkUrl = getOptimizedImageUrl(artwork.imageUrl, {
-    width: isReaderModal ? 1200 : 900,
-    quality: isReaderModal ? 85 : 80,
-  });
+  const rawArtworkUrl = artwork.imageUrl || (artwork as any).image_url || (artwork as any).image || '';
+
+  const optimizedArtworkUrl = artworkImgError
+    ? rawArtworkUrl
+    : getOptimizedImageUrl(rawArtworkUrl, {
+        width: 1200,
+        quality: 85,
+      });
 
   const optimizedPhotoUrl = hasRealPhoto
-    ? getOptimizedImageUrl(resolvedPhotoUrl, { width: 240, quality: 80 })
+    ? getOptimizedImageUrl(resolvedPhotoUrl, { width: 320, quality: 85 })
     : '';
 
   const flagUrl = getFlagImageUrl(artist?.country);
@@ -111,17 +116,28 @@ export function CatalogDynamicPlate({
         const imgJustify = s.textAlign === 'left' ? 'justify-start' : s.textAlign === 'right' ? 'justify-end' : 'justify-center';
         return (
           <div className={`w-full h-full flex items-center ${imgJustify} overflow-hidden p-0.5`}>
-            <img
-              src={optimizedArtworkUrl}
-              alt={artwork.title || 'Artwork'}
-              loading={isReaderModal ? 'eager' : 'lazy'}
-              decoding="async"
-              style={{
-                objectFit: s.objectFit || 'contain',
-                borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
-              }}
-              className="max-w-full max-h-full transition-transform duration-300"
-            />
+            {rawArtworkUrl ? (
+              <img
+                src={optimizedArtworkUrl || rawArtworkUrl}
+                alt={artwork.title || 'Artwork'}
+                loading="eager"
+                decoding="async"
+                onError={() => {
+                  if (!artworkImgError) setArtworkImgError(true);
+                }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: s.objectFit || 'contain',
+                  borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
+                }}
+                className="w-full h-full transition-transform duration-300"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-[#F5F4F0] border border-[#DDD] text-[#999] rounded p-4 text-center">
+                <span className="text-xs font-mono">No Image</span>
+              </div>
+            )}
           </div>
         );
 
