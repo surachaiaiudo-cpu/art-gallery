@@ -49,8 +49,56 @@ export function ArtworkLightbox({
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isViewInRoomOpen, setIsViewInRoomOpen] = useState(false);
+  const [extractedPalette, setExtractedPalette] = useState<string[]>([]);
+  const [copiedColor, setCopiedColor] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Extract dynamic real colors from artwork image
+  useEffect(() => {
+    if (!artwork?.imageUrl) {
+      setExtractedPalette([]);
+      return;
+    }
+
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+        canvas.width = 40;
+        canvas.height = 40;
+        ctx.drawImage(img, 0, 0, 40, 40);
+        const data = ctx.getImageData(0, 0, 40, 40).data;
+
+        const colorMap: { [hex: string]: number } = {};
+        for (let i = 0; i < data.length; i += 16) {
+          const r = Math.round(data[i] / 20) * 20;
+          const g = Math.round(data[i + 1] / 20) * 20;
+          const b = Math.round(data[i + 2] / 20) * 20;
+          const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+          colorMap[hex] = (colorMap[hex] || 0) + 1;
+        }
+
+        const sortedColors = Object.keys(colorMap)
+          .sort((a, b) => colorMap[b] - colorMap[a])
+          .slice(0, 5);
+
+        if (sortedColors.length >= 3) {
+          setExtractedPalette(sortedColors);
+        }
+      } catch {
+        // Fallback for CORS restricted origins
+        setExtractedPalette(['#2A2622', '#8C6D3F', '#C5A880', '#D5CEC0', '#FAF8F5']);
+      }
+    };
+    img.onerror = () => {
+      setExtractedPalette(['#2A2622', '#8C6D3F', '#C5A880', '#D5CEC0', '#FAF8F5']);
+    };
+    img.src = artwork.imageUrl;
+  }, [artwork?.id, artwork?.imageUrl]);
 
   // Reset zoom & pan when artwork changes or opens
   useEffect(() => {
@@ -390,20 +438,37 @@ export function ArtworkLightbox({
             </div>
           </div>
 
-          {/* Color Mood Palette Strip */}
+          {/* Dynamic Color Mood Palette Strip */}
           <div className="bg-white rounded-xl p-3.5 border border-[#EAE4D8] mb-5 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-bold text-[#8C6D3F] flex items-center gap-1.5">
                 <Palette className="w-3.5 h-3.5" />
                 <span>{lang === 'th' ? 'พาเลตต์โทนสีผลงาน (Color Palette)' : 'Harmonic Color Palette'}</span>
               </span>
+              {copiedColor && (
+                <span className="text-[10px] text-emerald-600 font-mono font-semibold animate-pulse">
+                  ✓ คัดลอก {copiedColor} แล้ว
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-6 flex-1 rounded-md bg-[#8B1B1B] shadow-inner" title="Crimson Ochre" />
-              <div className="h-6 flex-1 rounded-md bg-[#C5A880] shadow-inner" title="Champagne Gold" />
-              <div className="h-6 flex-1 rounded-md bg-[#2C2924] shadow-inner" title="Charcoal Noir" />
-              <div className="h-6 flex-1 rounded-md bg-[#D9D2C5] shadow-inner" title="Warm Alabaster" />
-              <div className="h-6 flex-1 rounded-md bg-[#5A6858] shadow-inner" title="Olive Sage" />
+              {(extractedPalette.length > 0 ? extractedPalette : ['#2A2622', '#8C6D3F', '#C5A880', '#D5CEC0', '#FAF8F5']).map(
+                (hex, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      navigator.clipboard?.writeText(hex);
+                      setCopiedColor(hex);
+                      setTimeout(() => setCopiedColor(null), 2000);
+                    }}
+                    className="h-7 flex-1 rounded-lg shadow-xs hover:scale-110 active:scale-95 transition-transform border border-black/10 relative group cursor-pointer"
+                    style={{ backgroundColor: hex }}
+                    title={`คลิกเพื่อคัดลอกโค้ดสี ${hex}`}
+                  >
+                    <span className="sr-only">{hex}</span>
+                  </button>
+                )
+              )}
             </div>
           </div>
 
