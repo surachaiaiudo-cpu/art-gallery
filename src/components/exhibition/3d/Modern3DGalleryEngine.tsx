@@ -48,6 +48,7 @@ import {
   Eye,
   Settings,
   ChevronLeft,
+  ChevronRight,
   Plus,
   Minus,
   Maximize2,
@@ -891,7 +892,7 @@ function findCurrentRoomIndex(
 // -------------------------------------------------------------
 // Approach 1: Scene Warmup Helper (Pre-compile shaders on load)
 // -------------------------------------------------------------
-function SceneWarmupHelper() {
+function SceneWarmupHelper({ onReady }: { onReady?: () => void }) {
   const { gl, scene, camera } = useThree();
 
   useEffect(() => {
@@ -900,7 +901,11 @@ function SceneWarmupHelper() {
     } catch (e) {
       console.warn('Scene warmup compile:', e);
     }
-  }, [gl, scene, camera]);
+    if (onReady) {
+      const timer = setTimeout(onReady, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [gl, scene, camera, onReady]);
 
   return null;
 }
@@ -1512,11 +1517,34 @@ export function Modern3DGalleryEngine({
   }, []);
 
   // State: Milestone 3 UI Layer & Interaction Progress
+  const [is3DLoading, setIs3DLoading] = useState(true);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [dontShowOnboardingAgain, setDontShowOnboardingAgain] = useState(false);
   const [currentAim, setCurrentAim] = useState<{ artwork: Artwork; slot: CalculatedArtworkSlot } | null>(null);
   const [viewedArtworkIds, setViewedArtworkIds] = useState<Set<string>>(new Set());
   const [likedArtworkIds, setLikedArtworkIds] = useState<Set<string>>(new Set());
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ title: string; sub: string } | null>(null);
+
+  // Check first-time onboarding
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hasSeen = localStorage.getItem('artvara_3d_onboarding_shown');
+    if (!hasSeen) {
+      // Auto open onboarding after initial load finishes
+      const timer = setTimeout(() => {
+        setIsOnboardingOpen(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleCloseOnboarding = () => {
+    setIsOnboardingOpen(false);
+    if (dontShowOnboardingAgain && typeof window !== 'undefined') {
+      localStorage.setItem('artvara_3d_onboarding_shown', 'true');
+    }
+  };
 
   // Milestone D: Persistence of Visitor Viewed & Liked Artworks
   useEffect(() => {
@@ -1860,7 +1888,7 @@ export function Modern3DGalleryEngine({
       >
         <color attach="background" args={['#0D0C0B']} />
         <Suspense fallback={null}>
-          <SceneWarmupHelper />
+          <SceneWarmupHelper onReady={() => setIs3DLoading(false)} />
           <LightingRig
             preset={activeLightPreset}
             activeRoomCenter={currentRoomConfig.center}
@@ -2375,50 +2403,90 @@ export function Modern3DGalleryEngine({
         )}
       </div>
 
-      {/* Mobile Touch Virtual D-Pad (Walk & Turn for Touchscreen / Mobile) */}
-      <div className="absolute bottom-24 left-3 z-30 pointer-events-auto flex flex-col items-center gap-1 sm:hidden select-none">
-        {/* Forward Button */}
-        <button
-          onTouchStart={() => handleTouchKey('w', true)}
-          onTouchEnd={() => handleTouchKey('w', false)}
-          onMouseDown={() => handleTouchKey('w', true)}
-          onMouseUp={() => handleTouchKey('w', false)}
-          className="w-12 h-11 rounded-2xl bg-[#161310]/30 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-transform"
-          aria-label="Walk Forward"
-        >
-          <ChevronUp className="w-6 h-6" />
-        </button>
-        <div className="flex items-center gap-1.5">
-          {/* Turn Left Button */}
+      {/* ========================================================================= */}
+      {/* 📱 ENHANCED MOBILE TOUCH CONTROLS (Strafe A/D + Walk W/S + Turn L/R) */}
+      {/* ========================================================================= */}
+      <div className="sm:hidden pointer-events-none select-none">
+        {/* Left Hand: Movement D-Pad (Walk Forward/Back & Strafe Left/Right) */}
+        <div className="absolute bottom-28 left-3 z-30 pointer-events-auto flex flex-col items-center">
+          {/* Forward (W) */}
+          <button
+            onTouchStart={() => handleTouchKey('w', true)}
+            onTouchEnd={() => handleTouchKey('w', false)}
+            onMouseDown={() => handleTouchKey('w', true)}
+            onMouseUp={() => handleTouchKey('w', false)}
+            className="w-11 h-10 rounded-t-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all"
+            aria-label="Walk Forward"
+            title="เดินหน้า (W)"
+          >
+            <ChevronUp className="w-5 h-5" />
+          </button>
+          
+          {/* Middle Row: Strafe Left (A) | Backward (S) | Strafe Right (D) */}
+          <div className="flex items-center">
+            {/* Strafe Left (A) */}
+            <button
+              onTouchStart={() => handleTouchKey('a', true)}
+              onTouchEnd={() => handleTouchKey('a', false)}
+              onMouseDown={() => handleTouchKey('a', true)}
+              onMouseUp={() => handleTouchKey('a', false)}
+              className="w-10 h-10 rounded-l-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all text-[11px] font-bold"
+              aria-label="Strafe Left"
+              title="สไลด์ซ้าย (A)"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {/* Backward (S) */}
+            <button
+              onTouchStart={() => handleTouchKey('s', true)}
+              onTouchEnd={() => handleTouchKey('s', false)}
+              onMouseDown={() => handleTouchKey('s', true)}
+              onMouseUp={() => handleTouchKey('s', false)}
+              className="w-11 h-10 bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all"
+              aria-label="Walk Backward"
+              title="ถอยหลัง (S)"
+            >
+              <ChevronDown className="w-5 h-5" />
+            </button>
+            {/* Strafe Right (D) */}
+            <button
+              onTouchStart={() => handleTouchKey('d', true)}
+              onTouchEnd={() => handleTouchKey('d', false)}
+              onMouseDown={() => handleTouchKey('d', true)}
+              onMouseUp={() => handleTouchKey('d', false)}
+              className="w-10 h-10 rounded-r-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all text-[11px] font-bold"
+              aria-label="Strafe Right"
+              title="สไลด์ขวา (D)"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Right Hand: Look & Rotation Controls (Turn Left, Turn Right) */}
+        <div className="absolute bottom-28 right-3 z-30 pointer-events-auto flex items-center gap-1.5">
+          {/* Turn Left */}
           <button
             onTouchStart={() => handleTouchKey('arrowleft', true)}
             onTouchEnd={() => handleTouchKey('arrowleft', false)}
             onMouseDown={() => handleTouchKey('arrowleft', true)}
             onMouseUp={() => handleTouchKey('arrowleft', false)}
-            className="w-11 h-11 rounded-2xl bg-[#161310]/30 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-transform"
+            className="w-11 h-11 rounded-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all"
             aria-label="Turn Left"
+            title="หันซ้าย"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
-          {/* Backward Button */}
-          <button
-            onTouchStart={() => handleTouchKey('s', true)}
-            onTouchEnd={() => handleTouchKey('s', false)}
-            onMouseDown={() => handleTouchKey('s', true)}
-            onMouseUp={() => handleTouchKey('s', false)}
-            className="w-12 h-11 rounded-2xl bg-[#161310]/30 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-transform"
-            aria-label="Walk Backward"
-          >
-            <ChevronDown className="w-6 h-6" />
-          </button>
-          {/* Turn Right Button */}
+
+          {/* Turn Right */}
           <button
             onTouchStart={() => handleTouchKey('arrowright', true)}
             onTouchEnd={() => handleTouchKey('arrowright', false)}
             onMouseDown={() => handleTouchKey('arrowright', true)}
             onMouseUp={() => handleTouchKey('arrowright', false)}
-            className="w-11 h-11 rounded-2xl bg-[#161310]/30 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-transform"
+            className="w-11 h-11 rounded-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all"
             aria-label="Turn Right"
+            title="หันขวา"
           >
             <RotateCw className="w-4 h-4" />
           </button>
@@ -2522,6 +2590,137 @@ export function Modern3DGalleryEngine({
             if (slot.artwork) handleInspectArtwork(slot.artwork);
           }}
         />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🌟 1. CINEMATIC 3D LOADING OVERLAY (Smooth Shader & Texture Preload Screen) */}
+      {/* ========================================================================= */}
+      <div
+        className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0D0C0B] transition-opacity duration-700 pointer-events-none ${
+          is3DLoading ? 'opacity-100 pointer-events-auto' : 'opacity-0'
+        }`}
+      >
+        <div className="relative flex flex-col items-center max-w-sm px-6 text-center">
+          {/* Animated Glowing Ring & Museum Icon */}
+          <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-2 border-[#D9B878]/20 animate-ping" />
+            <div className="absolute inset-0 rounded-full border-2 border-t-[#D9B878] border-r-[#FFD98A] border-b-transparent border-l-transparent animate-spin duration-1000" />
+            <Building className="w-8 h-8 text-[#FFD98A] animate-pulse" />
+          </div>
+
+          <div className="text-[10px] tracking-[0.3em] uppercase text-[#D9B878] font-bold mb-2">
+            POH-CHANG ACADEMY OF ARTS • 3D SPATIAL ENGINE
+          </div>
+
+          <h2 className="font-serif text-xl sm:text-2xl font-bold text-white mb-2">
+            {exhibition.title || 'ห้องนิทรรศการเสมือนจริง 3D'}
+          </h2>
+
+          <p className="text-xs text-neutral-400 font-light mb-6">
+            กำลังสร้างแบบจำลองสถาปัตยกรรม คำนวณแสงเงา Spotlight และจัดวางผลงานศิลปกรรม...
+          </p>
+
+          {/* Glowing Animated Progress Bar */}
+          <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-[#D9B878] via-[#FFD98A] to-[#D9B878] w-full animate-pulse rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 🚀 2. FIRST-TIME INTERACTIVE ONBOARDING SPLASH GUIDE */}
+      {/* ========================================================================= */}
+      {isOnboardingOpen && !is3DLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in pointer-events-auto">
+          <div className="bg-[#161310]/95 backdrop-blur-2xl border border-[#D9B878]/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white shadow-[0_20px_60px_rgba(0,0,0,0.7)] relative animate-in fade-in zoom-in-95 duration-300">
+            {/* Close Button */}
+            <button
+              onClick={handleCloseOnboarding}
+              className="absolute top-5 right-5 p-2 text-[#C5A880] hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              title="ปิดคำแนะนำ"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header */}
+            <div className="text-[10px] tracking-[0.3em] uppercase text-[#D9B878] font-bold mb-1">
+              POH-CHANG ACADEMY OF ARTS • ARTVARA 3D
+            </div>
+            <h3 className="text-xl sm:text-2xl font-serif font-bold text-white mb-2">
+              ยินดีต้อนรับสู่หอศิลป์เสมือนจริง
+            </h3>
+            <p className="text-xs text-neutral-300 mb-6 font-light">
+              สัมผัสประสบการณ์เดินชมนิทรรศการเสมือนจริงแบบ 3D ได้อย่างอิสระ ทุกมุมมองและขนาดสเกลสมจริง
+            </p>
+
+            {/* Feature Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              {/* Card 1: Game Mode Look */}
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-[#D9B878]/40 transition-colors">
+                <div className="flex items-center gap-2 mb-1.5 text-[#FFD98A] font-semibold text-xs">
+                  <Gamepad2 className="w-4 h-4" />
+                  <span>โหมดเกม FPS Look</span>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed font-light">
+                  กดปุ่ม <strong>โหมดเกม</strong> ด้านบน แล้วขยับเมาส์หันมองได้ทันทีอย่างเป็นธรรมชาติ
+                </p>
+              </div>
+
+              {/* Card 2: WASD Movement */}
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-[#D9B878]/40 transition-colors">
+                <div className="flex items-center gap-2 mb-1.5 text-[#FFD98A] font-semibold text-xs">
+                  <Compass className="w-4 h-4" />
+                  <span>ปุ่มเดิน W A S D</span>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed font-light">
+                  ใช้ปุ่ม <kbd className="px-1 py-0.5 bg-black/40 rounded text-[10px]">W</kbd><kbd className="px-1 py-0.5 bg-black/40 rounded text-[10px]">A</kbd><kbd className="px-1 py-0.5 bg-black/40 rounded text-[10px]">S</kbd><kbd className="px-1 py-0.5 bg-black/40 rounded text-[10px]">D</kbd> หรือลูกศร เพื่อเดินสำรวจทุกโถงห้อง
+                </p>
+              </div>
+
+              {/* Card 3: Inspect & Lighting */}
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-[#D9B878]/40 transition-colors">
+                <div className="flex items-center gap-2 mb-1.5 text-[#FFD98A] font-semibold text-xs">
+                  <Eye className="w-4 h-4" />
+                  <span>ดูรายละเอียด & จัดแสงไฟ</span>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed font-light">
+                  คลิกที่ภาพ หรือกด <kbd className="px-1 py-0.5 bg-black/40 rounded text-[10px]">E</kbd> เพื่อเพ่งดูภาพ พร้อมปรับทิศทางแสง Spotlight ได้เอง
+                </p>
+              </div>
+
+              {/* Card 4: Mobile Touch D-Pad */}
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-[#D9B878]/40 transition-colors">
+                <div className="flex items-center gap-2 mb-1.5 text-[#FFD98A] font-semibold text-xs">
+                  <MousePointer className="w-4 h-4" />
+                  <span>ลากหมุน & แตะนำทาง</span>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed font-light">
+                  บนมือถือใช้ปุ่มเสมือนซ้าย-ขวา หรือคลิกลากหน้าจอเพื่อหมุนมุมมอง 360° รอบตัว
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom Actions Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-white/10">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-neutral-400 hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={dontShowOnboardingAgain}
+                  onChange={(e) => setDontShowOnboardingAgain(e.target.checked)}
+                  className="rounded border-white/20 bg-black/40 text-[#D9B878] focus:ring-[#D9B878]"
+                />
+                <span>ไม่ต้องแสดงคำแนะนำนี้อีกในครั้งถัดไป</span>
+              </label>
+
+              <button
+                onClick={handleCloseOnboarding}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#D9B878] to-[#FFD98A] hover:brightness-110 text-black font-bold text-xs tracking-wider uppercase transition-all shadow-lg active:scale-95"
+              >
+                เริ่มเดินชมนิทรรศการ 🚀
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
