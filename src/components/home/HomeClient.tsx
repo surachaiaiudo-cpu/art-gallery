@@ -23,6 +23,9 @@ import {
   Maximize2,
   Volume2,
   Frame,
+  Shuffle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { formatDateRange, formatDimensionsInCm } from '@/lib/utils';
 import { CountryFlag } from '@/components/ui/CountryFlag';
@@ -79,8 +82,77 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
   });
 
   const featuredExhibition = exhibitions.find((e) => e.status === 'active') || exhibitions[0];
-  const allArtworks = exhibitions.flatMap((e) => e.artworks || []);
-  const spotlightArtwork = allArtworks[0] || null;
+
+  // Curated list of spotlight artworks with exhibition tags across all active/published exhibitions
+  const curatedSpotlightArtworks = React.useMemo(() => {
+    const list: Array<Artwork & { exhibitionTitle: string; exhibitionSlug: string; exhibitionId: string }> = [];
+    const validExhibitions = exhibitions.filter((e) => e.status !== 'archived');
+    for (const exh of validExhibitions) {
+      if (exh.artworks && exh.artworks.length > 0) {
+        for (const art of exh.artworks) {
+          list.push({
+            ...art,
+            exhibitionTitle: exh.title,
+            exhibitionSlug: exh.slug,
+            exhibitionId: exh.id,
+          });
+        }
+      }
+    }
+    return list;
+  }, [exhibitions]);
+
+  const [currentSpotlightIndex, setCurrentSpotlightIndex] = useState(0);
+  const [isSpotlightFading, setIsSpotlightFading] = useState(false);
+  const [isShuffleSpinning, setIsShuffleSpinning] = useState(false);
+
+  // Auto-advance spotlight every 8 seconds
+  React.useEffect(() => {
+    if (curatedSpotlightArtworks.length <= 1) return;
+    const interval = setInterval(() => {
+      setIsSpotlightFading(true);
+      setTimeout(() => {
+        setCurrentSpotlightIndex((prev) => (prev + 1) % curatedSpotlightArtworks.length);
+        setIsSpotlightFading(false);
+      }, 300);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [curatedSpotlightArtworks.length]);
+
+  const handleNextSpotlight = () => {
+    if (curatedSpotlightArtworks.length <= 1) return;
+    setIsSpotlightFading(true);
+    setTimeout(() => {
+      setCurrentSpotlightIndex((prev) => (prev + 1) % curatedSpotlightArtworks.length);
+      setIsSpotlightFading(false);
+    }, 250);
+  };
+
+  const handlePrevSpotlight = () => {
+    if (curatedSpotlightArtworks.length <= 1) return;
+    setIsSpotlightFading(true);
+    setTimeout(() => {
+      setCurrentSpotlightIndex((prev) => (prev - 1 + curatedSpotlightArtworks.length) % curatedSpotlightArtworks.length);
+      setIsSpotlightFading(false);
+    }, 250);
+  };
+
+  const handleShuffleSpotlight = () => {
+    if (curatedSpotlightArtworks.length <= 1) return;
+    setIsShuffleSpinning(true);
+    setIsSpotlightFading(true);
+    setTimeout(() => {
+      let nextIdx = Math.floor(Math.random() * curatedSpotlightArtworks.length);
+      if (nextIdx === currentSpotlightIndex) {
+        nextIdx = (currentSpotlightIndex + 1) % curatedSpotlightArtworks.length;
+      }
+      setCurrentSpotlightIndex(nextIdx);
+      setIsSpotlightFading(false);
+      setTimeout(() => setIsShuffleSpinning(false), 400);
+    }, 300);
+  };
+
+  const activeSpotlight = curatedSpotlightArtworks[currentSpotlightIndex] || null;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#121110] text-[#FAF8F5] selection:bg-[#C5A880] selection:text-[#121110]">
@@ -240,7 +312,7 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-x divide-[#2C2824]">
               <div className="px-3">
                 <span className="font-serif text-2xl sm:text-3xl font-extrabold text-[#FAF8F5] block">
-                  {allArtworks.length || 0}
+                  {curatedSpotlightArtworks.length || 0}
                 </span>
                 <span className="text-[10px] uppercase font-bold tracking-widest text-[#C5A880]">
                   {lang === 'th' ? 'ผลงานวิจิตรศิลป์ที่จัดแสดง' : 'Curated Masterpieces'}
@@ -274,88 +346,181 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
           </div>
         </section>
 
-        {/* ================= 3. CURATOR'S MASTERPIECE SPOTLIGHT ================= */}
-        {spotlightArtwork && (
+        {/* ================= 3. CURATED RECOMMENDED ARTWORKS (DYNAMIC ANIMATED SHUFFLE) ================= */}
+        {activeSpotlight && (
           <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 border-b border-[#2C2824]">
-            <div className="flex items-center justify-between mb-8">
+            {/* Section Header with Shuffle & Navigation Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
               <div>
-                <span className="text-[10px] uppercase tracking-[0.25em] text-[#C5A880] font-bold block">
-                  {lang === 'th' ? 'ไฮไลต์ผลงานเด่นประจำสัปดาห์' : "Curator's Spotlight Masterpiece"}
-                </span>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#D4AF37] animate-ping" />
+                  <span className="text-[10px] uppercase tracking-[0.25em] text-[#C5A880] font-bold block">
+                    {lang === 'th' ? '✨ ผลงานศิลปกรรมแนะนำ (หมุนเวียนจากทุกนิทรรศการ)' : "Curated Highlights from All Exhibitions"}
+                  </span>
+                </div>
                 <h2 className="font-serif text-2xl sm:text-4xl font-bold text-[#FAF8F5]">
-                  {lang === 'th' ? 'ผลงานมาสเตอร์พีซที่แนะนำ' : 'Featured Masterpiece'}
+                  {lang === 'th' ? 'ผลงานแนะนำประจำสัปดาห์' : 'Featured Artworks & Masterpieces'}
                 </h2>
+              </div>
+
+              {/* Navigation & Random Shuffle Action Buttons */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Random Shuffle Button */}
+                <button
+                  onClick={handleShuffleSpotlight}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#C5A880]/15 hover:bg-[#C5A880]/25 text-[#EAD8C0] border border-[#C5A880]/40 text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
+                  title={lang === 'th' ? 'สุ่มผลงานแนะนำถัดไป' : 'Shuffle Next Artwork'}
+                >
+                  <Shuffle className={`w-3.5 h-3.5 text-[#D4AF37] transition-transform duration-500 ${isShuffleSpinning ? 'rotate-180 scale-125' : ''}`} />
+                  <span>{lang === 'th' ? '🎲 สุ่มผลงาน' : 'Shuffle'}</span>
+                </button>
+
+                {/* Counter Badge */}
+                <div className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-neutral-300">
+                  <span className="text-[#C5A880] font-bold">{String(currentSpotlightIndex + 1).padStart(2, '0')}</span>
+                  <span className="text-neutral-500"> / </span>
+                  <span>{String(curatedSpotlightArtworks.length).padStart(2, '0')}</span>
+                </div>
+
+                {/* Prev / Next Arrows */}
+                <div className="flex items-center bg-white/5 rounded-full border border-white/10 p-0.5">
+                  <button
+                    onClick={handlePrevSpotlight}
+                    className="p-1.5 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    aria-label="Previous Artwork"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleNextSpotlight}
+                    className="p-1.5 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    aria-label="Next Artwork"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Spotlight Banner Card */}
+            {/* Spotlight Banner Card with Smooth Crossfade Animation */}
             <div className="relative bg-gradient-to-br from-[#1C1A17] to-[#141311] rounded-3xl border border-[#C5A880]/30 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 sm:p-10 items-center">
+              
               {/* Artwork Visual with Ambient Glow */}
               <div className="lg:col-span-7 relative aspect-[4/3] rounded-2xl overflow-hidden bg-black/60 border border-white/10 group">
-                <Image
-                  src={spotlightArtwork.imageUrl}
-                  alt={spotlightArtwork.title}
-                  fill
-                  className="object-contain p-4 group-hover:scale-105 transition-transform duration-700"
-                />
+                <div className={`w-full h-full relative transition-all duration-300 ${isSpotlightFading ? 'opacity-0 scale-95 blur-xs' : 'opacity-100 scale-100 blur-0'}`}>
+                  <Image
+                    src={activeSpotlight.imageUrl}
+                    alt={activeSpotlight.title}
+                    fill
+                    className="object-contain p-4 group-hover:scale-105 transition-transform duration-700"
+                    sizes="(max-width: 1024px) 100vw, 700px"
+                  />
+                </div>
+
+                {/* Exhibition Tag Pill (Clickable directly into exhibition) */}
+                <Link
+                  href={`/exhibitions/${activeSpotlight.exhibitionSlug}`}
+                  className="absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/80 hover:bg-[#8B1B1B] text-[#EAD8C0] hover:text-white text-[11px] font-semibold border border-white/20 backdrop-blur-md transition-all shadow-md active:scale-95 group/tag max-w-[85%]"
+                  title={lang === 'th' ? `ชมนิทรรศการ: ${activeSpotlight.exhibitionTitle}` : `View Exhibition: ${activeSpotlight.exhibitionTitle}`}
+                >
+                  <span className="text-[#C5A880] group-hover/tag:text-[#FFD98A]">🏛️</span>
+                  <span className="truncate">{activeSpotlight.exhibitionTitle}</span>
+                  <ArrowRight className="w-3 h-3 text-[#C5A880] group-hover/tag:translate-x-0.5 transition-transform shrink-0" />
+                </Link>
+
+                {/* View In Room Quick Action Button */}
                 <button
                   onClick={() => {
-                    setSelectedSpotlightArtwork(spotlightArtwork);
+                    setSelectedSpotlightArtwork(activeSpotlight);
                     setIsViewInRoomOpen(true);
                   }}
-                  className="absolute bottom-4 right-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C5A880] hover:bg-[#B39366] text-[#121110] text-xs font-bold shadow-lg transition-transform active:scale-95"
+                  className="absolute bottom-4 right-4 z-10 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C5A880] hover:bg-[#B39366] text-[#121110] text-xs font-bold shadow-lg transition-transform active:scale-95 cursor-pointer"
                 >
                   <Frame className="w-3.5 h-3.5" />
-                  <span>{lang === 'th' ? '🛋️ จำลองแขวนบนผนัง (View in Room)' : 'View in Room'}</span>
+                  <span>{lang === 'th' ? '🛋️ จำลองแขวนผนัง (View in Room)' : 'View in Room'}</span>
                 </button>
               </div>
 
               {/* Info Column */}
-              <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
+              <div className={`lg:col-span-5 flex flex-col justify-between space-y-6 transition-all duration-300 ${isSpotlightFading ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}>
                 <div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#8B1B1B]/40 border border-[#8B1B1B] text-[#FFD98A] text-[10px] font-bold uppercase tracking-wider mb-3">
-                    <Sparkles className="w-3 h-3 text-[#D4AF37]" />
-                    <span>MASTERPIECE OF THE WEEK</span>
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#8B1B1B]/40 border border-[#8B1B1B] text-[#FFD98A] text-[10px] font-bold uppercase tracking-wider">
+                      <Sparkles className="w-3 h-3 text-[#D4AF37]" />
+                      <span>{lang === 'th' ? 'ผลงานแนะนำ' : 'SPOTLIGHT ARTWORK'}</span>
+                    </div>
+
+                    <span className="text-[11px] font-mono text-[#C5A880] bg-black/40 px-2.5 py-0.5 rounded-full border border-[#C5A880]/30">
+                      {activeSpotlight.yearCreated ? `ปี ${activeSpotlight.yearCreated}` : 'Contemporary Art'}
+                    </span>
                   </div>
 
                   <h3 className="font-serif text-2xl sm:text-3xl font-bold text-[#FAF8F5] leading-tight mb-2">
-                    {spotlightArtwork.title}
+                    {activeSpotlight.title}
                   </h3>
 
-                  <p className="text-xs text-[#C5A880] font-medium mb-4">
-                    {spotlightArtwork.artist?.name} {spotlightArtwork.artist?.country ? `(${spotlightArtwork.artist.country})` : ''}
-                  </p>
+                  {/* Artist Profile Bar with Country Flag */}
+                  <div className="flex items-center gap-2 text-xs text-[#C5A880] font-medium mb-4">
+                    <CountryFlag country={activeSpotlight.artist?.country} size="xs" shape="rounded" />
+                    <span className="text-white font-semibold">{activeSpotlight.artist?.name}</span>
+                    {activeSpotlight.artist?.country && (
+                      <span className="text-neutral-400">({activeSpotlight.artist.country})</span>
+                    )}
+                  </div>
 
                   <p className="text-xs text-neutral-300 italic bg-black/30 p-4 rounded-xl border border-white/10 leading-relaxed">
-                    "{spotlightArtwork.concept || spotlightArtwork.description || 'ผลงานชิ้นเอกที่สะท้อนคุณค่าความประณีตทางสุนทรียศาสตร์ร่วมสมัย'}"
+                    "{activeSpotlight.concept || activeSpotlight.description || 'ผลงานชิ้นเอกที่สะท้อนคุณค่าความประณีตทางสุนทรียศาสตร์ร่วมสมัย'}"
                   </p>
                 </div>
 
-                {/* Specs */}
+                {/* Specs Grid */}
                 <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-black/40 border border-white/10 text-xs">
                   <div>
                     <span className="text-neutral-400 block text-[10px] uppercase">{t.specs.medium}</span>
-                    <span className="text-white font-medium">{spotlightArtwork.medium}</span>
+                    <span className="text-white font-medium truncate block">{activeSpotlight.medium || 'Mixed Media'}</span>
                   </div>
                   <div>
                     <span className="text-neutral-400 block text-[10px] uppercase">{t.specs.dimensions}</span>
-                    <span className="text-white font-medium">
-                      {formatDimensionsInCm(spotlightArtwork.dimensions, lang)}
+                    <span className="text-white font-medium truncate block">
+                      {formatDimensionsInCm(activeSpotlight.dimensions, lang)}
                     </span>
                   </div>
                 </div>
 
-                {/* Action button */}
-                <button
-                  onClick={() => {
-                    setSelectedSpotlightArtwork(spotlightArtwork);
-                    setIsViewInRoomOpen(true);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-[#C5A880] hover:bg-[#B39366] text-[#121110] rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md active:scale-95"
-                >
-                  <Frame className="w-4 h-4" />
-                  <span>{lang === 'th' ? 'เปิดโหมดจำลองแขวนห้องจริง' : 'Launch View in Room'}</span>
-                </button>
+                {/* Action Buttons Hub */}
+                <div className="space-y-2 pt-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* View In Room */}
+                    <button
+                      onClick={() => {
+                        setSelectedSpotlightArtwork(activeSpotlight);
+                        setIsViewInRoomOpen(true);
+                      }}
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-[#C5A880] hover:bg-[#B39366] text-[#121110] rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer text-center"
+                    >
+                      <Frame className="w-3.5 h-3.5" />
+                      <span>{lang === 'th' ? 'จำลองแขวนห้อง' : 'View in Room'}</span>
+                    </button>
+
+                    {/* Open Catalog */}
+                    <Link
+                      href={`/catalog/${activeSpotlight.exhibitionSlug}`}
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold border border-white/15 transition-all shadow-sm active:scale-95 cursor-pointer text-center"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-[#C5A880]" />
+                      <span>{lang === 'th' ? 'อ่านสูจิบัตร' : 'E-Catalog'}</span>
+                    </Link>
+                  </div>
+
+                  {/* Visit Exhibition Link */}
+                  <Link
+                    href={`/exhibitions/${activeSpotlight.exhibitionSlug}`}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-black/50 hover:bg-black/80 text-neutral-300 hover:text-white rounded-xl text-xs font-semibold border border-white/10 transition-all text-center group/exh"
+                  >
+                    <span>{lang === 'th' ? `เข้าชมทั้งนิทรรศการ (${activeSpotlight.exhibitionTitle})` : `Visit Full Exhibition`}</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-[#C5A880] group-hover/exh:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
               </div>
             </div>
           </section>
