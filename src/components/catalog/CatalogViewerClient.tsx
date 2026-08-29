@@ -34,7 +34,6 @@ import { CatalogDynamicPlate } from './CatalogDynamicPlate';
 import { getExhibitionCatalogTemplate, CatalogTemplateConfig } from '@/types/catalogTemplate';
 import { CatalogReaderModal } from './CatalogReaderModal';
 import { TooltipBubble } from '@/components/ui/TooltipBubble';
-import { Catalog3DFlipbook } from './Catalog3DFlipbook';
 import { FooterEditorModal } from './FooterEditorModal';
 import { PeerReviewEditorModal } from './PeerReviewEditorModal';
 import { PlateErrorBoundary } from './PlateErrorBoundary';
@@ -91,8 +90,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const hasReviewers = peerReviewersList.length > 0;
   const totalPages = 1 + (hasReviewers ? 1 : 0) + artworks.length;
 
-  // Reading Modes: 'grid3' (3-Column Preview Grid - Default), 'flipbook' (Interactive 3D Book), or 'full' (Continuous Full A4 Pages)
-  const [activeViewMode, setActiveViewMode] = useState<'grid3' | 'flipbook' | 'full'>('grid3');
+  // Reading Modes: 'grid3' (3-Column Preview Grid - Default) or 'full' (Continuous Full A4 Pages)
+  const initialMode = searchParams?.get('mode') === 'full' || searchParams?.get('view') === 'full'
+    ? 'full'
+    : 'grid3';
+  const [activeViewMode, setActiveViewMode] = useState<'grid3' | 'full'>(initialMode);
   const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
   
   // Paper size is automatically determined from admin's configured catalog template
@@ -272,20 +274,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           <div className="flex flex-wrap items-center gap-2">
             {/* View Mode Switcher with Tooltip Bubbles */}
             <div className="flex items-center bg-white/80 p-1 rounded-xl border border-[#DDD6C8] shadow-inner text-xs gap-1">
-              <TooltipBubble content="เปิดอ่านสมุด 3 มิติพร้อมเสียงพลิกหน้า (3D Flipbook)" position="bottom">
-                <button
-                  onClick={() => setActiveViewMode('flipbook')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                    activeViewMode === 'flipbook'
-                      ? 'bg-[#8C6D3F] text-white shadow-sm'
-                      : 'text-[#666] hover:text-[#1A1918] hover:bg-[#F2EFE9]'
-                  }`}
-                  aria-label="3D Flipbook"
-                >
-                  <BookOpen className="w-4 h-4 text-[#EAD8B8]" />
-                  <span className="hidden sm:inline">3D Flipbook</span>
-                </button>
-              </TooltipBubble>
 
               <TooltipBubble content="มุมมองแบบตารางภาพ (Grid 3 View)" position="bottom">
                 <button
@@ -371,19 +359,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         </div>
       </div>
 
-      {/* 3D Flipbook Reader Mode */}
-      {activeViewMode === 'flipbook' && (
-        <div className="no-print max-w-7xl mx-auto px-4 sm:px-8 py-4 flex-1">
-          <Catalog3DFlipbook
-            exhibition={exhibition}
-            peerReviewers={peerReviewersList}
-            coverFooter={coverFooter}
-            plateFooter={plateFooter}
-            onOpenZoomModal={(idx) => setSelectedPageModalIndex(idx + (hasReviewers ? 2 : 1))}
-            onBackToGrid={() => setActiveViewMode('grid3')}
-          />
-        </div>
-      )}
 
       {/* Grid 3-Column Preview Mode */}
       {activeViewMode === 'grid3' && (

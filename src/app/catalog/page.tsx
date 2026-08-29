@@ -49,7 +49,7 @@ export default async function CatalogLibraryPage() {
             </h1>
 
             <p className="text-xs sm:text-sm text-[#D5CEC0] font-light leading-relaxed">
-              เลือกชมนิทรรศการที่ท่านสนใจเพื่อเปิดอ่านสูจิบัตรดิจิทัลฉบับสมบูรณ์ (Interactive 3D Flipbook E-Catalog)
+              เลือกชมนิทรรศการที่ท่านสนใจเพื่อเปิดอ่านสูจิบัตรดิจิทัลฉบับสมบูรณ์ (Digital Exhibition Catalog)
               พร้อมดาวน์โหลดเอกสาร PDF ความละเอียดสูงสำหรับพิมพ์สูจิบัตรมาตรฐานสากล
             </p>
           </div>

@@ -450,18 +450,18 @@ export default function AdminExhibitionHubPage({
                   <BookOpen className="w-6 h-6 text-emerald-300" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  Digital 3D Flipbook & PDF
+                  Digital Catalog & PDF
                 </span>
               </div>
 
               <h3 className="font-serif text-lg font-bold text-[#1A1918] group-hover:text-[#2C4A26] transition-colors">
-                {lang === 'th' ? 'สมุดแคตตาล็อก & เอกสาร PDF' : 'Catalog & PDF Export'}
+                {lang === 'th' ? 'สมุดสูจิบัตร & เอกสาร PDF' : 'Catalog & PDF Export'}
               </h3>
 
               <p className="text-xs text-[#6E685C] leading-relaxed">
                 {lang === 'th'
-                  ? 'เปิดอ่านสมุดรวมภาพผลงานนิทรรศการฉบับสมบูรณ์ (3D Flipbook Reader พร้อมเสียงเปิดหน้ากระดาษ) และดาวน์โหลดเอกสารไฟล์ PDF ความละเอียดสูงสำหรับพิมพ์สูจิบัตร'
-                  : 'Read the interactive 3D Flipbook publication and export print-ready high-resolution exhibition PDF catalog.'}
+                  ? 'เปิดอ่านสมุดรวมภาพผลงานนิทรรศการฉบับสมบูรณ์ และดาวน์โหลดเอกสารไฟล์ PDF ความละเอียดสูงสำหรับพิมพ์สูจิบัตร'
+                  : 'Read the official exhibition catalog and export print-ready high-resolution exhibition PDF catalog.'}
               </p>
             </div>
 
@@ -472,7 +472,7 @@ export default function AdminExhibitionHubPage({
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#F3EFE9] hover:bg-[#EAE5DC] text-[#1A1918] rounded-xl text-xs font-semibold transition-all"
               >
                 <BookOpen className="w-3.5 h-3.5 text-[#8C6D3F]" />
-                <span>{lang === 'th' ? 'เปิดอ่าน 3D Flipbook' : 'Open 3D Catalog'}</span>
+                <span>{lang === 'th' ? 'เปิดอ่านสูจิบัตร' : 'Open Catalog'}</span>
               </Link>
 
               <DownloadCatalogPDFButton exhibition={exhibition} variant="secondary" />
