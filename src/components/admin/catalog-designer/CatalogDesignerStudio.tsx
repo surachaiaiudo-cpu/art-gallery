@@ -197,6 +197,16 @@ export function CatalogDesignerStudio({
   const [isAddMenuOpen, setIsAddMenuOpen] = useState<boolean>(false);
   const [showFullInspector, setShowFullInspector] = useState<boolean>(false);
 
+  // B: Background Color Picker State
+  const [isBgColorOpen, setIsBgColorOpen] = useState<boolean>(false);
+
+  // D: Custom Paper Size State
+  const [customWidthInput, setCustomWidthInput] = useState<string>(String(template.pageWidthInches));
+  const [customHeightInput, setCustomHeightInput] = useState<string>(String(template.pageHeightInches));
+
+  // F: Multi-Page Preview Panel State
+  const [isPagesPanelOpen, setIsPagesPanelOpen] = useState<boolean>(true);
+
   // History for Undo/Redo
   const [history, setHistory] = useState<CatalogTemplateConfig[]>([template]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
@@ -284,6 +294,85 @@ export function CatalogDesignerStudio({
       setHistoryIndex(historyIndex + 1);
       setTemplate(history[historyIndex + 1]);
     }
+  };
+
+  // C: Keyboard Shortcuts (Delete, Arrow Keys, Ctrl+D/Z/Y, Escape)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      // Skip if typing in an input / textarea / select
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+
+      // Escape → deselect block
+      if (e.key === 'Escape') {
+        setSelectedBlockId(null);
+        return;
+      }
+
+      // Ctrl+Z → Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Ctrl+Shift+Z or Ctrl+Y → Redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      if (!selectedBlockId) return;
+
+      // Delete / Backspace → delete selected block
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        handleDeleteBlock(selectedBlockId);
+        return;
+      }
+
+      // Ctrl+D → Duplicate selected block
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        handleDuplicateBlock(selectedBlockId);
+        return;
+      }
+
+      // Arrow Keys → nudge block position
+      const nudge = e.shiftKey ? 0.0625 : 0.25; // Shift = fine 1/16", normal = 1/4"
+      const current = template.blocks.find((b) => b.id === selectedBlockId);
+      if (!current) return;
+
+      let dx = 0;
+      let dy = 0;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); dx = -nudge; }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); dx = nudge; }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); dy = -nudge; }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); dy = nudge; }
+
+      if (dx !== 0 || dy !== 0) {
+        const newX = Math.max(0, Math.min(current.xInches + dx, template.pageWidthInches - current.widthInches));
+        const newY = Math.max(0, Math.min(current.yInches + dy, template.pageHeightInches - current.heightInches));
+        handleUpdateBlockProp(selectedBlockId, { xInches: Math.round(newX * 1000) / 1000, yInches: Math.round(newY * 1000) / 1000 }, true);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedBlockId, template, historyIndex, history]);
+
+  // D: Apply Custom Paper Size from W×H inputs
+  const handleApplyCustomPaperSize = () => {
+    const w = parseFloat(customWidthInput);
+    const h = parseFloat(customHeightInput);
+    if (isNaN(w) || isNaN(h) || w < 1 || h < 1 || w > 36 || h > 36) return;
+    updateTemplateWithHistory({
+      ...template,
+      paperSize: 'custom',
+      pageWidthInches: Math.round(w * 100) / 100,
+      pageHeightInches: Math.round(h * 100) / 100,
+    });
   };
 
   // Change Paper Size
@@ -894,9 +983,126 @@ export function CatalogDesignerStudio({
             <option value="square_10x10" className="bg-[#1F1C17] text-[#FAF9F6]">10×10&quot; (254mm)</option>
             <option value="a4_portrait" className="bg-[#1F1C17] text-[#FAF9F6]">A4 แนวตั้ง</option>
             <option value="a4_landscape" className="bg-[#1F1C17] text-[#FAF9F6]">A4 แนวนอน</option>
+            <option value="custom" className="bg-[#1F1C17] text-[#FAF9F6]">กำหนดเอง…</option>
           </select>
 
+          {/* D: Custom Paper Size W × H Inputs (shown only when 'custom' selected) */}
+          {template.paperSize === 'custom' && (
+            <div className="flex items-center gap-1 ml-1">
+              <input
+                type="number"
+                min="1" max="36" step="0.5"
+                value={customWidthInput}
+                onChange={(e) => setCustomWidthInput(e.target.value)}
+                onBlur={handleApplyCustomPaperSize}
+                onKeyDown={(e) => e.key === 'Enter' && handleApplyCustomPaperSize()}
+                className="w-10 bg-black/40 border border-[#C5A880]/40 rounded text-[10px] font-mono text-[#FAF9F6] text-center focus:outline-none focus:border-[#C5A880] px-1 py-0.5"
+                title="ความกว้าง (นิ้ว)"
+              />
+              <span className="text-[10px] text-[#737067]">×</span>
+              <input
+                type="number"
+                min="1" max="36" step="0.5"
+                value={customHeightInput}
+                onChange={(e) => setCustomHeightInput(e.target.value)}
+                onBlur={handleApplyCustomPaperSize}
+                onKeyDown={(e) => e.key === 'Enter' && handleApplyCustomPaperSize()}
+                className="w-10 bg-black/40 border border-[#C5A880]/40 rounded text-[10px] font-mono text-[#FAF9F6] text-center focus:outline-none focus:border-[#C5A880] px-1 py-0.5"
+                title="ความสูง (นิ้ว)"
+              />
+              <span className="text-[9px] text-[#737067]">&quot;</span>
+            </div>
+          )}
+
           <div className="h-3.5 w-px bg-white/10 mx-1" />
+
+          {/* B: Page Background Color Picker */}
+          <div className="relative">
+            <button
+              onClick={() => setIsBgColorOpen(!isBgColorOpen)}
+              className={`p-1.5 rounded-full flex items-center gap-1.5 text-[11px] transition-all cursor-pointer ${
+                isBgColorOpen ? 'bg-[#C5A880]/20 border border-[#C5A880]/40' : 'text-[#A59F92] hover:text-[#FAF9F6] hover:bg-white/5'
+              }`}
+              title="เปลี่ยนสีพื้นหลังกระดาษ"
+            >
+              <div
+                className="w-3.5 h-3.5 rounded-sm border border-white/30 shadow-sm"
+                style={{ backgroundColor: template.backgroundColor || '#FFFFFF' }}
+              />
+              <span className="hidden xl:inline text-[10px] font-mono text-[#C5A880]">พื้นหลัง</span>
+            </button>
+
+            {/* Background Color Popover */}
+            {isBgColorOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-[#141413] border border-[#C5A880]/40 rounded-2xl p-4 shadow-2xl w-60 z-50 text-xs"
+              >
+                <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/10">
+                  <span className="font-bold text-[#C5A880] flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5" />
+                    สีพื้นหลังกระดาษ
+                  </span>
+                  <button onClick={() => setIsBgColorOpen(false)} className="p-1 rounded hover:bg-white/10 text-[#A59F92]">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Quick Palette (Print-safe colors) */}
+                <div className="grid grid-cols-6 gap-1.5 mb-3">
+                  {[
+                    { hex: '#FFFFFF', label: 'ขาวกระดาษ' },
+                    { hex: '#F5F4F0', label: 'ครีมหอศิลป์' },
+                    { hex: '#F0EDE6', label: 'ครีมอุ่น' },
+                    { hex: '#EAE6DE', label: 'ทรายทอง' },
+                    { hex: '#1F1C17', label: 'ดำชาร์โคล' },
+                    { hex: '#141413', label: 'ดำหอศิลป์' },
+                    { hex: '#8B1B1B', label: 'แดงเพาะช่าง' },
+                    { hex: '#1A2E40', label: 'ครามสยาม' },
+                    { hex: '#2D5A3F', label: 'เขียวพงไพร' },
+                    { hex: '#C85227', label: 'ส้มดินเผา' },
+                    { hex: '#C5A880', label: 'ทองเฮอริเทจ' },
+                    { hex: '#D4AF37', label: 'ทองแท้' },
+                  ].map((c) => (
+                    <button
+                      key={c.hex}
+                      onClick={() => {
+                        updateTemplateWithHistory({ ...template, backgroundColor: c.hex });
+                      }}
+                      className={`w-8 h-8 rounded-lg border-2 transition-all cursor-pointer hover:scale-110 ${
+                        template.backgroundColor === c.hex ? 'border-[#C5A880] shadow-md scale-110' : 'border-white/10'
+                      }`}
+                      style={{ backgroundColor: c.hex }}
+                      title={c.label}
+                    />
+                  ))}
+                </div>
+
+                {/* Custom Color Hex Input */}
+                <div className="flex items-center gap-2 bg-[#1F1C17] border border-[#C5A880]/30 rounded-xl px-2 py-1.5">
+                  <div className="w-4 h-4 rounded border border-white/20" style={{ backgroundColor: template.backgroundColor || '#FFFFFF' }} />
+                  <input
+                    type="color"
+                    value={template.backgroundColor || '#FFFFFF'}
+                    onChange={(e) => updateTemplateWithHistory({ ...template, backgroundColor: e.target.value })}
+                    className="w-5 h-5 bg-transparent border-none cursor-pointer"
+                    title="เลือกสีกำหนดเอง"
+                  />
+                  <input
+                    type="text"
+                    value={template.backgroundColor || '#FFFFFF'}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (/^#[0-9A-Fa-f]{6}$/.test(v)) updateTemplateWithHistory({ ...template, backgroundColor: v });
+                    }}
+                    className="flex-1 bg-transparent text-[11px] font-mono text-[#FAF9F6] focus:outline-none"
+                    placeholder="#FFFFFF"
+                    maxLength={7}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Grid Toggle */}
           <button
@@ -1100,17 +1306,25 @@ export function CatalogDesignerStudio({
 
           <div className="h-3.5 w-px bg-white/10 mx-1" />
 
-          {/* Undo */}
-          <button
-            onClick={handleUndo}
-            disabled={historyIndex <= 0}
-            className="p-1 text-[#A59F92] hover:text-[#FAF9F6] disabled:opacity-30 cursor-pointer"
-            title="เลิกทำ (Undo)"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-
-          <div className="h-3.5 w-px bg-white/10 mx-1" />
+          {/* Undo + Redo pair */}
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={handleUndo}
+              disabled={historyIndex <= 0}
+              className="p-1 text-[#A59F92] hover:text-[#FAF9F6] disabled:opacity-30 cursor-pointer rounded"
+              title="เลิกทำ Ctrl+Z (Undo)"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+              className="p-1 text-[#A59F92] hover:text-[#FAF9F6] disabled:opacity-30 cursor-pointer rounded"
+              title="ทำซ้ำ Ctrl+Y (Redo)"
+            >
+              <RotateCcw className="w-3.5 h-3.5 scale-x-[-1]" />
+            </button>
+          </div>
 
           {/* Reload Saved Template */}
           <button
@@ -1147,6 +1361,17 @@ export function CatalogDesignerStudio({
 
         {/* Right Pill: Presets, Live Link, Save Button */}
         <div className="flex items-center gap-2 pointer-events-auto">
+          {/* F: Multi-Page Preview Panel Toggle */}
+          <button
+            onClick={() => setIsPagesPanelOpen(!isPagesPanelOpen)}
+            className={`p-2 rounded-full bg-[#141413]/95 backdrop-blur-xl border shadow-xl transition-all cursor-pointer ${
+              isPagesPanelOpen ? 'border-[#C5A880]/60 text-[#C5A880]' : 'border-[#C5A880]/30 text-[#A59F92] hover:text-[#FAF9F6]'
+            }`}
+            title={isPagesPanelOpen ? 'ซ่อนแผงพรีวิวหน้า' : 'แสดงแผงพรีวิวทุกหน้า (Multi-Page Preview)'}
+          >
+            <Layers className="w-3.5 h-3.5" />
+          </button>
+
           {/* Preset Button */}
           <button
             onClick={() => setIsPresetModalOpen(true)}
@@ -1155,6 +1380,21 @@ export function CatalogDesignerStudio({
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">แม่แบบ</span>
           </button>
+
+          {/* A: Print / Export PDF Button */}
+          {currentExhibition?.slug && (
+            <button
+              onClick={() => {
+                const printUrl = `/catalog/${currentExhibition.slug}?print=1`;
+                window.open(printUrl, '_blank', 'noopener');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141413]/95 backdrop-blur-xl border border-[#C5A880]/30 text-xs text-[#A59F92] hover:text-white hover:bg-[#8B1B1B]/70 hover:border-[#8B1B1B] shadow-xl transition-all cursor-pointer"
+              title="พิมพ์ / ส่งออก PDF — เปิดหน้าสูจิบัตรพร้อม print dialog"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">พิมพ์ PDF</span>
+            </button>
+          )}
 
           {/* View Catalog */}
           {currentExhibition?.slug && (
@@ -1515,6 +1755,69 @@ export function CatalogDesignerStudio({
       </main>
 
       {/* ========================================================================= */}
+      {/* 📋 F: MULTI-PAGE PREVIEW PANEL (Right Sidebar – Collapsible) */}
+      {/* ========================================================================= */}
+      {isPagesPanelOpen && exhibitionArtworks.length > 0 && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed right-4 top-20 bottom-20 z-30 flex flex-col pointer-events-auto"
+        >
+          <div className="bg-[#141413]/95 backdrop-blur-xl border border-[#C5A880]/30 rounded-2xl p-2 shadow-2xl flex flex-col gap-1.5 w-28 max-h-full overflow-y-auto custom-scrollbar">
+            {/* Panel Header */}
+            <div className="text-[10px] uppercase font-bold text-[#C5A880] tracking-wider text-center pb-1.5 border-b border-white/10">
+              {exhibitionArtworks.length} หน้า
+            </div>
+
+            {/* Artwork Thumbnails */}
+            {exhibitionArtworks.map((art, idx) => {
+              const isActive = idx === sampleArtworkIndex % exhibitionArtworks.length;
+              return (
+                <button
+                  key={art.id}
+                  onClick={() => setSampleArtworkIndex(idx)}
+                  className={`relative group flex flex-col items-center gap-1 p-1.5 rounded-xl cursor-pointer transition-all ${
+                    isActive
+                      ? 'bg-[#8B1B1B]/30 ring-1 ring-[#8B1B1B]'
+                      : 'hover:bg-white/5 hover:ring-1 hover:ring-[#C5A880]/30'
+                  }`}
+                  title={`หน้า ${idx + 1}: ${art.title}`}
+                >
+                  {/* Miniature Canvas Preview */}
+                  <div
+                    className="relative w-full overflow-hidden rounded shadow-md"
+                    style={{
+                      aspectRatio: `${template.pageWidthInches} / ${template.pageHeightInches}`,
+                      backgroundColor: template.backgroundColor || '#FFFFFF',
+                      border: isActive ? '1px solid #8B1B1B' : '1px solid rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    {art.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={art.imageUrl}
+                        alt={art.title}
+                        className="w-full h-full object-contain p-1"
+                        loading="lazy"
+                      />
+                    )}
+                    {/* Page Number Badge */}
+                    <div className={`absolute bottom-0.5 right-0.5 text-[7px] font-bold px-1 rounded ${isActive ? 'bg-[#8B1B1B] text-white' : 'bg-black/50 text-white/70'}`}>
+                      {idx + 1}
+                    </div>
+                  </div>
+
+                  {/* Artwork Title (truncated) */}
+                  <span className={`text-[8.5px] leading-tight text-center line-clamp-2 w-full ${isActive ? 'text-[#C5A880] font-semibold' : 'text-[#A59F92]'}`}>
+                    {art.title}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* 🎛️ SLEEK CONTEXTUAL INSPECTOR PILL (Appears on Selected Block) */}
       {/* ========================================================================= */}
       {selectedBlock && (
@@ -1854,6 +2157,30 @@ export function CatalogDesignerStudio({
               </div>
             </div>
           )}
+
+          {/* E: 💧 UNIVERSAL OPACITY CONTROL (All Block Types) */}
+          <div className="flex items-center gap-1.5 bg-[#1F1C17] px-2 py-1 rounded-xl border border-white/10 text-xs">
+            <span className="text-[10px] text-[#C5A880] font-bold flex items-center gap-1">
+              <Eye className="w-3 h-3" />
+              <span>Opacity:</span>
+            </span>
+            <input
+              type="range"
+              min="10"
+              max="100"
+              step="5"
+              value={Math.round((selectedBlock.style.opacity ?? 1) * 100)}
+              onChange={(e) => {
+                const op = parseInt(e.target.value) / 100;
+                handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, opacity: op } }, true);
+              }}
+              className="w-20 accent-[#C5A880] h-1 bg-black/40 rounded cursor-pointer"
+              title="ปรับความโปร่งแสง (Opacity)"
+            />
+            <span className="text-[10px] font-mono text-[#C5A880] w-7 text-right">
+              {Math.round((selectedBlock.style.opacity ?? 1) * 100)}%
+            </span>
+          </div>
 
           {/* 🖼️ FOOTER GRAPHIC CONTROLS (ใส่รูปปกติ หรือ ไล่น้ำหนักจากเข้มขึ้นไปบางกลืนกระดาษ) */}
           {selectedBlock.type === 'footer_graphic' && (

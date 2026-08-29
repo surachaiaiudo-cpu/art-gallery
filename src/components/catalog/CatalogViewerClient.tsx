@@ -47,6 +47,7 @@ interface CatalogViewerClientProps {
 export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const searchParams = useSearchParams();
   const isAdmin = searchParams?.get('admin') === 'true' || searchParams?.get('preview') === 'admin';
+  const autoPrint = searchParams?.get('print') === '1';
   const customTemplate: CatalogTemplateConfig = getExhibitionCatalogTemplate(exhibition);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPeerReviewModalOpen, setIsPeerReviewModalOpen] = useState(false);
@@ -54,6 +55,16 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [savingReviewers, setSavingReviewers] = useState(false);
   const [savedReviewersSuccess, setSavedReviewersSuccess] = useState(false);
+
+  // A: Auto-trigger print dialog when ?print=1 query param is present
+  useEffect(() => {
+    if (!autoPrint) return;
+    // Wait for page to fully render before printing
+    const timer = setTimeout(() => {
+      window.print();
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [autoPrint]);
 
   // Initial values from themeConfig
   let initialFooterGraphicType: 'wave_gold' | 'wave_mono' | 'line_gold' | 'custom_image' | 'none' = 'wave_gold';
