@@ -186,7 +186,7 @@ export function Mobile3DControls({
     : `โถงที่ ${currentRoomIndex + 1}`;
 
   return (
-    <div className="sm:hidden pointer-events-none select-none z-30 fixed inset-0 flex flex-col justify-between overflow-hidden">
+    <div className="md:hidden pointer-events-none select-none z-30 fixed inset-0 flex flex-col justify-between overflow-hidden">
       {/* 1. TOP MOBILE FLOATING CAPSULE BAR */}
       <div className="pointer-events-auto pt-3 px-3 w-full flex items-center justify-between gap-2 z-40">
         {/* Left: Room Selector Pill */}

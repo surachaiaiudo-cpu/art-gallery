@@ -1994,7 +1994,7 @@ export function Modern3DGalleryEngine({
   };
 
   return (
-    <div className="relative w-full h-full min-h-[calc(100vh-64px)] overflow-hidden bg-[#0D0C0B] select-none text-slate-100" style={{ touchAction: "none" }}>
+    <div className="relative w-full h-full min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-64px)] min-h-[100dvh] overflow-hidden bg-[#0D0C0B] select-none text-slate-100" style={{ touchAction: "none" }}>
       {/* 3D WebGL Canvas */}
       <Canvas
         camera={{ position: [0, 1.8, ROOM_D / 2 - 3], fov: 60 }}
@@ -2201,7 +2201,7 @@ export function Modern3DGalleryEngine({
       )}
 
       {/* Top Header Bar Controls */}
-      <header className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-6 py-3.5 bg-gradient-to-b from-black/40 via-black/10 to-transparent pointer-events-none gap-3">
+      <header className="hidden md:flex absolute top-0 left-0 right-0 z-30 items-center justify-between px-3 sm:px-6 py-3.5 bg-gradient-to-b from-black/40 via-black/10 to-transparent pointer-events-none gap-3">
         {/* Left Side: Brand & Navigation */}
         <div className="flex items-center space-x-2 sm:space-x-3 pointer-events-auto">
           {onSwitchTo2D && (
@@ -2573,96 +2573,6 @@ export function Modern3DGalleryEngine({
             />
           </div>
         )}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 📱 ENHANCED MOBILE TOUCH CONTROLS (Strafe A/D + Walk W/S + Turn L/R) */}
-      {/* ========================================================================= */}
-      <div className="sm:hidden pointer-events-none select-none">
-        {/* Left Hand: Movement D-Pad (Walk Forward/Back & Strafe Left/Right) */}
-        <div className="absolute bottom-28 left-3 z-30 pointer-events-auto flex flex-col items-center">
-          {/* Forward (W) */}
-          <button
-            onTouchStart={() => handleTouchKey('w', true)}
-            onTouchEnd={() => handleTouchKey('w', false)}
-            onMouseDown={() => handleTouchKey('w', true)}
-            onMouseUp={() => handleTouchKey('w', false)}
-            className="w-11 h-10 rounded-t-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all"
-            aria-label="Walk Forward"
-            title="เดินหน้า (W)"
-          >
-            <ChevronUp className="w-5 h-5" />
-          </button>
-          
-          {/* Middle Row: Strafe Left (A) | Backward (S) | Strafe Right (D) */}
-          <div className="flex items-center">
-            {/* Strafe Left (A) */}
-            <button
-              onTouchStart={() => handleTouchKey('a', true)}
-              onTouchEnd={() => handleTouchKey('a', false)}
-              onMouseDown={() => handleTouchKey('a', true)}
-              onMouseUp={() => handleTouchKey('a', false)}
-              className="w-10 h-10 rounded-l-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all text-[11px] font-bold"
-              aria-label="Strafe Left"
-              title="สไลด์ซ้าย (A)"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            {/* Backward (S) */}
-            <button
-              onTouchStart={() => handleTouchKey('s', true)}
-              onTouchEnd={() => handleTouchKey('s', false)}
-              onMouseDown={() => handleTouchKey('s', true)}
-              onMouseUp={() => handleTouchKey('s', false)}
-              className="w-11 h-10 bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all"
-              aria-label="Walk Backward"
-              title="ถอยหลัง (S)"
-            >
-              <ChevronDown className="w-5 h-5" />
-            </button>
-            {/* Strafe Right (D) */}
-            <button
-              onTouchStart={() => handleTouchKey('d', true)}
-              onTouchEnd={() => handleTouchKey('d', false)}
-              onMouseDown={() => handleTouchKey('d', true)}
-              onMouseUp={() => handleTouchKey('d', false)}
-              className="w-10 h-10 rounded-r-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all text-[11px] font-bold"
-              aria-label="Strafe Right"
-              title="สไลด์ขวา (D)"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Right Hand: Look & Rotation Controls (Turn Left, Turn Right) */}
-        <div className="absolute bottom-28 right-3 z-30 pointer-events-auto flex items-center gap-1.5">
-          {/* Turn Left */}
-          <button
-            onTouchStart={() => handleTouchKey('arrowleft', true)}
-            onTouchEnd={() => handleTouchKey('arrowleft', false)}
-            onMouseDown={() => handleTouchKey('arrowleft', true)}
-            onMouseUp={() => handleTouchKey('arrowleft', false)}
-            className="w-11 h-11 rounded-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all"
-            aria-label="Turn Left"
-            title="หันซ้าย"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-
-          {/* Turn Right */}
-          <button
-            onTouchStart={() => handleTouchKey('arrowright', true)}
-            onTouchEnd={() => handleTouchKey('arrowright', false)}
-            onMouseDown={() => handleTouchKey('arrowright', true)}
-            onMouseUp={() => handleTouchKey('arrowright', false)}
-            className="w-11 h-11 rounded-2xl bg-[#161310]/70 active:bg-[#D9B878] active:text-black backdrop-blur-xl border border-[#D9B878]/30 shadow-lg flex items-center justify-center text-[#FFD98A] active:scale-95 transition-all"
-            aria-label="Turn Right"
-            title="หันขวา"
-          >
-            <RotateCw className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
       {/* Bottom Artwork Carousel Bar */}
