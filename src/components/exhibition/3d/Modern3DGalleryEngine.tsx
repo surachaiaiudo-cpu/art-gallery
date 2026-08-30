@@ -36,6 +36,7 @@ import { Artwork3DFrame } from './Artwork3DFrame';
 import { MinimapRadar } from './MinimapRadar';
 import { RoomCuratorStudioModal } from './RoomCuratorStudioModal';
 import { ArtworkInspectModal } from './ArtworkInspectModal';
+import { Mobile3DControls } from './Mobile3DControls';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
 import {
   Compass,
@@ -1872,7 +1873,7 @@ export function Modern3DGalleryEngine({
   };
 
   return (
-    <div className="relative w-full h-full min-h-[calc(100vh-64px)] overflow-hidden bg-[#0D0C0B] select-none text-slate-100">
+    <div className="relative w-full h-full min-h-[calc(100vh-64px)] overflow-hidden bg-[#0D0C0B] select-none text-slate-100" style={{ touchAction: "none" }}>
       {/* 3D WebGL Canvas */}
       <Canvas
         camera={{ position: [0, 1.8, ROOM_D / 2 - 3], fov: 60 }}
@@ -2494,7 +2495,7 @@ export function Modern3DGalleryEngine({
       </div>
 
       {/* Bottom Artwork Carousel Bar */}
-      <div className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-full px-2 sm:px-4">
+      <div className="hidden sm:block absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-full px-2 sm:px-4">
         <div className="bg-[#161310]/25 backdrop-blur-2xl px-3 sm:px-4 py-2 rounded-2xl flex items-center space-x-2 sm:space-x-3 shadow-[0_8px_32px_rgba(0,0,0,0.35)] border border-[#D9B878]/30">
           <span className="text-xs text-[#C5A880] font-medium pr-2 border-r border-white/10 hidden md:inline">
             ผลงานในห้องนี้:
