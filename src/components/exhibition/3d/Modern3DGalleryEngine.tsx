@@ -927,6 +927,11 @@ interface CameraControllerProps {
   onAimArtwork: (artwork: Artwork | null, slot: CalculatedArtworkSlot | null) => void;
   onMarkViewed: (artworkId: string) => void;
   onTogglePointerLock?: (locked: boolean) => void;
+  // Mobile touch controls
+  joystickVectorRef: React.MutableRefObject<{ x: number; y: number }>;
+  rotateSnapRef: React.MutableRefObject<number | null>;
+  centerViewRef: React.MutableRefObject<boolean>;
+  zoomStepRef: React.MutableRefObject<number>;
 }
 
 function CameraController({
@@ -945,6 +950,10 @@ function CameraController({
   onAimArtwork,
   onMarkViewed,
   onTogglePointerLock,
+  joystickVectorRef,
+  rotateSnapRef,
+  centerViewRef,
+  zoomStepRef,
 }: CameraControllerProps) {
   const { camera, raycaster, scene, gl } = useThree();
   const targetCamPos = useRef(new THREE.Vector3(0, 1.8, ROOM_D / 2 - 3));
@@ -1081,16 +1090,110 @@ function CameraController({
     window.addEventListener('pointerup', onPointerUp);
     dom.addEventListener('wheel', onWheel, { passive: true });
 
+    // ---------------------------------------------------------------
+    // Mobile Touch: 1-finger swipe = look-around, 2-finger = pinch zoom
+    // ---------------------------------------------------------------
+    let touchLookId: number | null = null;
+    let touchLookPrev = { x: 0, y: 0 };
+    let pinchStartDist: number | null = null;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        touchLookId = t.identifier;
+        touchLookPrev = { x: t.clientX, y: t.clientY };
+      } else if (e.touches.length === 2) {
+        touchLookId = null;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchStartDist = Math.hypot(dx, dy);
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 2 && pinchStartDist !== null) {
+        // Pinch zoom
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const newDist = Math.hypot(dx, dy);
+        const delta = pinchStartDist - newDist;
+        pinchStartDist = newDist;
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = Math.max(35, Math.min(80, camera.fov + delta * 0.05));
+          camera.updateProjectionMatrix();
+        }
+        return;
+      }
+
+      if (touchLookId === null) return;
+      const touch = Array.from(e.touches).find((t) => t.identifier === touchLookId);
+      if (!touch) return;
+
+      const dx = touch.clientX - touchLookPrev.x;
+      const dy = touch.clientY - touchLookPrev.y;
+      touchLookPrev = { x: touch.clientX, y: touch.clientY };
+
+      const sensitivity = 0.0032;
+      targetYaw.current += dx * sensitivity;
+      targetPitch.current = Math.max(-1.3, Math.min(1.3, targetPitch.current - dy * sensitivity));
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        pinchStartDist = null;
+      }
+      const stillActive = Array.from(e.touches).find((t) => t.identifier === touchLookId);
+      if (!stillActive) {
+        touchLookId = null;
+      }
+    };
+
+    dom.addEventListener('touchstart', onTouchStart, { passive: false });
+    dom.addEventListener('touchmove', onTouchMove, { passive: false });
+    dom.addEventListener('touchend', onTouchEnd, { passive: true });
+    dom.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
     return () => {
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       dom.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       dom.removeEventListener('wheel', onWheel);
+      dom.removeEventListener('touchstart', onTouchStart);
+      dom.removeEventListener('touchmove', onTouchMove);
+      dom.removeEventListener('touchend', onTouchEnd);
+      dom.removeEventListener('touchcancel', onTouchEnd);
     };
   }, [gl, camera, focusedArtwork, focusedSlot, onClearFocus, onTogglePointerLock]);
 
   useFrame((state, delta) => {
+    // --- Mobile: Handle rotate snap (45° buttons) ---
+    if (rotateSnapRef.current !== null) {
+      targetYaw.current += rotateSnapRef.current;
+      rotateSnapRef.current = null;
+    }
+
+    // --- Mobile: Handle center view button ---
+    if (centerViewRef.current) {
+      centerViewRef.current = false;
+      targetPitch.current = 0;
+      // Face center of room
+      const center = currentRoomConfig.center;
+      const dx = center.x - camera.position.x;
+      const dz = center.z - camera.position.z;
+      targetYaw.current = Math.atan2(dx, -dz);
+    }
+
+    // --- Mobile: Handle zoom step (pinch buttons) ---
+    if (zoomStepRef.current !== 0) {
+      if (camera instanceof THREE.PerspectiveCamera) {
+        camera.fov = Math.max(35, Math.min(80, camera.fov + zoomStepRef.current));
+        camera.updateProjectionMatrix();
+      }
+      zoomStepRef.current = 0;
+    }
+
     // 0. Raycast center screen to detect aimed artwork (optimized with motion detection & targeted artwork groups)
     const posDistSq = prevRaycastPos.current.distanceToSquared(camera.position);
     const yawDelta = Math.abs(prevRaycastYawPitch.current.yaw - yaw.current);
@@ -1200,13 +1303,18 @@ function CameraController({
       return;
     }
 
+    const jx = joystickVectorRef.current.x;
+    const jy = joystickVectorRef.current.y;
+    const isJoystickActive = Math.abs(jx) > 0.05 || Math.abs(jy) > 0.05;
+
     const isMoving =
       activeKeys.current['w'] ||
       activeKeys.current['arrowup'] ||
       activeKeys.current['s'] ||
       activeKeys.current['arrowdown'] ||
       activeKeys.current['a'] ||
-      activeKeys.current['d'];
+      activeKeys.current['d'] ||
+      isJoystickActive;
 
     if (isMoving && (focusedArtwork || focusedSlot)) {
       onClearFocus();
@@ -1257,6 +1365,12 @@ function CameraController({
       if (activeKeys.current['s'] || activeKeys.current['arrowdown']) move.sub(forward);
       if (activeKeys.current['d']) move.add(right);
       if (activeKeys.current['a']) move.sub(right);
+
+      // Mobile joystick contribution: jy = forward/back, jx = strafe left/right
+      if (isJoystickActive) {
+        move.addScaledVector(forward, jy);
+        move.addScaledVector(right, jx);
+      }
 
       if (move.lengthSq() > 0) {
         move.normalize().multiplyScalar(moveSpeed);
@@ -1388,6 +1502,13 @@ export function Modern3DGalleryEngine({
 }: Modern3DGalleryEngineProps) {
   const controlsRef = useRef<any>(null);
   const activeKeys = useRef<{ [key: string]: boolean }>({});
+
+  // Mobile touch control refs (mutable, zero re-renders)
+  const joystickVectorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const rotateSnapRef = useRef<number | null>(null);
+  const centerViewRef = useRef<boolean>(false);
+  const zoomStepRef = useRef<number>(0);
+
 
   // Parse initial themeConfig from exhibition database record
   const parsedTheme = useMemo(() => {
@@ -1961,9 +2082,59 @@ export function Modern3DGalleryEngine({
             }}
             onMarkViewed={handleMarkViewed}
             onTogglePointerLock={setIsPointerLocked}
+            joystickVectorRef={joystickVectorRef}
+            rotateSnapRef={rotateSnapRef}
+            centerViewRef={centerViewRef}
+            zoomStepRef={zoomStepRef}
           />
         </Suspense>
       </Canvas>
+
+      {/* ================================================================== */}
+      {/* 📱 MOBILE TOUCH CONTROLS OVERLAY (Only renders on small screens)   */}
+      {/* ================================================================== */}
+      <Mobile3DControls
+        exhibition={exhibition}
+        roomConfigs={roomConfigs}
+        currentRoomIndex={currentRoomIndex}
+        currentRoomConfig={currentRoomConfig}
+        focusedArtwork={focusedArtwork}
+        focusedSlot={focusedSlot}
+        aimedArtwork={currentAim?.artwork || null}
+        aimedSlot={currentAim?.slot || null}
+        viewedArtworkIds={viewedArtworkIds}
+        likedArtworkIds={likedArtworkIds}
+        isMuted={!isAudioPlaying}
+        isGuidedTour={isGuidedTour}
+        isFullscreen={isFullscreen}
+        onSetJoystickVector={(v) => { joystickVectorRef.current = v; }}
+        onRotateCameraSnap={(delta) => { rotateSnapRef.current = delta; }}
+        onCenterView={() => { centerViewRef.current = true; }}
+        onZoomStep={(delta) => { zoomStepRef.current = delta; }}
+        onSelectArtwork={(artwork) => handleInspectArtwork(artwork)}
+        onOpenLightbox={(artwork) => onOpenLightbox?.(artwork)}
+        onOpenInquiry={(artwork) => onOpenInquiry?.(artwork)}
+        onToggleLike={handleToggleLike}
+        onClearFocus={() => { setFocusedArtwork(null); setFocusedSlot(null); }}
+        onSelectRoomIndex={(idx) => {
+          setCurrentRoomIndex(idx);
+          const targetRoom = roomConfigs[idx];
+          if (targetRoom) {
+            const halfD = (targetRoom.depth || ROOM_D) / 2;
+            const offset = rotatePointY(0, halfD - 3.2, targetRoom.rotationY);
+            setWarpTarget({
+              x: targetRoom.center.x + offset.x,
+              z: targetRoom.center.z + offset.z,
+              rotY: targetRoom.rotationY,
+            });
+          }
+        }}
+        onToggleMute={handleToggleAudio}
+        onToggleGuidedTour={() => setIsGuidedTour((prev) => !prev)}
+        onToggleFullscreen={handleToggleFullscreen}
+        onSwitchTo2D={onSwitchTo2D}
+        onOpenMinimap={() => setIsMinimapMobileOpen(true)}
+      />
 
       {/* Center Screen Raycast Crosshair Dot */}
       <div
