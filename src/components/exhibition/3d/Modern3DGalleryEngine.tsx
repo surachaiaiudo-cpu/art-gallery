@@ -1092,61 +1092,82 @@ function CameraController({
     dom.addEventListener('wheel', onWheel, { passive: true });
 
     // ---------------------------------------------------------------
-    // Mobile Touch: 1-finger swipe = look-around, 2-finger = pinch zoom
+    // 🎮 ROBLOX-STYLE DUAL-TOUCH ENGINE (Multi-Touch: Move Left + Look Right)
     // ---------------------------------------------------------------
     let touchLookId: number | null = null;
     let touchLookPrev = { x: 0, y: 0 };
+    let pinchTouches: { id1: number; id2: number } | null = null;
     let pinchStartDist: number | null = null;
 
     const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        const t = e.touches[0];
-        touchLookId = t.identifier;
-        touchLookPrev = { x: t.clientX, y: t.clientY };
-      } else if (e.touches.length === 2) {
-        touchLookId = null;
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        pinchStartDist = Math.hypot(dx, dy);
+      // Assign the first available touch that starts in the look area (right zone or canvas)
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (touchLookId === null) {
+          touchLookId = t.identifier;
+          touchLookPrev = { x: t.clientX, y: t.clientY };
+        }
+      }
+
+      // 2-finger pinch zoom detector (when two touches are in the look area)
+      if (e.touches.length >= 2) {
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        if (t0.clientX > window.innerWidth * 0.35 && t1.clientX > window.innerWidth * 0.35) {
+          pinchTouches = { id1: t0.identifier, id2: t1.identifier };
+          pinchStartDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+        }
       }
     };
 
     const onTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
-      if (e.touches.length === 2 && pinchStartDist !== null) {
-        // Pinch zoom
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const newDist = Math.hypot(dx, dy);
-        const delta = pinchStartDist - newDist;
-        pinchStartDist = newDist;
-        if (camera instanceof THREE.PerspectiveCamera) {
-          camera.fov = Math.max(35, Math.min(80, camera.fov + delta * 0.05));
-          camera.updateProjectionMatrix();
+      // 1. Handle Pinch Zoom if 2 fingers are active in right look zone
+      if (pinchTouches && pinchStartDist !== null) {
+        const t0 = Array.from(e.touches).find((t) => t.identifier === pinchTouches?.id1);
+        const t1 = Array.from(e.touches).find((t) => t.identifier === pinchTouches?.id2);
+        if (t0 && t1) {
+          const newDist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+          const delta = pinchStartDist - newDist;
+          pinchStartDist = newDist;
+          if (camera instanceof THREE.PerspectiveCamera) {
+            camera.fov = Math.max(35, Math.min(80, camera.fov + delta * 0.05));
+            camera.updateProjectionMatrix();
+          }
+          return;
         }
-        return;
       }
 
-      if (touchLookId === null) return;
-      const touch = Array.from(e.touches).find((t) => t.identifier === touchLookId);
-      if (!touch) return;
+      // 2. Handle Camera Look-Around (Runs simultaneously with Left-Hand Joystick!)
+      if (touchLookId !== null) {
+        const touch = Array.from(e.touches).find((t) => t.identifier === touchLookId);
+        if (touch) {
+          const dx = touch.clientX - touchLookPrev.x;
+          const dy = touch.clientY - touchLookPrev.y;
+          touchLookPrev = { x: touch.clientX, y: touch.clientY };
 
-      const dx = touch.clientX - touchLookPrev.x;
-      const dy = touch.clientY - touchLookPrev.y;
-      touchLookPrev = { x: touch.clientX, y: touch.clientY };
+          if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+            if (focusedArtwork || focusedSlot) {
+              onClearFocus();
+            }
+          }
 
-      const sensitivity = 0.0032;
-      targetYaw.current += dx * sensitivity;
-      targetPitch.current = Math.max(-1.3, Math.min(1.3, targetPitch.current - dy * sensitivity));
+          const sensitivity = 0.0034;
+          targetYaw.current += dx * sensitivity;
+          targetPitch.current = Math.max(-1.3, Math.min(1.3, targetPitch.current - dy * sensitivity));
+        }
+      }
     };
 
     const onTouchEnd = (e: TouchEvent) => {
-      if (e.touches.length < 2) {
-        pinchStartDist = null;
-      }
-      const stillActive = Array.from(e.touches).find((t) => t.identifier === touchLookId);
-      if (!stillActive) {
-        touchLookId = null;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === touchLookId) {
+          touchLookId = null;
+        }
+        if (pinchTouches && (t.identifier === pinchTouches.id1 || t.identifier === pinchTouches.id2)) {
+          pinchTouches = null;
+          pinchStartDist = null;
+        }
       }
     };
 
