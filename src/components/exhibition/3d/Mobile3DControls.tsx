@@ -7,6 +7,7 @@ import {
   RotateCcw,
   RotateCw,
   Heart,
+  Home,
   Maximize2,
   Minimize2,
   ZoomIn,
@@ -192,43 +193,47 @@ export function Mobile3DControls({
       
       {/* 1. TOP MOBILE FLOATING CAPSULE BAR */}
       <div
-        className="pointer-events-auto w-full px-2.5 pt-2 flex items-center justify-between gap-1.5 z-40"
+        className="pointer-events-auto w-full px-2.5 pt-2 flex items-center justify-between gap-1.5 z-40 transition-all duration-300"
         style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0.5rem))' }}
       >
-        {/* Left: Back to 2D & Room Selector Pill */}
+        {/* Left: Home / 2D & Room Selector Pill */}
         <div className="flex items-center gap-1">
           {onSwitchTo2D && (
             <button
               onClick={onSwitchTo2D}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all"
-              title="สลับไปมุมมอง 2D"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#161310]/90 backdrop-blur-2xl border border-[#D9B878]/50 text-xs font-bold text-[#FFD98A] shadow-xl active:scale-95 transition-all"
+              title="กลับสู่หน้าก่อนหน้า (2D)"
             >
-              <ChevronLeft className="w-3.5 h-3.5 text-[#D9B878]" />
+              <Home className="w-3.5 h-3.5 text-[#D9B878]" />
               <span>2D</span>
             </button>
           )}
 
-          <button
-            onClick={() => setShowRoomDrawer(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all truncate max-w-[130px]"
-          >
-            <span className="text-[10px] text-[#D9B878]">🏛️</span>
-            <span className="truncate">{currentRoomTitle}</span>
-            <span className="text-[9px] opacity-70">▼</span>
-          </button>
+          {!isFullscreen && (
+            <>
+              <button
+                onClick={() => setShowRoomDrawer(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all truncate max-w-[130px]"
+              >
+                <span className="text-[10px] text-[#D9B878]">🏛️</span>
+                <span className="truncate">{currentRoomTitle}</span>
+                <span className="text-[9px] opacity-70">▼</span>
+              </button>
 
-          {/* Quick Artwork Dock Drawer Toggle */}
-          <button
-            onClick={() => setShowMobileArtworkDock(true)}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all"
-            title="เปิดแถบดูผลงานทั้งหมดในห้องนี้"
-          >
-            <span>🖼️</span>
-            <span className="text-[10px] font-mono font-bold text-[#D9B878]">{roomArtworks.length}</span>
-          </button>
+              {/* Quick Artwork Dock Drawer Toggle */}
+              <button
+                onClick={() => setShowMobileArtworkDock(true)}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all"
+                title="เปิดแถบดูผลงานทั้งหมดในห้องนี้"
+              >
+                <span>🖼️</span>
+                <span className="text-[10px] font-mono font-bold text-[#D9B878]">{roomArtworks.length}</span>
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Right: Quick Action Controls Pill */}
+        {/* Right: Quick Action Controls Pill (In Fullscreen: minimal Exit Fullscreen + Sound only) */}
         <div className="flex items-center gap-0.5 bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/35 p-1 rounded-full shadow-lg">
           {/* Sound Toggle */}
           <button
@@ -241,33 +246,37 @@ export function Mobile3DControls({
             {!isMuted ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
           </button>
 
-          {/* Guided Tour Toggle */}
-          <button
-            onClick={onToggleGuidedTour}
-            className={`p-1.5 rounded-full transition-all active:scale-95 ${
-              isGuidedTour ? 'text-[#FFD98A] bg-[#D9B878]/30 animate-pulse' : 'text-neutral-400'
-            }`}
-            title={isGuidedTour ? 'หยุดทัวร์อัตโนมัติ' : 'เริ่มทัวร์อัตโนมัติ'}
-          >
-            {isGuidedTour ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-          </button>
+          {!isFullscreen && (
+            <>
+              {/* Guided Tour Toggle */}
+              <button
+                onClick={onToggleGuidedTour}
+                className={`p-1.5 rounded-full transition-all active:scale-95 ${
+                  isGuidedTour ? 'text-[#FFD98A] bg-[#D9B878]/30 animate-pulse' : 'text-neutral-400'
+                }`}
+                title={isGuidedTour ? 'หยุดทัวร์อัตโนมัติ' : 'เริ่มทัวร์อัตโนมัติ'}
+              >
+                {isGuidedTour ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              </button>
 
-          {/* Minimap Button */}
-          <button
-            onClick={onOpenMinimap}
-            className="p-1.5 rounded-full text-[#FFD98A] hover:bg-white/10 active:scale-95 transition-all"
-            title="เปิดผังห้องนิทรรศการ"
-          >
-            <Compass className="w-3.5 h-3.5" />
-          </button>
+              {/* Minimap Button */}
+              <button
+                onClick={onOpenMinimap}
+                className="p-1.5 rounded-full text-[#FFD98A] hover:bg-white/10 active:scale-95 transition-all"
+                title="เปิดผังห้องนิทรรศการ"
+              >
+                <Compass className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
 
-          {/* Fullscreen Button */}
+          {/* Fullscreen / Exit Fullscreen Button */}
           <button
             onClick={onToggleFullscreen}
             className="p-1.5 rounded-full text-neutral-300 hover:text-white active:scale-95 transition-all"
-            title="เปิดโหมดเต็มจอ"
+            title={isFullscreen ? 'ออกจากโหมดเต็มจอ' : 'เปิดโหมดเต็มจอ'}
           >
-            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 text-[#FFD98A]" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>

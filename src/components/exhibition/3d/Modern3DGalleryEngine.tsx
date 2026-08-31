@@ -55,6 +55,7 @@ import {
   Maximize2,
   Minimize2,
   Building,
+  Home,
   Volume2,
   VolumeX,
   Music,
@@ -2223,8 +2224,33 @@ export function Modern3DGalleryEngine({
         </div>
       )}
 
-      {/* Top Header Bar Controls */}
-      <header className="hidden md:flex absolute top-0 left-0 right-0 z-30 items-center justify-between px-3 sm:px-6 py-3.5 bg-gradient-to-b from-black/40 via-black/10 to-transparent pointer-events-none gap-3">
+      {/* Fullscreen Mode Minimalist Corner Floating Bar */}
+      {isFullscreen ? (
+        <div className="absolute top-4 left-4 z-40 flex items-center gap-2 pointer-events-auto animate-in fade-in duration-300">
+          {onSwitchTo2D && (
+            <button
+              onClick={onSwitchTo2D}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#161310]/85 hover:bg-[#1E1914] text-[#FFD98A] hover:text-white border border-[#D9B878]/40 hover:border-[#FFD98A] text-xs font-bold backdrop-blur-2xl shadow-2xl transition-all active:scale-95 group cursor-pointer"
+              title="กลับสู่หน้าหลัก / มุมมอง 2D"
+            >
+              <Home className="w-4 h-4 text-[#D9B878] group-hover:scale-110 transition-transform" />
+              <span>กลับสู่หน้าหลัก (2D)</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleToggleFullscreen}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#161310]/85 hover:bg-[#1E1914] text-neutral-300 hover:text-white border border-white/20 hover:border-[#D9B878]/50 text-xs font-medium backdrop-blur-2xl shadow-2xl transition-all active:scale-95 cursor-pointer"
+            title="ออกจากโหมดเต็มจอ (ESC หรือ F11)"
+          >
+            <Minimize2 className="w-3.5 h-3.5 text-[#D9B878]" />
+            <span className="hidden sm:inline">ออกจากเต็มจอ</span>
+          </button>
+        </div>
+      ) : null}
+
+      {/* Top Header Bar Controls (Hidden when in Fullscreen mode) */}
+      <header className={`hidden md:flex absolute top-0 left-0 right-0 z-30 items-center justify-between px-3 sm:px-6 py-3.5 bg-gradient-to-b from-black/40 via-black/10 to-transparent pointer-events-none gap-3 ${isFullscreen ? '!hidden' : ''}`}>
         {/* Left Side: Brand & Navigation */}
         <div className="flex items-center space-x-2 sm:space-x-3 pointer-events-auto">
           {onSwitchTo2D && (
