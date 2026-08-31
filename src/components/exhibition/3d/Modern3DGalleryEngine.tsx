@@ -65,6 +65,7 @@ import {
   HelpCircle,
   Gamepad2,
   MousePointer,
+  Sparkles,
   X,
 } from 'lucide-react';
 import { museumAudio } from './MuseumSoundscape';
@@ -1646,6 +1647,7 @@ export function Modern3DGalleryEngine({
   const [viewedArtworkIds, setViewedArtworkIds] = useState<Set<string>>(new Set());
   const [likedArtworkIds, setLikedArtworkIds] = useState<Set<string>>(new Set());
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isArtworkDockOpen, setIsArtworkDockOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ title: string; sub: string } | null>(null);
 
   // Check first-time onboarding
@@ -2578,53 +2580,105 @@ export function Modern3DGalleryEngine({
         </div>
       )}
 
-      {/* Bottom Artwork Carousel Bar */}
-      <div className="hidden sm:block absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-full px-2 sm:px-4">
-        <div className="bg-[#161310]/25 backdrop-blur-2xl px-3 sm:px-4 py-2 rounded-2xl flex items-center space-x-2 sm:space-x-3 shadow-[0_8px_32px_rgba(0,0,0,0.35)] border border-[#D9B878]/30">
-          <span className="text-xs text-[#C5A880] font-medium pr-2 border-r border-white/10 hidden md:inline">
-            ผลงานในห้องนี้:
-          </span>
-          <div className="flex items-center space-x-2 overflow-x-auto max-w-[90vw] sm:max-w-lg py-1 scrollbar-none">
-            {currentRoomConfig.slots
-              .filter((s) => s.artwork)
-              .map((slot) => {
-                const isSelected = focusedArtwork?.id === slot.artwork?.id;
-                const isViewed = slot.artwork ? viewedArtworkIds.has(slot.artwork.id) : false;
-                return (
-                  <button
-                    key={slot.slotIndex}
-                    onClick={() => {
-                      if (slot.artwork) handleInspectArtwork(slot.artwork);
-                    }}
-                    className={`h-11 w-11 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all relative ${
-                      isSelected
-                        ? 'border-[#FFD98A] scale-110 shadow-lg ring-2 ring-[#D9B878]'
-                        : isViewed
-                        ? 'border-[#D9B878]/60 opacity-90 hover:opacity-100 hover:border-[#FFD98A]'
-                        : 'border-white/20 opacity-70 hover:opacity-100 hover:border-[#D9B878]'
-                    }`}
-                    title={slot.artwork?.title}
-                  >
-                    {slot.artwork?.imageUrl ? (
-                      <img
-                        src={slot.artwork.imageUrl}
-                        alt={slot.artwork.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[#2A231C] flex items-center justify-center text-[10px] font-bold text-[#D9B878]">
+      {/* ========================================================================= */}
+      {/* 🌟 COLLAPSIBLE HIDDEN DOCK (แถบถาดรูปภาพแบบซ่อน-ขยายได้ สไตล์ Luxury Glass) */}
+      {/* ========================================================================= */}
+      {!isArtworkDockOpen ? (
+        /* 1. COLLAPSED TRIGGER PILL (แท็บแคปซูลเล็กๆ ตรงกลางล่าง เมื่อซ่อนอยู่) */
+        <div className="hidden md:block absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+          <button
+            onClick={() => setIsArtworkDockOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#161310]/85 hover:bg-[#1E1914] backdrop-blur-2xl border border-[#D9B878]/40 hover:border-[#FFD98A] text-white text-xs font-semibold shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all active:scale-95 group cursor-pointer"
+            title="คลิกเพื่อกางแถบดูภาพผลงานทั้งหมดในห้องนี้"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#D9B878] group-hover:scale-110 transition-transform" />
+            <span className="text-[#FAF8F5]">ผลงานในห้องนี้</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-[#D9B878]/20 text-[#FFD98A] text-[10px] font-mono font-bold">
+              {currentRoomConfig.slots.filter((s) => s.artwork).length} ภาพ
+            </span>
+            <ChevronUp className="w-3.5 h-3.5 text-[#D9B878] group-hover:-translate-y-0.5 transition-transform" />
+          </button>
+        </div>
+      ) : (
+        /* 2. EXPANDED LUXURY DOCK TRAY (ถาดสไลด์แสดงรูปภาพผลงานทั้งหมด) */
+        <div className="hidden md:block absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-4xl w-full px-4">
+          <div className="bg-[#161310]/95 backdrop-blur-2xl px-4 py-3 rounded-3xl border border-[#D9B878]/40 shadow-[0_16px_50px_rgba(0,0,0,0.7)] space-y-2.5 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            {/* Dock Header Bar */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-2 px-1">
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm">🖼️</span>
+                <span className="font-serif text-sm font-bold text-[#FAF8F5]">
+                  {currentRoomConfig.isCornerPavilion
+                    ? (currentRoomConfig.pavilionTitle || 'Corner Pavilion')
+                    : `โถงจัดแสดงที่ ${currentRoomIndex + 1}`}
+                </span>
+                <span className="text-[10px] font-mono text-[#D9B878] bg-[#D9B878]/15 px-2 py-0.5 rounded-full border border-[#D9B878]/30 font-bold">
+                  {currentRoomConfig.slots.filter((s) => s.artwork).length} ชิ้นงาน
+                </span>
+                <span className="text-[11px] text-neutral-400 font-light hidden lg:inline">
+                  • แตะที่รูปเพื่อเดินชมผลงานชิ้นนั้นโดยตรง
+                </span>
+              </div>
+
+              {/* Collapse Button */}
+              <button
+                onClick={() => setIsArtworkDockOpen(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#FFD98A] hover:text-white text-xs font-semibold transition-all active:scale-95 cursor-pointer"
+                title="ซ่อนแถบรูปภาพลง"
+              >
+                <span>ซ่อนแถบภาพ</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Horizontal Artwork Thumbnails Track */}
+            <div className="flex items-center space-x-2.5 overflow-x-auto py-1 px-0.5 scrollbar-thin scrollbar-thumb-[#D9B878]/40 scrollbar-track-transparent">
+              {currentRoomConfig.slots
+                .filter((s) => s.artwork)
+                .map((slot) => {
+                  const isSelected = focusedArtwork?.id === slot.artwork?.id;
+                  const isViewed = slot.artwork ? viewedArtworkIds.has(slot.artwork.id) : false;
+                  return (
+                    <button
+                      key={slot.slotIndex}
+                      onClick={() => {
+                        if (slot.artwork) handleInspectArtwork(slot.artwork);
+                      }}
+                      className={`group/dock-item relative flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-[#FFD98A] scale-105 shadow-[0_0_16px_rgba(255,217,138,0.7)] ring-2 ring-[#D9B878]'
+                          : isViewed
+                          ? 'border-[#D9B878]/60 opacity-90 hover:opacity-100 hover:border-[#FFD98A]'
+                          : 'border-white/20 opacity-70 hover:opacity-100 hover:border-[#D9B878]'
+                      } w-16 h-16 bg-[#1A1714]`}
+                      title={`${slot.artwork?.title} — ${slot.artwork?.artist?.name || ''}`}
+                    >
+                      {slot.artwork?.imageUrl ? (
+                        <img
+                          src={slot.artwork.imageUrl}
+                          alt={slot.artwork.title}
+                          className="w-full h-full object-cover group-hover/dock-item:scale-110 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[#2A231C] flex items-center justify-center text-[10px] font-bold text-[#D9B878]">
+                          #{slot.slotIndex + 1}
+                        </div>
+                      )}
+                      {/* Viewed Status Gold Badge */}
+                      {isViewed && (
+                        <div className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#FFD98A] ring-1.5 ring-black shadow" />
+                      )}
+                      {/* Number Tag */}
+                      <div className="absolute bottom-0 inset-x-0 bg-black/75 backdrop-blur-[2px] text-[9px] font-mono text-neutral-200 text-center py-0.5 truncate px-1">
                         #{slot.slotIndex + 1}
                       </div>
-                    )}
-                    {isViewed && (
-                      <div className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-[#FFD98A] ring-1 ring-black" />
-                    )}
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Artwork Inspection Modal Drawer */}
       <ArtworkInspectModal

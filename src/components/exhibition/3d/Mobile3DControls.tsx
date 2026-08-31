@@ -87,6 +87,7 @@ export function Mobile3DControls({
 }: Mobile3DControlsProps) {
   const { lang } = useLanguage();
   const [showRoomDrawer, setShowRoomDrawer] = useState(false);
+  const [showMobileArtworkDock, setShowMobileArtworkDock] = useState(false);
   const [showGestureTip, setShowGestureTip] = useState(true);
 
   // Auto-hide gesture hint after 3.5 seconds
@@ -209,11 +210,21 @@ export function Mobile3DControls({
 
           <button
             onClick={() => setShowRoomDrawer(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all truncate max-w-[150px]"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all truncate max-w-[130px]"
           >
             <span className="text-[10px] text-[#D9B878]">🏛️</span>
             <span className="truncate">{currentRoomTitle}</span>
             <span className="text-[9px] opacity-70">▼</span>
+          </button>
+
+          {/* Quick Artwork Dock Drawer Toggle */}
+          <button
+            onClick={() => setShowMobileArtworkDock(true)}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all"
+            title="เปิดแถบดูผลงานทั้งหมดในห้องนี้"
+          >
+            <span>🖼️</span>
+            <span className="text-[10px] font-mono font-bold text-[#D9B878]">{roomArtworks.length}</span>
           </button>
         </div>
 
@@ -508,6 +519,90 @@ export function Mobile3DControls({
                 <Compass className="w-3.5 h-3.5" />
                 <span>เปิดดูผังนิทรรศการรวม (Minimap Radar)</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 6. MOBILE ARTWORK DOCK DRAWER MODAL */}
+      {showMobileArtworkDock && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 bg-black/75 backdrop-blur-md animate-fade-in pointer-events-auto">
+          <div className="bg-[#161310]/95 backdrop-blur-2xl border-t border-[#D9B878]/40 rounded-t-3xl p-4 w-full text-white shadow-2xl space-y-3 max-h-[75vh] overflow-y-auto animate-in slide-in-from-bottom-5">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🖼️</span>
+                <div>
+                  <h3 className="font-serif text-sm font-bold text-[#FAF8F5]">
+                    {currentRoomTitle}: ผลงานจัดแสดง ({roomArtworks.length} ชิ้น)
+                  </h3>
+                  <p className="text-[10px] text-neutral-400">
+                    แตะที่รูปเพื่อเดินชมผลงานชิ้นนั้นโดยตรง
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMobileArtworkDock(false)}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-neutral-300 active:scale-95"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Grid of Artworks */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 py-1 max-h-[50vh] overflow-y-auto pr-1">
+              {currentRoomConfig.slots
+                .filter((s: CalculatedArtworkSlot) => s.artwork)
+                .map((slot: CalculatedArtworkSlot) => {
+                  if (!slot.artwork) return null;
+                  const isSelected = focusedArtwork?.id === slot.artwork.id;
+                  const isViewed = viewedArtworkIds.has(slot.artwork.id);
+                  const art = slot.artwork;
+
+                  return (
+                    <button
+                      key={slot.slotIndex}
+                      onClick={() => {
+                        onSelectArtwork(art);
+                        setShowMobileArtworkDock(false);
+                      }}
+                      className={`group relative flex flex-col rounded-2xl overflow-hidden border transition-all active:scale-95 text-left bg-[#1A1714] ${
+                        isSelected
+                          ? 'border-[#FFD98A] ring-2 ring-[#D9B878] shadow-[0_0_12px_rgba(255,217,138,0.5)]'
+                          : isViewed
+                          ? 'border-[#D9B878]/50 opacity-90'
+                          : 'border-white/15 opacity-75'
+                      }`}
+                    >
+                      <div className="relative aspect-square w-full bg-[#121110]">
+                        {art.imageUrl ? (
+                          <img
+                            src={art.imageUrl}
+                            alt={art.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs font-bold text-[#D9B878]">
+                            #{slot.slotIndex + 1}
+                          </div>
+                        )}
+                        {isViewed && (
+                          <div className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#FFD98A] ring-1.5 ring-black shadow" />
+                        )}
+                        <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-[2px] text-[9px] font-mono font-bold text-[#FFD98A]">
+                          #{slot.slotIndex + 1}
+                        </div>
+                      </div>
+                      <div className="p-1.5 space-y-0.5">
+                        <div className="text-[10px] font-serif font-bold text-[#FAF8F5] truncate leading-tight">
+                          {art.title}
+                        </div>
+                        <div className="text-[9px] text-[#C5A880] truncate">
+                          {art.artist?.name || 'Artist'}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
             </div>
           </div>
         </div>
