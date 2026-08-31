@@ -21,16 +21,28 @@ export function ExhibitionViewSwitcher({
   const [mode, setMode] = useState<'2d' | 'carousel' | '3d'>(allowedInitialMode);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F9F8F6] text-[#1E1D1B]">
-      {/* Top Navbar with 2D / Carousel / 3D Mode Toggle */}
-      <Navbar
-        exhibition={exhibition}
-        currentMode={mode}
-        onModeChange={setMode}
-      />
+    <div
+      className={`flex flex-col bg-[#F9F8F6] text-[#1E1D1B] ${
+        mode === '3d'
+          ? 'h-[100dvh] w-full overflow-hidden fixed inset-0 z-10'
+          : 'min-h-screen'
+      }`}
+    >
+      {/* Top Navbar: On desktop show normally, on mobile in 3D mode hide to maximize 3D canvas viewport */}
+      <div className={mode === '3d' ? 'hidden md:block shrink-0' : 'block shrink-0'}>
+        <Navbar
+          exhibition={exhibition}
+          currentMode={mode}
+          onModeChange={setMode}
+        />
+      </div>
 
       {/* Main Content: 2D Grid / Carousel Slider / 3D Virtual Gallery */}
-      <main className="flex-1 w-full relative">
+      <main
+        className={`w-full relative ${
+          mode === '3d' ? 'flex-1 h-full overflow-hidden' : 'flex-1'
+        }`}
+      >
         {mode === '2d' ? (
           <div className="animate-fade-in">
             <Exhibition2DGrid exhibition={exhibition} />
@@ -40,7 +52,7 @@ export function ExhibitionViewSwitcher({
             <ExhibitionCarousel exhibition={exhibition} />
           </div>
         ) : (
-          <div className="animate-fade-in w-full">
+          <div className="animate-fade-in w-full h-full">
             <Exhibition3DRoom
               exhibition={exhibition}
               onSwitchTo2D={() => setMode('2d')}

@@ -55,8 +55,8 @@ export function ArtworkInspectModal({
   };
 
   return (
-    <aside className="fixed top-0 right-0 h-full w-full sm:w-[460px] z-50 p-3 sm:p-5 pointer-events-auto flex flex-col justify-between overflow-y-auto animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="bg-[#161310]/35 backdrop-blur-2xl h-full w-full rounded-3xl p-6 sm:p-7 flex flex-col justify-between border border-[#D9B878]/30 shadow-[0_8px_40px_rgba(0,0,0,0.5)] text-white relative">
+    <aside className="hidden md:flex fixed top-0 right-0 h-full w-[460px] z-50 p-5 pointer-events-auto flex-col justify-between overflow-y-auto animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="bg-[#161310]/85 backdrop-blur-2xl h-full w-full rounded-3xl p-6 sm:p-7 flex flex-col justify-between border border-[#D9B878]/30 shadow-[0_8px_40px_rgba(0,0,0,0.5)] text-white relative">
         {/* Close Button */}
         <button
           onClick={onClose}

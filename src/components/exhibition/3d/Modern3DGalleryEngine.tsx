@@ -1994,7 +1994,7 @@ export function Modern3DGalleryEngine({
   };
 
   return (
-    <div className="relative w-full h-full min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-64px)] min-h-[100dvh] overflow-hidden bg-[#0D0C0B] select-none text-slate-100" style={{ touchAction: "none" }}>
+    <div className="relative w-full h-full overflow-hidden bg-[#0D0C0B] select-none text-slate-100" style={{ touchAction: "none" }}>
       {/* 3D WebGL Canvas */}
       <Canvas
         camera={{ position: [0, 1.8, ROOM_D / 2 - 3], fov: 60 }}
@@ -2537,43 +2537,46 @@ export function Modern3DGalleryEngine({
         />
       </div>
 
-      {/* Mobile Minimap Toggle Button */}
-      <div className="absolute top-16 right-3 z-30 pointer-events-auto sm:hidden">
-        <button
-          onClick={() => setIsMinimapMobileOpen(!isMinimapMobileOpen)}
-          className={`p-2.5 rounded-2xl shadow-lg border backdrop-blur-xl flex items-center gap-1.5 text-xs font-bold transition-all ${
-            isMinimapMobileOpen
-              ? 'bg-[#D9B878] text-black border-[#D9B878]'
-              : 'bg-[#161310]/30 text-[#FFD98A] border-[#D9B878]/30'
-          }`}
-          title="เปิด/ปิด แผนที่ผังห้อง"
-        >
-          <Compass className="w-4 h-4" />
-          <span>แผนที่</span>
-        </button>
-
-        {/* Mobile Minimap Popup Modal */}
-        {isMinimapMobileOpen && (
-          <div className="absolute top-12 right-0 bg-[#161310]/40 backdrop-blur-2xl p-2 rounded-3xl shadow-2xl border border-[#D9B878]/40 animate-in fade-in zoom-in-95">
-            <MinimapRadar
-              roomConfig={currentRoomConfig}
-              roomConfigs={roomConfigs}
-              currentRoomIndex={currentRoomIndex}
-              cameraTransformRef={cameraTransformRef}
-              onWarpToPosition={(x, z) => {
-                setWarpTarget({ x, z });
-                setIsMinimapMobileOpen(false);
-              }}
-              onSelectArtwork={(slot) => {
-                if (slot.artwork) {
-                  handleInspectArtwork(slot.artwork);
+      {/* Mobile Minimap Popup Modal Dialog (Clean centered modal when toggled from Mobile3DControls) */}
+      {isMinimapMobileOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in pointer-events-auto md:hidden">
+          <div className="bg-[#161310]/95 backdrop-blur-2xl p-4 rounded-3xl shadow-2xl border border-[#D9B878]/40 max-w-xs w-full space-y-3 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex items-center gap-2 text-[#FFD98A] font-bold text-xs">
+                <Compass className="w-4 h-4 text-[#D9B878]" />
+                <span>ผังนิทรรศการ (Minimap Radar)</span>
+              </div>
+              <button
+                onClick={() => setIsMinimapMobileOpen(false)}
+                className="p-1 rounded-full bg-white/10 text-neutral-300 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex justify-center">
+              <MinimapRadar
+                roomConfig={currentRoomConfig}
+                roomConfigs={roomConfigs}
+                currentRoomIndex={currentRoomIndex}
+                cameraTransformRef={cameraTransformRef}
+                onWarpToPosition={(x, z) => {
+                  setWarpTarget({ x, z });
                   setIsMinimapMobileOpen(false);
-                }
-              }}
-            />
+                }}
+                onSelectArtwork={(slot) => {
+                  if (slot.artwork) {
+                    handleInspectArtwork(slot.artwork);
+                    setIsMinimapMobileOpen(false);
+                  }
+                }}
+              />
+            </div>
+            <p className="text-[10px] text-center text-neutral-400">
+              แตะที่ห้องเพื่อเดินทางไปยังจุดนั้นทันที
+            </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Bottom Artwork Carousel Bar */}
       <div className="hidden sm:block absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-full px-2 sm:px-4">
@@ -2714,7 +2717,7 @@ export function Modern3DGalleryEngine({
       {/* ========================================================================= */}
       {isOnboardingOpen && !is3DLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in pointer-events-auto">
-          <div className="bg-[#161310]/95 backdrop-blur-2xl border border-[#D9B878]/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white shadow-[0_20px_60px_rgba(0,0,0,0.7)] relative animate-in fade-in zoom-in-95 duration-300">
+          <div className="bg-[#161310]/95 backdrop-blur-2xl border border-[#D9B878]/40 rounded-3xl p-5 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto text-white shadow-[0_20px_60px_rgba(0,0,0,0.7)] relative animate-in fade-in zoom-in-95 duration-300">
             {/* Close Button */}
             <button
               onClick={handleCloseOnboarding}

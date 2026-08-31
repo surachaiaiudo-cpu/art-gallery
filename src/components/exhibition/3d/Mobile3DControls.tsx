@@ -8,6 +8,7 @@ import {
   RotateCw,
   Heart,
   Maximize2,
+  Minimize2,
   ZoomIn,
   Compass,
   Volume2,
@@ -88,9 +89,9 @@ export function Mobile3DControls({
   const [showRoomDrawer, setShowRoomDrawer] = useState(false);
   const [showGestureTip, setShowGestureTip] = useState(true);
 
-  // Auto-hide gesture hint after 4.5 seconds
+  // Auto-hide gesture hint after 3.5 seconds
   useEffect(() => {
-    const timer = setTimeout(() => setShowGestureTip(false), 4500);
+    const timer = setTimeout(() => setShowGestureTip(false), 3500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -103,7 +104,7 @@ export function Mobile3DControls({
   const joystickTouchIdRef = useRef<number | null>(null);
   const joystickCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const maxRadius = 42; // Joystick max deflection radius in pixels
+  const maxRadius = 34; // Compact ergonomic deflection radius
 
   const handleJoystickTouchStart = (e: React.TouchEvent) => {
     e.stopPropagation();
@@ -187,25 +188,42 @@ export function Mobile3DControls({
 
   return (
     <div className="md:hidden pointer-events-none select-none z-30 fixed inset-0 flex flex-col justify-between overflow-hidden">
+      
       {/* 1. TOP MOBILE FLOATING CAPSULE BAR */}
-      <div className="pointer-events-auto pt-3 px-3 w-full flex items-center justify-between gap-2 z-40">
-        {/* Left: Room Selector Pill */}
-        <button
-          onClick={() => setShowRoomDrawer(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161310]/80 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all"
-        >
-          <span className="text-[10px] text-[#D9B878]">🏛️</span>
-          <span>{currentRoomTitle}</span>
-          <span className="text-[10px] opacity-70">▼</span>
-        </button>
+      <div
+        className="pointer-events-auto w-full px-2.5 pt-2 flex items-center justify-between gap-1.5 z-40"
+        style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0.5rem))' }}
+      >
+        {/* Left: Back to 2D & Room Selector Pill */}
+        <div className="flex items-center gap-1">
+          {onSwitchTo2D && (
+            <button
+              onClick={onSwitchTo2D}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all"
+              title="สลับไปมุมมอง 2D"
+            >
+              <ChevronLeft className="w-3.5 h-3.5 text-[#D9B878]" />
+              <span>2D</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowRoomDrawer(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 text-xs font-bold text-[#FFD98A] shadow-lg active:scale-95 transition-all truncate max-w-[150px]"
+          >
+            <span className="text-[10px] text-[#D9B878]">🏛️</span>
+            <span className="truncate">{currentRoomTitle}</span>
+            <span className="text-[9px] opacity-70">▼</span>
+          </button>
+        </div>
 
         {/* Right: Quick Action Controls Pill */}
-        <div className="flex items-center gap-1 bg-[#161310]/80 backdrop-blur-xl border border-[#D9B878]/30 p-1 rounded-full shadow-lg">
+        <div className="flex items-center gap-0.5 bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/35 p-1 rounded-full shadow-lg">
           {/* Sound Toggle */}
           <button
             onClick={onToggleMute}
-            className={`p-1.5 rounded-full transition-all ${
-              !isMuted ? 'text-[#FFD98A] bg-[#D9B878]/20' : 'text-neutral-400 hover:text-white'
+            className={`p-1.5 rounded-full transition-all active:scale-95 ${
+              !isMuted ? 'text-[#FFD98A] bg-[#D9B878]/25' : 'text-neutral-400'
             }`}
             title={isMuted ? 'เปิดเสียงบรรยากาศ' : 'ปิดเสียง'}
           >
@@ -215,8 +233,8 @@ export function Mobile3DControls({
           {/* Guided Tour Toggle */}
           <button
             onClick={onToggleGuidedTour}
-            className={`p-1.5 rounded-full transition-all ${
-              isGuidedTour ? 'text-[#FFD98A] bg-[#D9B878]/30 animate-pulse' : 'text-neutral-400 hover:text-white'
+            className={`p-1.5 rounded-full transition-all active:scale-95 ${
+              isGuidedTour ? 'text-[#FFD98A] bg-[#D9B878]/30 animate-pulse' : 'text-neutral-400'
             }`}
             title={isGuidedTour ? 'หยุดทัวร์อัตโนมัติ' : 'เริ่มทัวร์อัตโนมัติ'}
           >
@@ -226,7 +244,7 @@ export function Mobile3DControls({
           {/* Minimap Button */}
           <button
             onClick={onOpenMinimap}
-            className="p-1.5 rounded-full text-[#FFD98A] hover:bg-white/10 transition-all"
+            className="p-1.5 rounded-full text-[#FFD98A] hover:bg-white/10 active:scale-95 transition-all"
             title="เปิดผังห้องนิทรรศการ"
           >
             <Compass className="w-3.5 h-3.5" />
@@ -235,39 +253,28 @@ export function Mobile3DControls({
           {/* Fullscreen Button */}
           <button
             onClick={onToggleFullscreen}
-            className="p-1.5 rounded-full text-neutral-300 hover:text-white hover:bg-white/10 transition-all"
+            className="p-1.5 rounded-full text-neutral-300 hover:text-white active:scale-95 transition-all"
             title="เปิดโหมดเต็มจอ"
           >
-            <Maximize2 className="w-3.5 h-3.5" />
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
-
-          {/* Switch to 2D */}
-          {onSwitchTo2D && (
-            <button
-              onClick={onSwitchTo2D}
-              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8B1B1B] text-white hover:bg-[#A32020] transition-all ml-0.5"
-              title="สลับไปมุมมอง 2D"
-            >
-              2D
-            </button>
-          )}
         </div>
       </div>
 
       {/* 2. GESTURE GUIDE HINT TOAST */}
       {showGestureTip && (
-        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 pointer-events-auto bg-[#161310]/85 backdrop-blur-xl border border-[#D9B878]/40 px-3.5 py-1.5 rounded-full text-[11px] font-medium text-[#FFD98A] shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <span>👆 ปาดนิ้วหมุนรอบทิศ • 🕹️ เลื่อนจอยเพื่อเดิน • 🖼️ แตะที่ภาพเพื่อชม</span>
-          <button onClick={() => setShowGestureTip(false)} className="text-white/60 hover:text-white">
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-40 pointer-events-auto bg-[#161310]/90 backdrop-blur-xl border border-[#D9B878]/40 px-3 py-1.5 rounded-full text-[11px] font-medium text-[#FFD98A] shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 max-w-[92vw] truncate">
+          <span className="truncate">👆 ปาดนิ้วเพื่อหมุน • 🕹️ เลื่อนจอยเพื่อเดิน • แตะภาพเพื่อชม</span>
+          <button onClick={() => setShowGestureTip(false)} className="text-white/60 hover:text-white shrink-0">
             <X className="w-3 h-3" />
           </button>
         </div>
       )}
 
-      {/* 3. FOCUSED ARTWORK BOTTOM CARD (When standing near or inspecting an artwork) */}
+      {/* 3. FOCUSED ARTWORK BOTTOM CARD */}
       {focusedArtwork && (
-        <div className="pointer-events-auto mx-3 mb-20 z-40 bg-[#161310]/90 backdrop-blur-2xl border border-[#D9B878]/50 rounded-2xl p-3 text-white shadow-2xl space-y-2 animate-in fade-in slide-in-from-bottom-3">
-          <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2">
+        <div className="pointer-events-auto mx-2.5 mb-2 z-40 bg-[#161310]/95 backdrop-blur-2xl border border-[#D9B878]/50 rounded-2xl p-2.5 text-white shadow-2xl space-y-2 animate-in fade-in slide-in-from-bottom-2 max-w-[96vw]">
+          <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-1.5">
             <div className="min-w-0 flex-1 space-y-0.5">
               <div className="flex items-center gap-1.5">
                 <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#D9B878] bg-[#D9B878]/15 px-1.5 py-0.5 rounded border border-[#D9B878]/30">
@@ -280,17 +287,17 @@ export function Mobile3DControls({
                   {focusedArtwork.artist?.name || 'Artist'}
                 </span>
               </div>
-              <h3 className="font-serif text-sm font-bold text-[#FAF8F5] truncate">
+              <h3 className="font-serif text-sm font-bold text-[#FAF8F5] truncate leading-tight">
                 {focusedArtwork.title}
               </h3>
               <p className="text-[10px] text-neutral-400 truncate">
-                {focusedArtwork.medium} • {formatDimensionsInCm(focusedArtwork.dimensions, lang)}
+                {focusedArtwork.medium} {focusedArtwork.dimensions ? `• ${formatDimensionsInCm(focusedArtwork.dimensions, lang)}` : ''}
               </p>
             </div>
 
             <button
               onClick={onClearFocus}
-              className="p-1 rounded-full bg-white/10 text-neutral-300 hover:text-white hover:bg-white/20"
+              className="p-1.5 rounded-full bg-white/10 text-neutral-300 hover:text-white hover:bg-white/20 active:scale-95 shrink-0"
               title="ปิดมุมมองภาพนี้ / เดินชมต่อ"
             >
               <X className="w-4 h-4" />
@@ -302,7 +309,7 @@ export function Mobile3DControls({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => onOpenLightbox(focusedArtwork)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D9B878] text-black font-bold rounded-xl text-xs shadow transition-all active:scale-95"
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#D9B878] hover:bg-[#FFD98A] text-black font-bold rounded-xl text-xs shadow transition-all active:scale-95"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
                 <span>ซูม 4K</span>
@@ -310,7 +317,7 @@ export function Mobile3DControls({
 
               <button
                 onClick={() => onToggleLike(focusedArtwork.id)}
-                className={`p-2 rounded-xl border transition-all active:scale-95 ${
+                className={`p-1.5 px-2 rounded-xl border transition-all active:scale-95 ${
                   likedArtworkIds.has(focusedArtwork.id)
                     ? 'bg-rose-600/30 text-rose-400 border-rose-500/50'
                     : 'bg-white/10 text-white/80 border-white/20'
@@ -324,7 +331,7 @@ export function Mobile3DControls({
 
               <button
                 onClick={() => onOpenInquiry(focusedArtwork)}
-                className="p-2 rounded-xl bg-white/10 text-white/80 border border-white/20 hover:bg-white/20 active:scale-95"
+                className="p-1.5 px-2 rounded-xl bg-white/10 text-white/80 border border-white/20 hover:bg-white/20 active:scale-95"
                 title="สอบถามข้อมูลผลงาน"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
@@ -335,16 +342,18 @@ export function Mobile3DControls({
             <div className="flex items-center gap-1">
               <button
                 onClick={handlePrevArtwork}
-                className="p-2 rounded-xl bg-white/10 text-white/90 border border-white/20 active:scale-95"
+                className="px-2 py-1.5 rounded-xl bg-white/10 text-white/90 border border-white/20 active:scale-95 text-[11px] font-medium flex items-center gap-0.5"
                 title="ภาพก่อนหน้า"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
+                <span>ก่อน</span>
               </button>
               <button
                 onClick={handleNextArtwork}
-                className="p-2 rounded-xl bg-white/10 text-white/90 border border-white/20 active:scale-95"
+                className="px-2 py-1.5 rounded-xl bg-[#D9B878]/20 text-[#FFD98A] border border-[#D9B878]/40 active:scale-95 text-[11px] font-bold flex items-center gap-0.5"
                 title="ภาพถัดไป"
               >
+                <span>ถัดไป</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -353,116 +362,95 @@ export function Mobile3DControls({
       )}
 
       {/* 4. MAIN THUMB-FRIENDLY BOTTOM CONTROLS (JOYSTICK + CAMERA BUTTONS) */}
-      <div className="pointer-events-none w-full px-4 pb-4 flex items-end justify-between z-30">
+      <div
+        className="pointer-events-none w-full px-3 pb-2.5 flex items-end justify-between z-30"
+        style={{ paddingBottom: 'max(0.6rem, env(safe-area-inset-bottom, 0.6rem))' }}
+      >
         
-        {/* LEFT: Fluid Touch Virtual Analog Joystick */}
+        {/* LEFT: Compact Ergonomic Analog Joystick */}
         <div
           ref={joystickBaseRef}
           onTouchStart={handleJoystickTouchStart}
           onTouchMove={handleJoystickTouchMove}
           onTouchEnd={handleJoystickTouchEnd}
           onTouchCancel={handleJoystickTouchEnd}
-          className={`pointer-events-auto relative w-28 h-28 rounded-full border-2 flex items-center justify-center backdrop-blur-md shadow-2xl transition-colors ${
+          className={`pointer-events-auto relative w-20 h-20 rounded-full border-2 flex items-center justify-center backdrop-blur-md shadow-2xl transition-colors shrink-0 ${
             isJoystickActive
-              ? 'bg-[#D9B878]/25 border-[#FFD98A]'
-              : 'bg-[#161310]/60 border-[#D9B878]/40 hover:border-[#FFD98A]'
+              ? 'bg-[#D9B878]/30 border-[#FFD98A] shadow-[0_0_15px_rgba(255,217,138,0.4)]'
+              : 'bg-[#161310]/70 border-[#D9B878]/40'
           }`}
           style={{ touchAction: 'none' }}
           title="จอยสติ๊กควบคุมการเดิน 360°"
         >
-          {/* Inner direction indicators */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
-            <span className="text-[10px] font-mono font-bold text-[#FFD98A] absolute top-1.5">▲ W</span>
-            <span className="text-[10px] font-mono font-bold text-[#FFD98A] absolute bottom-1.5">▼ S</span>
-            <span className="text-[10px] font-mono font-bold text-[#FFD98A] absolute left-1.5">◀ A</span>
-            <span className="text-[10px] font-mono font-bold text-[#FFD98A] absolute right-1.5">D ▶</span>
+          {/* Inner subtle direction indicators */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-25 pointer-events-none">
+            <span className="text-[8px] font-mono font-bold text-[#FFD98A] absolute top-1">▲</span>
+            <span className="text-[8px] font-mono font-bold text-[#FFD98A] absolute bottom-1">▼</span>
+            <span className="text-[8px] font-mono font-bold text-[#FFD98A] absolute left-1">◀</span>
+            <span className="text-[8px] font-mono font-bold text-[#FFD98A] absolute right-1">▶</span>
           </div>
 
           {/* Floating Analog Knob */}
           <div
-            className={`w-12 h-12 rounded-full border-2 flex items-center justify-center shadow-lg transition-transform ${
+            className={`w-9 h-9 rounded-full border flex items-center justify-center shadow-lg transition-transform ${
               isJoystickActive
-                ? 'bg-[#FFD98A] border-white text-black scale-105'
-                : 'bg-[#D9B878]/80 border-[#FFF] text-black'
+                ? 'bg-[#FFD98A] border-white scale-110'
+                : 'bg-[#D9B878] border-[#FFF]'
             }`}
             style={{
               transform: `translate(${knobPos.x}px, ${knobPos.y}px)`,
               transition: isJoystickActive ? 'none' : 'transform 0.15s ease-out',
             }}
           >
-            <div className="w-3 h-3 rounded-full bg-black/50" />
+            <div className="w-2.5 h-2.5 rounded-full bg-black/40" />
           </div>
         </div>
 
         {/* RIGHT: Quick Rotation Snap & Center View Buttons */}
-        <div className="pointer-events-auto flex flex-col items-end gap-2.5">
-          {/* Top Row: Turn 45 Left / Center View / Turn 45 Right */}
-          <div className="flex items-center gap-1.5 bg-[#161310]/75 backdrop-blur-xl p-1.5 rounded-2xl border border-[#D9B878]/35 shadow-xl">
-            {/* Turn 45° Left */}
-            <button
-              onClick={() => onRotateCameraSnap(Math.PI / 4)}
-              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#D9B878]/30 active:bg-[#D9B878] active:text-black text-[#FFD98A] flex items-center justify-center active:scale-95 transition-all"
-              title="หันซ้าย 45°"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
+        <div className="pointer-events-auto flex items-center gap-1 bg-[#161310]/85 backdrop-blur-xl p-1 rounded-2xl border border-[#D9B878]/35 shadow-xl shrink-0">
+          {/* Turn 45° Left */}
+          <button
+            onClick={() => onRotateCameraSnap(Math.PI / 4)}
+            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#D9B878]/30 active:bg-[#D9B878] active:text-black text-[#FFD98A] flex items-center justify-center active:scale-95 transition-all"
+            title="หันซ้าย 45°"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
 
-            {/* Center Eye-Level View */}
-            <button
-              onClick={onCenterView}
-              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#D9B878]/30 active:bg-[#D9B878] active:text-black text-[#FFD98A] flex items-center justify-center active:scale-95 transition-all"
-              title="รีเซ็ตมองตรงกลางห้อง"
-            >
-              <span className="text-xs font-bold font-mono">🎯</span>
-            </button>
+          {/* Center Eye-Level View */}
+          <button
+            onClick={onCenterView}
+            className="w-9 h-9 rounded-xl bg-[#D9B878]/20 hover:bg-[#D9B878]/40 active:bg-[#D9B878] active:text-black text-[#FFD98A] flex items-center justify-center active:scale-95 transition-all font-bold"
+            title="รีเซ็ตมองตรงกึ่งกลางห้อง"
+          >
+            <span className="text-xs">🎯</span>
+          </button>
 
-            {/* Turn 45° Right */}
-            <button
-              onClick={() => onRotateCameraSnap(-Math.PI / 4)}
-              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#D9B878]/30 active:bg-[#D9B878] active:text-black text-[#FFD98A] flex items-center justify-center active:scale-95 transition-all"
-              title="หันขวา 45°"
-            >
-              <RotateCw className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Bottom Row: Next/Prev Artwork Quick Jump Buttons */}
-          <div className="flex items-center gap-1.5 bg-[#161310]/75 backdrop-blur-xl p-1.5 rounded-2xl border border-[#D9B878]/35 shadow-xl">
-            <button
-              onClick={handlePrevArtwork}
-              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-[#D9B878]/30 active:bg-[#D9B878] active:text-black text-[#FFD98A] text-xs font-bold flex items-center gap-1 active:scale-95 transition-all"
-              title="เดินไปดูภาพก่อนหน้า"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>ภาพก่อน</span>
-            </button>
-
-            <button
-              onClick={handleNextArtwork}
-              className="px-2.5 py-1.5 rounded-xl bg-[#D9B878] text-black text-xs font-bold flex items-center gap-1 active:scale-95 shadow transition-all"
-              title="เดินไปดูภาพถัดไป"
-            >
-              <span>ภาพถัดไป</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {/* Turn 45° Right */}
+          <button
+            onClick={() => onRotateCameraSnap(-Math.PI / 4)}
+            className="w-9 h-9 rounded-xl bg-white/10 hover:bg-[#D9B878]/30 active:bg-[#D9B878] active:text-black text-[#FFD98A] flex items-center justify-center active:scale-95 transition-all"
+            title="หันขวา 45°"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
       {/* 5. MOBILE ROOM SELECTOR DRAWER MODAL */}
       {showRoomDrawer && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in pointer-events-auto">
-          <div className="bg-[#161310]/95 backdrop-blur-2xl border border-[#D9B878]/40 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 w-full max-w-md text-white shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom-5">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 bg-black/70 backdrop-blur-md animate-fade-in pointer-events-auto">
+          <div className="bg-[#161310]/95 backdrop-blur-2xl border-t border-[#D9B878]/40 rounded-t-3xl p-5 w-full text-white shadow-2xl space-y-3 max-h-[75vh] overflow-y-auto animate-in slide-in-from-bottom-5">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🏛️</span>
-                <h3 className="font-serif text-base font-bold text-[#FAF8F5]">
+                <h3 className="font-serif text-sm font-bold text-[#FAF8F5]">
                   เลือกห้องจัดแสดง (Exhibition Halls)
                 </h3>
               </div>
               <button
                 onClick={() => setShowRoomDrawer(false)}
-                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-neutral-300"
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-neutral-300 active:scale-95"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -483,9 +471,9 @@ export function Mobile3DControls({
                       onSelectRoomIndex(idx);
                       setShowRoomDrawer(false);
                     }}
-                    className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-all active:scale-98 ${
+                    className={`w-full p-2.5 rounded-2xl border text-left flex items-center justify-between transition-all active:scale-98 ${
                       isCurrent
-                        ? 'bg-[#D9B878]/20 border-[#D9B878] text-[#FFD98A] shadow-md'
+                        ? 'bg-[#D9B878]/25 border-[#D9B878] text-[#FFD98A] shadow-md'
                         : 'bg-white/5 border-white/10 hover:bg-white/10 text-neutral-300'
                     }`}
                   >
@@ -509,13 +497,13 @@ export function Mobile3DControls({
               })}
             </div>
 
-            <div className="pt-2 text-center">
+            <div className="pt-1 text-center">
               <button
                 onClick={() => {
                   setShowRoomDrawer(false);
                   onOpenMinimap();
                 }}
-                className="inline-flex items-center gap-1.5 text-xs text-[#D9B878] hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs text-[#D9B878] hover:underline active:scale-95"
               >
                 <Compass className="w-3.5 h-3.5" />
                 <span>เปิดดูผังนิทรรศการรวม (Minimap Radar)</span>
