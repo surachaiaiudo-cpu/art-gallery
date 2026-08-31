@@ -31,6 +31,7 @@ import { formatDateRange, formatDimensionsInCm } from '@/lib/utils';
 import { CountryFlag } from '@/components/ui/CountryFlag';
 import { ViewInRoomModal } from '@/components/exhibition/ViewInRoomModal';
 import { CatalogSelectorModal } from '@/components/catalog/CatalogSelectorModal';
+import { Exhibition3DSelectorModal } from '@/components/exhibition/3d/Exhibition3DSelectorModal';
 
 interface HomeClientProps {
   exhibitions: Exhibition[];
@@ -42,6 +43,7 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
   const [selectedSpotlightArtwork, setSelectedSpotlightArtwork] = useState<Artwork | null>(null);
   const [isViewInRoomOpen, setIsViewInRoomOpen] = useState(false);
   const [isCatalogSelectorOpen, setIsCatalogSelectorOpen] = useState(false);
+  const [is3DSelectorOpen, setIs3DSelectorOpen] = useState(false);
 
   // Extract all exhibition posters for background animation loop
   const backgroundPosters = React.useMemo(() => {
@@ -241,16 +243,14 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
             {/* Action Buttons Hub */}
             {featuredExhibition && (
               <div className="flex flex-wrap items-center gap-4 mb-10">
-                {is3DEnabled(featuredExhibition) && (
-                  <Link
-                    href={`/exhibitions/${featuredExhibition.slug}?mode=3d`}
-                    className="group inline-flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#C5A880] via-[#D4AF37] to-[#B39366] text-[#121110] text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-[0_0_30px_rgba(212,175,55,0.4)] hover:scale-105 active:scale-95 transition-all"
-                  >
-                    <Box className="w-4 h-4 text-[#121110] group-hover:rotate-12 transition-transform" />
-                    <span>{lang === 'th' ? 'เข้าชมห้องเสมือนจริง 3D' : 'Enter 3D Virtual Tour'}</span>
-                    <span className="w-2 h-2 rounded-full bg-[#8B1B1B] animate-ping" />
-                  </Link>
-                )}
+                <button
+                  onClick={() => setIs3DSelectorOpen(true)}
+                  className="group inline-flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#C5A880] via-[#D4AF37] to-[#B39366] text-[#121110] text-xs sm:text-sm font-extrabold uppercase tracking-widest shadow-[0_0_30px_rgba(212,175,55,0.4)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Box className="w-4 h-4 text-[#121110] group-hover:rotate-12 transition-transform" />
+                  <span>{lang === 'th' ? 'เลือกเข้าชมห้องเสมือนจริง 3D' : 'Select 3D Virtual Tour'}</span>
+                  <span className="w-2 h-2 rounded-full bg-[#8B1B1B] animate-ping" />
+                </button>
 
                 <button
                   onClick={() => setIsCatalogSelectorOpen(true)}
@@ -734,6 +734,15 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
           exhibitions={exhibitions}
           isOpen={isCatalogSelectorOpen}
           onClose={() => setIsCatalogSelectorOpen(false)}
+        />
+      )}
+
+      {/* Exhibition 3D Virtual Tour Selector Modal */}
+      {is3DSelectorOpen && (
+        <Exhibition3DSelectorModal
+          exhibitions={exhibitions}
+          isOpen={is3DSelectorOpen}
+          onClose={() => setIs3DSelectorOpen(false)}
         />
       )}
     </div>
