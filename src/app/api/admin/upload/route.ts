@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getRequestContext } from '@cloudflare/next-on-pages';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
-// Helper: Edge-compatible Base64 encoder
+// Ultra-fast chunked Base64 encoder for Edge Runtime (prevents CPU timeout on large image files)
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   let binary = '';
   const bytes = new Uint8Array(buffer);
   const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const chunkSize = 8192;
+  for (let i = 0; i < len; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+    binary += String.fromCharCode.apply(null, chunk as any);
   }
   return btoa(binary);
 }
@@ -25,7 +28,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const arrayBuffer = await file.arrayBuffer();
     const originalName = file.name || 'artwork.jpg';
     const extension = originalName.lastIndexOf('.') !== -1 ? originalName.slice(originalName.lastIndexOf('.')) : '.jpg';
     const baseName = originalName.replace(extension, '');
@@ -35,19 +37,30 @@ export async function POST(req: NextRequest) {
     const finalFileName = `${cleanBaseName}-${Date.now()}${extension}`;
 
     // 1. ImageKit.io Upload (1st Priority)
-    const symbol = Symbol.for('__cloudflare-request-context__');
-    const ctx = (globalThis as any)[symbol];
-    const imageKitPrivateKey =
-      ctx?.env?.IMAGEKIT_PRIVATE_KEY ||
-      ctx?.env?.IMAGEKIT_KEY ||
-      process.env.IMAGEKIT_PRIVATE_KEY ||
-      process.env.IMAGEKIT_KEY;
+    let imageKitPrivateKey = '';
+    try {
+      const ctx = getRequestContext();
+      const env = ctx?.env as any;
+      imageKitPrivateKey = env?.IMAGEKIT_PRIVATE_KEY || env?.IMAGEKIT_KEY || '';
+    } catch {}
+
+    if (!imageKitPrivateKey) {
+      try {
+        const symbol = Symbol.for('__cloudflare-request-context__');
+        const ctx = (globalThis as any)[symbol];
+        imageKitPrivateKey = ctx?.env?.IMAGEKIT_PRIVATE_KEY || ctx?.env?.IMAGEKIT_KEY || '';
+      } catch {}
+    }
+
+    if (!imageKitPrivateKey && typeof process !== 'undefined') {
+      imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_KEY || '';
+    }
 
     if (imageKitPrivateKey) {
       try {
         const ikFormData = new FormData();
-        const base64File = arrayBufferToBase64(arrayBuffer);
-        ikFormData.append('file', `data:${file.type || 'image/jpeg'};base64,${base64File}`);
+        // Stream binary file directly to ImageKit without heavy base64 overhead
+        ikFormData.append('file', file, finalFileName);
         ikFormData.append('fileName', finalFileName);
         ikFormData.append('folder', targetFolder);
         ikFormData.append('useUniqueFileName', 'true');
@@ -63,7 +76,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (ikRes.ok) {
-          const ikData = await ikRes.json();
+          const ikData = (await ikRes.json()) as any;
           return NextResponse.json({
             success: true,
             url: ikData.url,
@@ -80,7 +93,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Fallback: Base64 data URL
+    // 2. Fallback: Base64 data URL (optimized chunked)
+    const arrayBuffer = await file.arrayBuffer();
     const base64Data = arrayBufferToBase64(arrayBuffer);
     const dataUrl = `data:${file.type || 'image/jpeg'};base64,${base64Data}`;
 
@@ -103,13 +117,24 @@ export async function DELETE(req: NextRequest) {
     const imageUrl = searchParams.get('url');
     const fileId = searchParams.get('fileId');
 
-    const symbol = Symbol.for('__cloudflare-request-context__');
-    const ctx = (globalThis as any)[symbol];
-    const privateKey =
-      ctx?.env?.IMAGEKIT_PRIVATE_KEY ||
-      ctx?.env?.IMAGEKIT_KEY ||
-      process.env.IMAGEKIT_PRIVATE_KEY ||
-      process.env.IMAGEKIT_KEY;
+    let privateKey = '';
+    try {
+      const ctx = getRequestContext();
+      const env = ctx?.env as any;
+      privateKey = env?.IMAGEKIT_PRIVATE_KEY || env?.IMAGEKIT_KEY || '';
+    } catch {}
+
+    if (!privateKey) {
+      try {
+        const symbol = Symbol.for('__cloudflare-request-context__');
+        const ctx = (globalThis as any)[symbol];
+        privateKey = ctx?.env?.IMAGEKIT_PRIVATE_KEY || ctx?.env?.IMAGEKIT_KEY || '';
+      } catch {}
+    }
+
+    if (!privateKey && typeof process !== 'undefined') {
+      privateKey = process.env.IMAGEKIT_PRIVATE_KEY || process.env.IMAGEKIT_KEY || '';
+    }
 
     if (!privateKey) {
       return NextResponse.json({ error: 'ImageKit private key not configured' }, { status: 400 });
@@ -134,7 +159,7 @@ export async function DELETE(req: NextRequest) {
       });
 
       if (searchRes.ok) {
-        const files = await searchRes.json();
+        const files = (await searchRes.json()) as any;
         if (Array.isArray(files) && files.length > 0) {
           const targetId = files[0].fileId;
           await fetch(`https://api.imagekit.io/v1/files/${targetId}`, {
