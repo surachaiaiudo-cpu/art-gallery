@@ -64,6 +64,8 @@ interface MatchedImportItem {
   artworkFile?: File;
   artworkPreviewUrl?: string;
   artworkFileName?: string;
+  imageUrl?: string;
+  artistAvatarUrl?: string;
   
   // Status
   status: 'ready' | 'warning' | 'error' | 'success' | 'failed';
@@ -550,21 +552,24 @@ export function BatchImportManager({
       let status: 'ready' | 'warning' | 'error' = 'ready';
       let statusMessage = 'พร้อมนำเข้าสมบูรณ์';
 
-      if (!matchedArtworkFile) {
-        status = 'error';
-        statusMessage = `❌ ไม่พบรูปผลงาน (ค้นหา: ${displayIdStr}.jpg หรือ p${displayIdStr}.jpg)`;
-      } else if (!matchedArtistFile && isNewArtist) {
+      const hasCustomArtworkUrl = customArtworkPhoto && /^https?:\/\//i.test(customArtworkPhoto);
+      const hasCustomArtistUrl = customArtistPhoto && /^https?:\/\//i.test(customArtistPhoto);
+
+      if (!matchedArtworkFile && !hasCustomArtworkUrl) {
+        status = 'warning';
+        statusMessage = `ℹ️ ไม่มีไฟล์รูปภาพผลงาน (ระบบจะใช้ภาพตัวอย่างชั่วคราว สามารถอัปโหลดภาพจริงภายหลังได้)`;
+      } else if (!matchedArtistFile && !hasCustomArtistUrl && isNewArtist) {
         status = 'warning';
         statusMessage = `ℹ️ ไม่มีรูปศิลปิน (จะสร้างศิลปินโดยใช้ Avatar เริ่มต้น)`;
       } else if (!isNewArtist) {
-        statusMessage = `✓ พบศิลปินเดิมในฐานข้อมูล: ${matchedExistingArtistName} (จะแอดรูปผลงานเพิ่มเข้าศิลปินนี้)`;
+        statusMessage = `✓ พบศิลปินเดิมในฐานข้อมูล: ${matchedExistingArtistName} (จะแอดผลงานเพิ่มเข้าศิลปินนี้)`;
       }
 
       results.push({
         id: `import-row-${idx}`,
         rowIndex: rowNum,
         rowIdStr: displayIdStr,
-        selected: status !== 'error',
+        selected: true,
         artistName,
         artistCountry,
         artistEmail,
@@ -584,6 +589,8 @@ export function BatchImportManager({
         artworkFile: matchedArtworkFile,
         artworkPreviewUrl: matchedArtworkFile ? URL.createObjectURL(matchedArtworkFile) : undefined,
         artworkFileName: matchedArtworkFile?.name,
+        imageUrl: hasCustomArtworkUrl ? customArtworkPhoto : undefined,
+        artistAvatarUrl: hasCustomArtistUrl ? customArtistPhoto : undefined,
         status,
         statusMessage,
       });
@@ -669,8 +676,13 @@ export function BatchImportManager({
           addLog('info', `  📤 กำลังอัปโหลดรูปผลงาน: ${item.artworkFile.name}...`);
           artworkImageUrl = await uploadImageToServer(item.artworkFile, '/artvara-artworks');
           addLog('success', `  ✓ อัปโหลดรูปผลงานสำเร็จ`);
+        } else if (item.imageUrl && /^https?:\/\//i.test(item.imageUrl)) {
+          artworkImageUrl = item.imageUrl;
+          addLog('info', `  🖼️ ใช้ลิงก์รูปภาพผลงานที่ระบุ: ${artworkImageUrl}`);
         } else {
-          throw new Error('ไม่พบไฟล์ภาพผลงาน');
+          // Fallback placeholder image when importing text without image file
+          artworkImageUrl = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1200&auto=format&fit=crop';
+          addLog('info', `  🖼️ ใช้รูปภาพผลงานตั้งต้นชั่วคราว (สามารถเปลี่ยนภาพภายหลังได้)`);
         }
 
         if (item.isNewArtist) {
