@@ -278,8 +278,10 @@ export function AdminExhibitionArtworksClient({
       ...prev,
       title: detected.title || prev.title,
       artistName: detected.artistName || prev.artistName,
+      artistCountry: detected.artistCountry || prev.artistCountry,
       medium: detected.medium || prev.medium,
       dimensions: detected.dimensions || prev.dimensions,
+      price: detected.price ? String(detected.price) : prev.price,
       yearCreated: detected.yearCreated
         ? parseInt(String(detected.yearCreated), 10) || prev.yearCreated
         : prev.yearCreated,
@@ -299,6 +301,7 @@ export function AdminExhibitionArtworksClient({
     medium: '',
     dimensions: '',
     yearCreated: 2026,
+    price: '',
     concept: '',
     description: '',
     imageUrl: '',
@@ -460,6 +463,7 @@ export function AdminExhibitionArtworksClient({
       medium: art.medium || '',
       dimensions: art.dimensions || '120 x 180 cm.',
       yearCreated: art.yearCreated || 2026,
+      price: art.price ? String(art.price) : '',
       concept: art.concept || art.description || '',
       description: art.description || '',
       imageUrl: art.imageUrl || '',
@@ -575,6 +579,7 @@ export function AdminExhibitionArtworksClient({
         medium: d.medium,
         dimensions: d.dimensions,
         yearCreated: d.yearCreated,
+        price: d.price ? String(d.price) : '',
         concept: d.concept,
         imageUrl: d.imageUrl,
       }))
@@ -1508,6 +1513,7 @@ export function AdminExhibitionArtworksClient({
                         medium: '',
                         dimensions: '',
                         yearCreated: 2026,
+                        price: '',
                         concept: '',
                         description: '',
                         imageUrl: '',
@@ -1716,16 +1722,31 @@ export function AdminExhibitionArtworksClient({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
-                  {lang === 'th' ? 'ปีที่สร้างสรรค์ (Year Created)' : 'Year Created'}
-                </label>
-                <input
-                  type="number"
-                  value={artworkForm.yearCreated}
-                  onChange={(e) => setArtworkForm({ ...artworkForm, yearCreated: parseInt(e.target.value) || 2026 })}
-                  className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-mono focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
+                    {lang === 'th' ? 'ปีที่สร้างสรรค์ (Year Created)' : 'Year Created'}
+                  </label>
+                  <input
+                    type="number"
+                    value={artworkForm.yearCreated}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, yearCreated: parseInt(e.target.value) || 2026 })}
+                    className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A554A] mb-1">
+                    {lang === 'th' ? 'ราคาจำหน่าย (Price / บาท)' : 'Price (THB)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={artworkForm.price}
+                    onChange={(e) => setArtworkForm({ ...artworkForm, price: e.target.value })}
+                    placeholder="เช่น 40,000 หรือ 40000"
+                    className="w-full px-3.5 py-2 bg-white border border-[#D5CFC3] rounded-lg text-xs font-mono focus:outline-none"
+                  />
+                </div>
               </div>
 
               {/* Drag & Drop / File Picker / ImageKit Upload */}

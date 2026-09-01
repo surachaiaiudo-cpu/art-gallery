@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Exhibition } from '@/types/exhibition';
 import { findMatchingArtist } from '@/lib/artistMatcher';
+import { parseSingleRowCols, detectMedium, detectPrice, detectDimensions, cleanPrefix } from '@/lib/smartParser';
 import { useLanguage } from '@/context/LanguageContext';
 
 interface MatchedImportItem {
@@ -466,12 +467,12 @@ export function BatchImportManager({
             concept = concept ? `${concept} | ${val}` : val;
           }
         } else if (['medium', 'technique', 'เทคนิค', 'วัสดุ'].includes(ck)) {
-          medium = val || 'Mixed Media';
+          medium = detectMedium(val) || cleanPrefix(val, ['technique', 'medium', 'material', 'เทคนิค', 'วัสดุ']) || 'Mixed Media';
         } else if (['dimensions', 'dimension', 'size', 'ขนาด'].includes(ck)) {
-          dimensions = cleanDimensions(val);
+          dimensions = detectDimensions(val) || cleanDimensions(val);
         } else if (['price', 'ราคา', 'มูลค่า'].includes(ck)) {
-          const parsed = parseFloat(val.replace(/[^0-9.]/g, ''));
-          if (!isNaN(parsed) && parsed > 0) {
+          const parsed = detectPrice(val);
+          if (parsed !== null && parsed > 0) {
             price = String(parsed);
           } else if (val && val !== 'cm.' && val !== 'cm') {
             concept = concept ? `${concept} | ${val}` : val;
