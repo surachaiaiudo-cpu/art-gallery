@@ -1,9 +1,20 @@
 import { drizzle as drizzleD1 } from 'drizzle-orm/d1';
 import { drizzle as drizzleLibsql } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
+import { getRequestContext } from '@cloudflare/next-on-pages';
 import * as schema from './schema';
 
 export function getD1Binding() {
+  // 1. Try official @cloudflare/next-on-pages getRequestContext
+  try {
+    const ctx = getRequestContext();
+    const env = ctx?.env as any;
+    if (env?.DB && typeof env.DB.prepare === 'function') {
+      return env.DB;
+    }
+  } catch {}
+
+  // 2. Try global request context symbol
   try {
     const symbol = Symbol.for('__cloudflare-request-context__');
     const ctx = (globalThis as any)[symbol];
@@ -12,10 +23,12 @@ export function getD1Binding() {
     }
   } catch {}
 
+  // 3. Try globalThis.DB
   if (typeof (globalThis as any).DB !== 'undefined' && typeof (globalThis as any).DB?.prepare === 'function') {
     return (globalThis as any).DB;
   }
 
+  // 4. Try process.env.DB
   if (typeof process !== 'undefined' && (process.env as any).DB && typeof (process.env as any).DB?.prepare === 'function') {
     return (process.env as any).DB;
   }
@@ -34,21 +47,32 @@ export function getDb() {
   if (binding) {
     try {
       return drizzleD1(binding, { schema });
-    } catch {}
-  }
-
-  // Fallback to local SQLite when running locally
-  if (!localLibsqlDb) {
-    try {
-      const client = createClient({
-        url: 'file:art_gallery.sqlite',
-      });
-      localLibsqlDb = drizzleLibsql(client, { schema });
-    } catch (err) {
-      console.warn('Local SQLite init error:', err);
+    } catch (e) {
+      console.warn('D1 drizzle init error:', e);
     }
   }
-  return localLibsqlDb;
+
+  // Only fallback to local SQLite when running in standard Node.js development (NOT in Cloudflare Edge)
+  const isCloudflareEdge =
+    typeof (globalThis as any).WebSocketPair !== 'undefined' ||
+    typeof (globalThis as any).caches !== 'undefined' ||
+    process.env.NODE_ENV === 'production';
+
+  if (!isCloudflareEdge && typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+    if (!localLibsqlDb) {
+      try {
+        const client = createClient({
+          url: 'file:art_gallery.sqlite',
+        });
+        localLibsqlDb = drizzleLibsql(client, { schema });
+      } catch (err) {
+        console.warn('Local SQLite init error:', err);
+      }
+    }
+    return localLibsqlDb;
+  }
+
+  return null;
 }
 
 // Safe Dynamic Proxy
@@ -63,7 +87,7 @@ export const db = new Proxy({} as any, {
       return val;
     }
 
-    // Mock fallback when no DB binding is available
+    // Mock fallback when no DB binding is available (safe immediate return, zero hangs)
     if (prop === 'select') {
       return () => {
         const queryChain: any = {
