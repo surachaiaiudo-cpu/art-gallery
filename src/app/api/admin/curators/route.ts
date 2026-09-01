@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 async function deleteFromImageKit(imageUrl: string, privateKey?: string) {
   if (!privateKey || !imageUrl || !imageUrl.includes('ik.imagekit.io')) return;
   try {
-    const authHeader = `Basic ${Buffer.from(`${privateKey}:`).toString('base64')}`;
+    const authHeader = `Basic ${btoa(`${privateKey}:`)}`;
     const cleanUrl = imageUrl.split('?')[0];
     const parts = cleanUrl.split('/');
     const filename = parts[parts.length - 1];

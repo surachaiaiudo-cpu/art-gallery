@@ -115,7 +115,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ImageKit private key not configured' }, { status: 400 });
     }
 
-    const authHeader = `Basic ${Buffer.from(`${privateKey}:`).toString('base64')}`;
+    const authHeader = `Basic ${btoa(`${privateKey}:`)}`;
 
     if (fileId) {
       await fetch(`https://api.imagekit.io/v1/files/${fileId}`, {

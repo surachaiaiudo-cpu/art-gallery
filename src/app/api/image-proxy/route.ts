@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     const contentType = res.headers.get('content-type') || 'image/jpeg';
     const buffer = await res.arrayBuffer();
 
-    return new NextResponse(Buffer.from(buffer), {
+    return new NextResponse(buffer, {
       headers: {
         'Content-Type': contentType,
         'Access-Control-Allow-Origin': '*',
