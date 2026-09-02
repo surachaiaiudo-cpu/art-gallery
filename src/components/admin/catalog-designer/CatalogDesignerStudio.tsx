@@ -1021,72 +1021,95 @@ export function CatalogDesignerStudio({
     setTimeout(() => setSaveSuccessToast(false), 3000);
   };
 
-  // Direct Print / Save Current Page Vector PDF from Studio
-  // Direct Print / Save Current Page Vector PDF from Studio
+  // 🖨️ Instant Isolated 1-Page Print / Save PDF
   const handlePrintStudioCurrentPage = () => {
     if (typeof document === 'undefined') return;
     const w = template.pageWidthInches || 8;
     const h = template.pageHeightInches || 8;
+    const canvasEl = document.getElementById('catalog-studio-print-target');
+    if (!canvasEl) return;
 
-    // Deselect and hide guides for clean capture
+    // Deselect and hide guides
     setSelectedBlockId(null);
     setShowGrid(false);
     setShowMarginGuide(false);
 
-    let styleEl = document.getElementById('dynamic-catalog-print-size') as HTMLStyleElement | null;
-    if (!styleEl) {
-      styleEl = document.createElement('style');
-      styleEl.id = 'dynamic-catalog-print-size';
-      document.head.appendChild(styleEl);
+    let printIframe = document.getElementById('catalog-studio-print-iframe') as HTMLIFrameElement | null;
+    if (!printIframe) {
+      printIframe = document.createElement('iframe');
+      printIframe.id = 'catalog-studio-print-iframe';
+      printIframe.style.position = 'fixed';
+      printIframe.style.right = '0';
+      printIframe.style.bottom = '0';
+      printIframe.style.width = '0';
+      printIframe.style.height = '0';
+      printIframe.style.border = '0';
+      document.body.appendChild(printIframe);
     }
-    styleEl.innerHTML = `
-      @media print {
-        @page {
-          size: ${w}in ${h}in !important;
-          margin: 0mm !important;
-        }
-        body {
-          margin: 0 !important;
-          padding: 0 !important;
-          background: #ffffff !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        header, footer, nav, .no-print, [class*="dock"], [class*="Inspector"], [class*="Guideline"], [class*="BLEED"], [class*="border-dashed"], button, input, select {
-          display: none !important;
-        }
-        #catalog-studio-print-target {
-          position: fixed !important;
-          left: 0 !important;
-          top: 0 !important;
-          width: ${w}in !important;
-          height: ${h}in !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          box-shadow: none !important;
-          border: none !important;
-          background: ${template.backgroundColor || '#FFFFFF'} !important;
-          z-index: 999999 !important;
-          overflow: hidden !important;
-          transform: none !important;
-        }
-      }
-    `;
 
-    const originalTitle = document.title;
-    document.title = `${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Vector`;
+    const iframeDoc = printIframe.contentDocument || printIframe.contentWindow?.document;
+    if (!iframeDoc) return;
 
-    const cleanup = () => {
-      document.title = originalTitle;
+    const plateHtml = canvasEl.innerHTML;
+
+    iframeDoc.open();
+    iframeDoc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Vector</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+          <style>
+            @page {
+              size: ${w}in ${h}in !important;
+              margin: 0mm !important;
+            }
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            html, body {
+              width: ${w}in;
+              height: ${h}in;
+              margin: 0;
+              padding: 0;
+              overflow: hidden;
+              background: ${template.backgroundColor || '#FFFFFF'};
+              font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
+            }
+            .plate-container {
+              position: relative;
+              width: ${w}in;
+              height: ${h}in;
+              background: ${template.backgroundColor || '#FFFFFF'};
+              overflow: hidden;
+            }
+            /* Clean out all helper outlines and edit guides */
+            [class*="Guideline"], [class*="BLEED"], [class*="border-dashed"], [class*="ring-2"], [class*="cursor-"], [class*="resize-handle"] {
+              display: none !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="plate-container">
+            ${plateHtml}
+          </div>
+        </body>
+      </html>
+    `);
+    iframeDoc.close();
+
+    setTimeout(() => {
+      printIframe?.contentWindow?.focus();
+      printIframe?.contentWindow?.print();
       setShowGrid(true);
       setShowMarginGuide(true);
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    setTimeout(() => {
-      window.print();
-    }, 100);
-    setTimeout(cleanup, 3000);
+    }, 200);
   };
 
 
