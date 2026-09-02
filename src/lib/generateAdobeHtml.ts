@@ -53,15 +53,16 @@ function fw(w?: string): number {
 }
 
 function ff(f?: string): string {
-  if (f === "Cinzel") return "'Cinzel', 'Times New Roman', serif";
-  if (f === "Maitree") return "'Maitree', 'Noto Serif Thai', Georgia, serif";
-  if (f === "Prompt") return "'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
-  if (f === "Sarabun") return "'Sarabun', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
-  if (f === "Inter") return "'Inter', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
-  if (f === "serif") return "'Maitree', 'Noto Serif Thai', Georgia, serif";
-  if (f === "sans-serif") return "'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
-  return "'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  if (f === "Cinzel") return "'Cinzel', 'Times New Roman', Georgia, serif";
+  if (f === "Maitree") return "'Georgia', 'Maitree', 'Noto Serif Thai', 'Times New Roman', serif";
+  if (f === "Prompt") return "'Prompt', 'Inter', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  if (f === "Sarabun") return "'Sarabun', 'Inter', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  if (f === "Inter") return "'Inter', 'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  if (f === "serif") return "'Georgia', 'Maitree', 'Noto Serif Thai', 'Times New Roman', serif";
+  if (f === "sans-serif") return "'Inter', 'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  return "'Georgia', 'Maitree', 'Noto Serif Thai', 'Times New Roman', serif";
 }
+
 
 function escHtml(s: string): string {
   return (s || "")
