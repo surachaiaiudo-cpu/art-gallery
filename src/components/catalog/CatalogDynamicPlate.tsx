@@ -81,18 +81,19 @@ export function CatalogDynamicPlate({
     const resolveFontFamily = (f?: string) => {
       switch (f) {
         case 'Sarabun':
-          return "'Sarabun', 'Inter', -apple-system, BlinkMacSystemFont, 'Noto Sans Thai', sans-serif";
+          return "'Sarabun', 'Noto Sans Thai', sans-serif";
         case 'Cinzel':
-          return "'Cinzel', 'Times New Roman', Georgia, serif";
+          return "'Cinzel', Georgia, serif";
         case 'Inter':
-          return "'Inter', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Thai', sans-serif";
+          return "'Inter', 'Sarabun', 'Noto Sans Thai', sans-serif";
         case 'Prompt':
-          return "'Prompt', 'Inter', 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, sans-serif";
+          return "'Sarabun', 'Noto Sans Thai', sans-serif";
         case 'Maitree':
         default:
-          return "'Georgia', 'Maitree', 'Noto Serif Thai', 'Times New Roman', serif";
+          return "'Maitree', 'Noto Serif Thai', Georgia, serif";
       }
     };
+
 
 
     const resolveFontWeight = (w?: string, fallback = 400) => {
