@@ -9,8 +9,11 @@ import type { CatalogTemplateConfig, CatalogBlockElement } from "@/types/catalog
 import { getArtworkCatalogTemplate } from "@/types/catalogTemplate";
 import { getOptimizedImageUrl } from "@/lib/imagekit";
 import { formatDateRange, formatPrice } from "@/lib/utils";
+import { EMBEDDED_FONTS_CSS } from "@/lib/embeddedFonts";
 
 const CATALOG_BASE_CSS = (w: number, h: number, bg: string) => `
+${EMBEDDED_FONTS_CSS}
+
 @page { size: ${w}in ${h}in; margin: 0; }
 * {
   box-sizing: border-box;
@@ -27,7 +30,7 @@ html, body {
   padding: 0;
   width: ${w}in;
   background: #fff;
-  font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
+  font-family: 'Sarabun', 'Maitree', sans-serif;
   font-kerning: normal;
 }
 .page {
@@ -53,15 +56,16 @@ function fw(w?: string): number {
 }
 
 function ff(f?: string): string {
-  if (f === "Sarabun") return "'Sarabun', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
-  if (f === "Maitree") return "'Maitree', 'Noto Serif Thai', Georgia, serif";
-  if (f === "Cinzel") return "'Cinzel', 'Times New Roman', Georgia, serif";
-  if (f === "Inter") return "'Inter', 'Sarabun', 'Noto Sans Thai', Arial, sans-serif";
-  if (f === "Prompt") return "'Prompt', 'Sarabun', 'Noto Sans Thai', Arial, sans-serif";
-  if (f === "serif") return "'Maitree', 'Noto Serif Thai', Georgia, serif";
-  if (f === "sans-serif") return "'Sarabun', 'Noto Sans Thai', Arial, sans-serif";
-  return "'Maitree', 'Noto Serif Thai', Georgia, serif";
+  if (f === "Sarabun") return "'Sarabun', sans-serif";
+  if (f === "Maitree") return "'Maitree', serif";
+  if (f === "Cinzel") return "'Cinzel', serif";
+  if (f === "Inter") return "'Sarabun', sans-serif";
+  if (f === "Prompt") return "'Sarabun', sans-serif";
+  if (f === "serif") return "'Maitree', serif";
+  if (f === "sans-serif") return "'Sarabun', sans-serif";
+  return "'Sarabun', sans-serif";
 }
+
 
 
 
