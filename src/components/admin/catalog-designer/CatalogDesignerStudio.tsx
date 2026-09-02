@@ -1167,6 +1167,105 @@ export function CatalogDesignerStudio({
     }
   };
 
+  // 🅰️ DIRECT DOWNLOAD ADOBE POSTSCRIPT PDF (1-Click Genuine Adobe Cloud Engine)
+  const handleDirectDownloadAdobePDF = async () => {
+    const canvasEl = document.getElementById('catalog-studio-print-target');
+    if (!canvasEl) return;
+
+    try {
+      setIsExportingPDF(true);
+      setExportStatusText('กำลังส่งคำสั่งไปยัง Adobe Cloud เพื่อสร้าง PDF PostScript แท้ 100%...');
+
+      const w = template.pageWidthInches || 8;
+      const h = template.pageHeightInches || 8;
+
+      const plateNode = canvasEl.querySelector('.catalog-dynamic-page');
+      const plateHtml = plateNode ? plateNode.outerHTML : canvasEl.innerHTML;
+
+      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+        .map((el) => el.outerHTML)
+        .join('\n');
+
+      const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe</title>
+  ${parentStyles}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page { size: ${w}in ${h}in; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body {
+      width: ${w}in;
+      height: ${h}in;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: ${template.backgroundColor || '#FFFFFF'};
+      font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
+    }
+    .catalog-dynamic-page {
+      position: relative !important;
+      width: ${w}in !important;
+      height: ${h}in !important;
+      max-width: ${w}in !important;
+      max-height: ${h}in !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      background-color: ${template.backgroundColor || '#FFFFFF'} !important;
+      overflow: hidden !important;
+    }
+    [class*="Guideline"], [class*="BLEED"], [class*="border-dashed"], [class*="ring-2"], [class*="cursor-"], [class*="resize-handle"] {
+      display: none !important;
+    }
+  </style>
+</head>
+<body class="bg-white">
+  ${plateHtml}
+</body>
+</html>`;
+
+      const res = await fetch('/api/catalog/adobe-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          html: fullHtml,
+          pageWidthInches: w,
+          pageHeightInches: h,
+          filename: `${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe.pdf`,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'เกิดข้อผิดพลาดในการประมวลผลของ Adobe Cloud');
+      }
+
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      setIsExportingPDF(false);
+      setExportStatusText('');
+    } catch (err: any) {
+      console.error('Adobe PDF export error:', err);
+      alert(`ไม่สามารถสร้าง Adobe PDF ได้: ${err.message || 'โปรดตรวจสอบการเชื่อมต่อ'}`);
+      setIsExportingPDF(false);
+      setExportStatusText('');
+    }
+  };
+
   // Export JSON file
   const handleExportJSON = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(template, null, 2));
@@ -1759,7 +1858,32 @@ export function CatalogDesignerStudio({
                   <span className="text-[10px] text-gray-500 font-normal">({template.paperSize})</span>
                 </div>
 
-                {/* 🖨️ 1. Exact Vector PDF Export (Save as PDF) */}
+                {/* 🔥 1. DIRECT DOWNLOAD ADOBE POSTSCRIPT PDF (1-Click) */}
+                <button
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleDirectDownloadAdobePDF();
+                  }}
+                  disabled={isExportingPDF}
+                  className="w-full p-2.5 rounded-xl hover:bg-gradient-to-r hover:from-[#ED2224] hover:to-[#B30B00] hover:text-white flex items-start gap-2.5 text-left transition-all cursor-pointer group bg-red-50/50 border border-red-200/60"
+                >
+                  <div className="p-2 rounded-lg bg-[#ED2224] text-white group-hover:bg-white group-hover:text-[#ED2224] transition-colors shrink-0 shadow-sm">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-[#ED2224] group-hover:text-white transition-colors flex items-center gap-1.5">
+                      <span>ดาวน์โหลด Adobe PDF (1-Click)</span>
+                      <span className="text-[9px] bg-[#ED2224] text-white group-hover:bg-white group-hover:text-[#ED2224] px-1.5 py-0.2 rounded-full font-bold">
+                        Adobe Engine
+                      </span>
+                    </div>
+                    <div className="text-[10.5px] text-[#666] group-hover:text-white/90 leading-tight mt-0.5">
+                      เอนจิน PostScript แท้จาก Adobe Cloud คุณภาพสูงสุด 100%
+                    </div>
+                  </div>
+                </button>
+
+                {/* 🖨️ 2. Exact Vector PDF Export (Save as PDF) */}
                 <button
                   onClick={() => {
                     setIsExportMenuOpen(false);
@@ -1773,13 +1897,13 @@ export function CatalogDesignerStudio({
                     </div>
                     <div>
                       <div className="text-xs font-bold text-[#8B1B1B] group-hover:text-white transition-colors flex items-center gap-1.5">
-                        <span>บันทึกเป็น PDF ขนาดตามจริง</span>
+                        <span>บันทึกเป็น PDF ผ่านเบราว์เซอร์</span>
                         <span className="text-[9.5px] bg-[#8B1B1B] text-white group-hover:bg-white group-hover:text-[#8B1B1B] px-1.5 py-0.2 rounded-full font-mono">
                           {template.pageWidthInches}&quot;x{template.pageHeightInches}&quot;
                         </span>
                       </div>
                       <div className="text-[10.5px] text-[#666] group-hover:text-white/90 leading-tight mt-0.5">
-                        ฟอนต์ภาษาไทยและภาพคมชัด 100% (เลือก &apos;Save as PDF&apos;)
+                        ฟอนต์ภาษาไทยและภาพคมชัด (เลือก &apos;Save as PDF&apos; หรือ &apos;Adobe PDF&apos;)
                       </div>
                     </div>
                   </div>

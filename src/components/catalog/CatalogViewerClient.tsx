@@ -24,6 +24,7 @@ import {
   Loader2,
   Sparkles,
   Download,
+  FileText,
 } from 'lucide-react';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
@@ -55,6 +56,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [savingReviewers, setSavingReviewers] = useState(false);
   const [savedReviewersSuccess, setSavedReviewersSuccess] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfProgressText, setPdfProgressText] = useState('');
 
   // Initial values from themeConfig
   let initialFooterGraphicType: 'wave_gold' | 'wave_mono' | 'line_gold' | 'custom_image' | 'none' = 'wave_gold';
@@ -220,6 +223,102 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
     }
   };
 
+  // 🅰️ 1-Click Adobe PostScript Cloud PDF Generation (Full Book)
+  const handleDownloadFullAdobePDF = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      setPdfProgressText('กำลังเชื่อมต่อ Adobe Cloud เพื่อสร้างสูจิบัตร PDF PostScript แท้ 100%...');
+
+      const targetEl = document.getElementById('catalog-continuous-stream-container') || document.querySelector('.catalog-continuous-view');
+      if (!targetEl) {
+        throw new Error('ไม่พบข้อมูลหน้าสูจิบัตร');
+      }
+
+      const isCustomSize = Boolean(customTemplate?.pageWidthInches && customTemplate?.pageHeightInches);
+      const w = isCustomSize ? (customTemplate?.pageWidthInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 8.27);
+      const h = isCustomSize ? (customTemplate?.pageHeightInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 11.69);
+
+      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+        .map((el) => el.outerHTML)
+        .join('\n');
+
+      const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${exhibition.title || 'Art Exhibition'}-Catalog-Adobe</title>
+  ${parentStyles}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page { size: ${w}in ${h}in; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body {
+      width: ${w}in;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
+    }
+    .catalog-dynamic-page, .catalog-cover-page, .catalog-statement-page {
+      position: relative !important;
+      width: ${w}in !important;
+      height: ${h}in !important;
+      max-width: ${w}in !important;
+      max-height: ${h}in !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      page-break-after: always !important;
+      break-after: page !important;
+      overflow: hidden !important;
+    }
+    .no-print { display: none !important; }
+  </style>
+</head>
+<body class="bg-white">
+  ${targetEl.innerHTML}
+</body>
+</html>`;
+
+      const res = await fetch('/api/catalog/adobe-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          html: fullHtml,
+          pageWidthInches: w,
+          pageHeightInches: h,
+          filename: `${exhibition.slug || 'catalog'}-Full-Adobe.pdf`,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'การประมวลผลของ Adobe Cloud ล้มเหลว');
+      }
+
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `${exhibition.slug || 'catalog'}-Full-Adobe.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      setIsGeneratingPdf(false);
+      setPdfProgressText('');
+    } catch (err: any) {
+      console.error('Adobe PDF generation error:', err);
+      alert(`ไม่สามารถสร้าง Adobe PDF ได้: ${err.message || 'โปรดลองอีกครั้ง'}`);
+      setIsGeneratingPdf(false);
+      setPdfProgressText('');
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F4F0] text-[#1E1D1B]">
       {/* Top Navbar */}
@@ -324,15 +423,28 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </>
             )}
 
+            {/* 🔥 1-Click Adobe PostScript Cloud PDF Generation */}
+            <TooltipBubble content="ดาวน์โหลดสูจิบัตรทั้งเล่มเป็น PDF ด้วยเอนจิน Adobe PostScript แท้ 100% จาก Adobe Cloud" position="bottom">
+              <button
+                onClick={handleDownloadFullAdobePDF}
+                disabled={isGeneratingPdf}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#ED2224] to-[#B30B00] hover:from-[#FF3333] hover:to-[#C40C00] text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+                aria-label="Download Adobe PDF"
+              >
+                <FileText className="w-4 h-4" />
+                <span>{isGeneratingPdf ? 'กำลังสร้าง Adobe PDF...' : 'ดาวน์โหลด Adobe PDF (ทั้งเล่ม)'}</span>
+              </button>
+            </TooltipBubble>
+
             {/* Save Vector PDF 100% Button with Tooltip Bubble */}
-            <TooltipBubble content="บันทึกสูจิบัตรทั้งเล่มเป็นไฟล์ PDF Vector คมชัด 100% (เลือก 'Save as PDF')" position="bottom">
+            <TooltipBubble content="บันทึกสูจิบัตรทั้งเล่มผ่านเบราว์เซอร์ (เลือก 'Save as PDF' หรือ 'Adobe PDF')" position="bottom">
               <button
                 onClick={() => handleSaveVectorPDF100Percent(customTemplate)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#8B1B1B] hover:bg-[#721616] text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                className="flex items-center gap-2 px-3.5 py-2 bg-[#8B1B1B] hover:bg-[#721616] text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
                 aria-label="Save Vector PDF"
               >
                 <Printer className="w-4 h-4" />
-                <span>บันทึก PDF ทั้งเล่ม</span>
+                <span>พิมพ์ / PDF เบราว์เซอร์</span>
               </button>
             </TooltipBubble>
           </div>
