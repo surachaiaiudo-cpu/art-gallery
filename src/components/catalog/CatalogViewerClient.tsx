@@ -488,21 +488,22 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
     .hidden {
       display: block !important;
     }
-    .catalog-dynamic-page, .catalog-cover-page, .catalog-statement-page {
+    .catalog-dynamic-page, .catalog-cover-page, .catalog-statement-page, .catalog-a4-page, .catalog-square8-page, section {
       display: block !important;
       position: relative !important;
       width: ${w}in !important;
       height: ${h}in !important;
+      min-height: ${h}in !important;
       max-width: ${w}in !important;
       max-height: ${h}in !important;
       margin: 0 !important;
-      padding: 0 !important;
       border: none !important;
       box-shadow: none !important;
       page-break-after: always !important;
       break-after: page !important;
       overflow: hidden !important;
       background-color: #ffffff !important;
+      box-sizing: border-box !important;
     }
     .no-print { display: none !important; }
   </style>
@@ -999,6 +1000,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             exhibition={exhibition}
             curator={curator}
             coverFooter={coverFooter}
+            paperSize={paperSize}
           />
         </PlateErrorBoundary>
 
@@ -1010,6 +1012,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               curator={curator}
               peerReviewersList={peerReviewersList}
               plateFooter={plateFooter}
+              paperSize={paperSize}
             />
           </PlateErrorBoundary>
         )}
