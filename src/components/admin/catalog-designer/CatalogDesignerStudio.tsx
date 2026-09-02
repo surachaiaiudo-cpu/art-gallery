@@ -81,6 +81,8 @@ import {
   Unlock,
   Lock,
   FileEdit,
+  BookmarkPlus,
+  Edit3,
 } from 'lucide-react';
 
 interface CatalogDesignerStudioProps {
@@ -220,8 +222,12 @@ export function CatalogDesignerStudio({
     return [];
   });
   const [isSavePresetModalOpen, setIsSavePresetModalOpen] = useState<boolean>(false);
+  const [savePresetMode, setSavePresetMode] = useState<'new' | 'overwrite'>('new');
+  const [selectedOverwritePresetId, setSelectedOverwritePresetId] = useState<string>('');
   const [newPresetName, setNewPresetName] = useState<string>('');
   const [newPresetDesc, setNewPresetDesc] = useState<string>('');
+  const [presetModalTab, setPresetModalTab] = useState<'custom' | 'official'>('custom');
+  const [editingPreset, setEditingPreset] = useState<{ id: string; name: string; description: string } | null>(null);
   const [isCmykModalOpen, setIsCmykModalOpen] = useState<boolean>(false);
   const [showMarginGuide, setShowMarginGuide] = useState<boolean>(true);
   const [isMarginModalOpen, setIsMarginModalOpen] = useState<boolean>(false);
@@ -722,7 +728,7 @@ export function CatalogDesignerStudio({
     });
   };
 
-  // Save custom preset
+  // Save as new preset
   const handleSaveAsCustomPreset = () => {
     if (!newPresetName.trim()) return;
     const newPreset: CatalogTemplateConfig = {
@@ -730,12 +736,14 @@ export function CatalogDesignerStudio({
       id: `custom-preset-${Date.now().toString(36)}`,
       name: newPresetName.trim(),
       description: newPresetDesc.trim() || 'แม่แบบกำหนดเองของผู้ดูแลระบบ',
+      updatedAt: new Date().toISOString(),
     };
-    const updated = [...customPresets, newPreset];
+    const updated = [newPreset, ...customPresets];
     setCustomPresets(updated);
     if (typeof window !== 'undefined') {
       localStorage.setItem('artvara_custom_catalog_presets', JSON.stringify(updated));
     }
+    setSelectedOverwritePresetId(newPreset.id);
     setNewPresetName('');
     setNewPresetDesc('');
     setIsSavePresetModalOpen(false);
@@ -743,16 +751,71 @@ export function CatalogDesignerStudio({
     setTimeout(() => setSaveSuccessToast(false), 3000);
   };
 
+  // Overwrite existing preset
+  const handleOverwritePreset = (targetId: string) => {
+    const target = customPresets.find((p) => p.id === targetId);
+    if (!target) return;
+    if (confirm(`คุณต้องการบันทึกทับแม่แบบ "${target.name}" ด้วยเลย์เอาต์ปัจจุบันใช่หรือไม่?`)) {
+      const updatedPreset: CatalogTemplateConfig = {
+        ...template,
+        id: target.id,
+        name: newPresetName.trim() || target.name,
+        description: newPresetDesc.trim() || target.description,
+        updatedAt: new Date().toISOString(),
+      };
+      const updatedList = customPresets.map((p) => (p.id === targetId ? updatedPreset : p));
+      setCustomPresets(updatedList);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('artvara_custom_catalog_presets', JSON.stringify(updatedList));
+      }
+      setIsSavePresetModalOpen(false);
+      setSaveSuccessToast(true);
+      setTimeout(() => setSaveSuccessToast(false), 3000);
+    }
+  };
+
+  // Rename preset
+  const handleSaveRenamePreset = () => {
+    if (!editingPreset || !editingPreset.name.trim()) return;
+    const updatedList = customPresets.map((p) => {
+      if (p.id === editingPreset.id) {
+        return { ...p, name: editingPreset.name.trim(), description: editingPreset.description.trim() };
+      }
+      return p;
+    });
+    setCustomPresets(updatedList);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('artvara_custom_catalog_presets', JSON.stringify(updatedList));
+    }
+    setEditingPreset(null);
+  };
+
   // Delete custom preset
-  const handleDeleteCustomPreset = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm('คุณต้องการลบแม่แบบนี้ใช่หรือไม่?')) {
+  const handleDeleteCustomPreset = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const target = customPresets.find((p) => p.id === id);
+    if (confirm(`คุณต้องการลบแม่แบบ "${target?.name || ''}" ใช่หรือไม่?`)) {
       const updated = customPresets.filter((p) => p.id !== id);
       setCustomPresets(updated);
       if (typeof window !== 'undefined') {
         localStorage.setItem('artvara_custom_catalog_presets', JSON.stringify(updated));
       }
+      if (selectedOverwritePresetId === id) {
+        setSelectedOverwritePresetId('');
+      }
     }
+  };
+
+  // Export single preset as JSON
+  const handleExportSinglePresetJSON = (preset: CatalogTemplateConfig, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(preset, null, 2));
+    const a = document.createElement('a');
+    a.setAttribute('href', dataStr);
+    a.setAttribute('download', `artvara-template-${preset.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.json`);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   // Update Margins (paddingInches)
@@ -772,9 +835,12 @@ export function CatalogDesignerStudio({
   const handleSelectPreset = (preset: CatalogTemplateConfig) => {
     updateTemplateWithHistory({
       ...preset,
-      id: `custom-tpl-${Date.now().toString(36)}`,
-      name: `${preset.name} (Customized)`,
+      id: preset.id.startsWith('custom-preset-') ? preset.id : `custom-tpl-${Date.now().toString(36)}`,
+      name: preset.name,
     });
+    if (preset.id.startsWith('custom-preset-')) {
+      setSelectedOverwritePresetId(preset.id);
+    }
     setIsPresetModalOpen(false);
     setSelectedBlockId(null);
   };
@@ -1483,13 +1549,41 @@ export function CatalogDesignerStudio({
             <Layers className="w-4 h-4" />
           </button>
 
-          {/* Preset Button */}
+          {/* Preset Library Button */}
           <button
-            onClick={() => setIsPresetModalOpen(true)}
+            onClick={() => {
+              setPresetModalTab(customPresets.length > 0 ? 'custom' : 'official');
+              setIsPresetModalOpen(true);
+            }}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-xs font-semibold text-[#444] hover:text-[#8B1B1B] hover:bg-[#8B1B1B]/5 shadow-sm transition-all cursor-pointer"
+            title="เปิดคลังแม่แบบสูจิบัตร (Presets)"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#8B1B1B]" />
             <span className="hidden sm:inline">แม่แบบ</span>
+            {customPresets.length > 0 && (
+              <span className="text-[10px] bg-[#8B1B1B]/10 text-[#8B1B1B] font-bold px-1.5 py-0.2 rounded-full">
+                {customPresets.length}
+              </span>
+            )}
+          </button>
+
+          {/* Save as Preset Button */}
+          <button
+            onClick={() => {
+              setNewPresetName(template.name || 'แม่แบบกำหนดเอง');
+              setNewPresetDesc(template.description || '');
+              if (selectedOverwritePresetId && customPresets.some((p) => p.id === selectedOverwritePresetId)) {
+                setSavePresetMode('overwrite');
+              } else {
+                setSavePresetMode('new');
+              }
+              setIsSavePresetModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-xs font-semibold text-[#444] hover:text-[#8B1B1B] hover:bg-[#8B1B1B]/5 shadow-sm transition-all cursor-pointer"
+            title="บันทึกเลย์เอาต์ปัจจุบันเป็นแม่แบบใหม่ หรือบันทึกซ้ำลงแม่แบบเดิม"
+          >
+            <BookmarkPlus className="w-3.5 h-3.5 text-[#8B1B1B]" />
+            <span className="hidden md:inline">บันทึกเป็นแม่แบบ</span>
           </button>
 
           {/* Print / Export PDF */}
@@ -2462,31 +2556,204 @@ export function CatalogDesignerStudio({
       )}
 
       {/* ========================================================================= */}
-      {/* 📐 PRESET TEMPLATES MODAL */}
+      {/* 📐 PRESET TEMPLATES LIBRARY MODAL */}
       {/* ========================================================================= */}
       {isPresetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white border border-[#E6E0D4] rounded-2xl w-full max-w-4xl max-h-[85vh] shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-[#E6E0D4] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#8B1B1B]" />
-                <h3 className="font-serif text-base font-bold text-[#1F1C17]">
-                  คลังแม่แบบสูจิบัตรมาตรฐาน (Catalog Layout Presets)
-                </h3>
+            {/* Modal Header */}
+            <div className="p-4 border-b border-[#E6E0D4] flex items-center justify-between bg-[#FAF8F5]">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-[#8B1B1B]/10 text-[#8B1B1B]">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-[#1F1C17]">
+                    คลังแม่แบบสูจิบัตร (Catalog Layout Templates)
+                  </h3>
+                  <p className="text-xs text-[#777]">
+                    เลือกใช้แม่แบบ บันทึกแม่แบบของคุณ หรือส่งออกไฟล์ไปใช้งานต่อ
+                  </p>
+                </div>
               </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setNewPresetName(template.name || 'แม่แบบกำหนดเอง');
+                    setNewPresetDesc(template.description || '');
+                    setSavePresetMode('new');
+                    setIsPresetModalOpen(false);
+                    setIsSavePresetModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>บันทึกเลย์เอาต์ปัจจุบัน</span>
+                </button>
+                <button
+                  onClick={() => setIsPresetModalOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-black/5 text-[#777]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex items-center gap-2 px-6 pt-3 border-b border-[#E6E0D4] bg-[#FAF8F5]/50">
               <button
-                onClick={() => setIsPresetModalOpen(false)}
-                className="p-1 rounded-full hover:bg-black/5 text-[#777]"
+                onClick={() => setPresetModalTab('custom')}
+                className={`flex items-center gap-2 pb-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                  presetModalTab === 'custom'
+                    ? 'border-[#8B1B1B] text-[#8B1B1B]'
+                    : 'border-transparent text-[#777] hover:text-[#111]'
+                }`}
               >
-                <X className="w-4 h-4" />
+                <span>แม่แบบของฉัน (My Templates)</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  presetModalTab === 'custom' ? 'bg-[#8B1B1B]/10 text-[#8B1B1B]' : 'bg-black/5 text-[#777]'
+                }`}>
+                  {customPresets.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setPresetModalTab('official')}
+                className={`flex items-center gap-2 pb-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+                  presetModalTab === 'official'
+                    ? 'border-[#8B1B1B] text-[#8B1B1B]'
+                    : 'border-transparent text-[#777] hover:text-[#111]'
+                }`}
+              >
+                <span>แม่แบบมาตรฐานหอศิลป์ (Official Presets)</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  presetModalTab === 'official' ? 'bg-[#8B1B1B]/10 text-[#8B1B1B]' : 'bg-black/5 text-[#777]'
+                }`}>
+                  {BUILTIN_CATALOG_PRESETS.length}
+                </span>
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-              <div>
-                <h4 className="text-xs uppercase font-bold text-[#8B1B1B] tracking-wider mb-3">
-                  แม่แบบทางการ (Official Artvara Presets)
-                </h4>
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              {presetModalTab === 'custom' ? (
+                <div>
+                  {customPresets.length === 0 ? (
+                    <div className="py-12 flex flex-col items-center justify-center text-center">
+                      <div className="p-4 rounded-2xl bg-[#F8F7F4] border border-[#E6E0D4] text-[#8B1B1B] mb-3">
+                        <BookmarkPlus className="w-8 h-8 opacity-60" />
+                      </div>
+                      <h4 className="font-serif font-bold text-sm text-[#1F1C17] mb-1">
+                        ยังไม่มีแม่แบบที่คุณบันทึกไว้
+                      </h4>
+                      <p className="text-xs text-[#777] max-w-sm mb-4">
+                        คุณสามารถจัดหน้าสูจิบัตรให้สวยงาม แล้วกดบันทึกเป็นแม่แบบเพื่อนำมาใช้ซ้ำกับนิทรรศการอื่นๆ ได้ตลอดเวลา
+                      </p>
+                      <button
+                        onClick={() => {
+                          setNewPresetName(template.name || 'แม่แบบกำหนดเองของฉัน');
+                          setNewPresetDesc(template.description || '');
+                          setSavePresetMode('new');
+                          setIsPresetModalOpen(false);
+                          setIsSavePresetModalOpen(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>บันทึกเลย์เอาต์ปัจจุบันเป็นแม่แบบแรก</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {customPresets.map((preset) => (
+                        <div
+                          key={preset.id}
+                          className="group bg-[#F8F7F4] hover:bg-white border border-[#E6E0D4] hover:border-[#8B1B1B] p-4 rounded-xl shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                        >
+                          <div>
+                            {/* Card Badges */}
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[10px] font-mono font-bold text-[#8B1B1B] uppercase bg-[#8B1B1B]/10 px-2 py-0.5 rounded-full">
+                                {preset.paperSize}
+                              </span>
+                              <span className="text-[10px] font-mono text-[#777]">
+                                {preset.blocks.length} องค์ประกอบ
+                              </span>
+                            </div>
+
+                            {/* Preset Title & Desc */}
+                            <h5 className="font-serif font-bold text-sm text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors mb-1">
+                              {preset.name}
+                            </h5>
+                            <p className="text-[11px] text-[#666] line-clamp-2 mb-3">
+                              {preset.description || 'แม่แบบกำหนดเองของผู้ดูแลระบบ'}
+                            </p>
+                          </div>
+
+                          {/* Card Action Buttons */}
+                          <div className="pt-3 border-t border-[#E6E0D4] space-y-2">
+                            <button
+                              onClick={() => handleSelectPreset(preset)}
+                              className="w-full py-1.5 rounded-lg bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold flex items-center justify-center gap-1 shadow-xs transition-colors cursor-pointer"
+                            >
+                              <span>ใช้แม่แบบนี้</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+
+                            <div className="flex items-center justify-between text-[11px] text-[#666] pt-1">
+                              {/* Overwrite with current canvas */}
+                              <button
+                                onClick={() => handleOverwritePreset(preset.id)}
+                                className="hover:text-[#8B1B1B] hover:underline flex items-center gap-1 cursor-pointer"
+                                title="บันทึกทับแม่แบบนี้ด้วยเลย์เอาต์ที่กำลังเปิดอยู่บนหน้าจอ"
+                              >
+                                <Save className="w-3 h-3" />
+                                <span>บันทึกทับ</span>
+                              </button>
+
+                              {/* Rename */}
+                              <button
+                                onClick={() => {
+                                  setEditingPreset({
+                                    id: preset.id,
+                                    name: preset.name,
+                                    description: preset.description || '',
+                                  });
+                                }}
+                                className="hover:text-[#8B1B1B] hover:underline flex items-center gap-1 cursor-pointer"
+                                title="เปลี่ยนชื่อแม่แบบ"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>เปลี่ยนชื่อ</span>
+                              </button>
+
+                              {/* Export JSON */}
+                              <button
+                                onClick={(e) => handleExportSinglePresetJSON(preset, e)}
+                                className="hover:text-[#8B1B1B] hover:underline flex items-center gap-1 cursor-pointer"
+                                title="ดาวน์โหลดไฟล์ JSON"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>JSON</span>
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
+                                className="hover:text-red-600 hover:underline flex items-center gap-1 cursor-pointer"
+                                title="ลบแม่แบบนี้"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>ลบ</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {BUILTIN_CATALOG_PRESETS.map((preset) => (
                     <div
@@ -2517,7 +2784,243 @@ export function CatalogDesignerStudio({
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 💾 SAVE AS PRESET MODAL (Save New or Overwrite) */}
+      {/* ========================================================================= */}
+      {isSavePresetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white border border-[#E6E0D4] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-[#E6E0D4] flex items-center justify-between bg-[#FAF8F5]">
+              <div className="flex items-center gap-2">
+                <BookmarkPlus className="w-4 h-4 text-[#8B1B1B]" />
+                <h3 className="font-serif text-base font-bold text-[#1F1C17]">
+                  บันทึกแม่แบบสูจิบัตร (Save Template)
+                </h3>
               </div>
+              <button
+                onClick={() => setIsSavePresetModalOpen(false)}
+                className="p-1 rounded-full hover:bg-black/5 text-[#777]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Mode Switcher */}
+            {customPresets.length > 0 && (
+              <div className="grid grid-cols-2 gap-1 p-2 bg-[#F8F7F4] border-b border-[#E6E0D4]">
+                <button
+                  onClick={() => setSavePresetMode('new')}
+                  className={`py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                    savePresetMode === 'new'
+                      ? 'bg-white text-[#8B1B1B] shadow-xs font-bold'
+                      : 'text-[#666] hover:text-[#111]'
+                  }`}
+                >
+                  + บันทึกเป็นแม่แบบใหม่
+                </button>
+                <button
+                  onClick={() => setSavePresetMode('overwrite')}
+                  className={`py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                    savePresetMode === 'overwrite'
+                      ? 'bg-white text-[#8B1B1B] shadow-xs font-bold'
+                      : 'text-[#666] hover:text-[#111]'
+                  }`}
+                >
+                  💾 บันทึกซ้ำลงแม่แบบเดิม
+                </button>
+              </div>
+            )}
+
+            {/* Modal Form Body */}
+            <div className="p-5 space-y-4">
+              {savePresetMode === 'new' ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F1C17] mb-1">
+                      ชื่อแม่แบบใหม่ <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="เช่น แม่แบบ Square Modern ฉบับปรับปรุง"
+                      value={newPresetName}
+                      onChange={(e) => setNewPresetName(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl text-xs text-[#1F1C17] focus:outline-none focus:border-[#8B1B1B]"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F1C17] mb-1">
+                      คำอธิบายแม่แบบ (ทางเลือก)
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="รายละเอียดเพิ่มเติม เช่น เหมาะสำหรับรูปทรงสี่เหลี่ยมจัตุรัส..."
+                      value={newPresetDesc}
+                      onChange={(e) => setNewPresetDesc(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl text-xs text-[#1F1C17] focus:outline-none focus:border-[#8B1B1B]"
+                    />
+                  </div>
+
+                  <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#E6E0D4] text-[11px] text-[#666] space-y-1">
+                    <div className="flex justify-between font-mono">
+                      <span>ขนาดกระดาษ:</span>
+                      <span className="font-bold text-[#1F1C17]">{template.pageWidthInches}&quot; x {template.pageHeightInches}&quot; ({template.paperSize})</span>
+                    </div>
+                    <div className="flex justify-between font-mono">
+                      <span>จำนวนองค์ประกอบ:</span>
+                      <span className="font-bold text-[#8B1B1B]">{template.blocks.length} บล็อก</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E6E0D4]">
+                    <button
+                      onClick={() => setIsSavePresetModalOpen(false)}
+                      className="px-4 py-2 rounded-full text-xs text-[#666] hover:bg-black/5 cursor-pointer"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      onClick={handleSaveAsCustomPreset}
+                      disabled={!newPresetName.trim()}
+                      className="px-5 py-2 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      บันทึกแม่แบบใหม่
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F1C17] mb-1">
+                      เลือกแม่แบบที่ต้องการบันทึกทับ <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedOverwritePresetId || customPresets[0]?.id || ''}
+                      onChange={(e) => {
+                        setSelectedOverwritePresetId(e.target.value);
+                        const sel = customPresets.find((p) => p.id === e.target.value);
+                        if (sel) {
+                          setNewPresetName(sel.name);
+                          setNewPresetDesc(sel.description || '');
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl text-xs text-[#1F1C17] focus:outline-none focus:border-[#8B1B1B]"
+                    >
+                      {customPresets.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.paperSize} - {p.blocks.length} องค์ประกอบ)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#1F1C17] mb-1">
+                      แก้ไขชื่อแม่แบบ
+                    </label>
+                    <input
+                      type="text"
+                      value={newPresetName}
+                      onChange={(e) => setNewPresetName(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl text-xs text-[#1F1C17] focus:outline-none focus:border-[#8B1B1B]"
+                    />
+                  </div>
+
+                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                    ⚠️ <strong>คำเตือน:</strong> เลย์เอาต์บนหน้าจอปัจจุบันจะถูกนำไปบันทึกแทนที่ข้อมูลแม่แบบเดิมทันที
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E6E0D4]">
+                    <button
+                      onClick={() => setIsSavePresetModalOpen(false)}
+                      className="px-4 py-2 rounded-full text-xs text-[#666] hover:bg-black/5 cursor-pointer"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleOverwritePreset(selectedOverwritePresetId || customPresets[0]?.id)
+                      }
+                      className="px-5 py-2 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                    >
+                      ยืนยันบันทึกทับ
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ✏️ RENAME PRESET MODAL */}
+      {/* ========================================================================= */}
+      {editingPreset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white border border-[#E6E0D4] rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E6E0D4] pb-2">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-[#8B1B1B]" />
+                <h4 className="font-serif font-bold text-sm text-[#1F1C17]">
+                  เปลี่ยนชื่อแม่แบบ
+                </h4>
+              </div>
+              <button
+                onClick={() => setEditingPreset(null)}
+                className="p-1 rounded-full hover:bg-black/5 text-[#777]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#1F1C17] mb-1">
+                ชื่อแม่แบบ <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={editingPreset.name}
+                onChange={(e) => setEditingPreset({ ...editingPreset, name: e.target.value })}
+                className="w-full px-3 py-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl text-xs text-[#1F1C17] focus:outline-none focus:border-[#8B1B1B]"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#1F1C17] mb-1">
+                คำอธิบายแม่แบบ
+              </label>
+              <textarea
+                rows={2}
+                value={editingPreset.description}
+                onChange={(e) => setEditingPreset({ ...editingPreset, description: e.target.value })}
+                className="w-full px-3 py-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl text-xs text-[#1F1C17] focus:outline-none focus:border-[#8B1B1B]"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E6E0D4]">
+              <button
+                onClick={() => setEditingPreset(null)}
+                className="px-3.5 py-1.5 rounded-full text-xs text-[#666] hover:bg-black/5 cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleSaveRenamePreset}
+                disabled={!editingPreset.name.trim()}
+                className="px-4 py-1.5 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                บันทึกชื่อใหม่
+              </button>
             </div>
           </div>
         </div>
