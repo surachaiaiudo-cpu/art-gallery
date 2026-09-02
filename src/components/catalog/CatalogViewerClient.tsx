@@ -685,6 +685,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
       {/* Main Visual Catalog Viewer (WYSIWYG 100% True-to-Print Vector) */}
       <main
+        id="catalog-continuous-stream-container"
         style={{ maxWidth: customTemplate.pageWidthInches ? `${customTemplate.pageWidthInches}in` : '210mm' }}
         className={`w-full mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16 ${activeViewMode === 'grid3' ? 'hidden print:block' : 'block'}`}
       >
