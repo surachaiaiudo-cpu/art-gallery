@@ -27,7 +27,7 @@ html, body {
   padding: 0;
   width: ${w}in;
   background: #fff;
-  font-family: 'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
   font-kerning: normal;
 }
 .page {
@@ -53,15 +53,16 @@ function fw(w?: string): number {
 }
 
 function ff(f?: string): string {
+  if (f === "Sarabun") return "'Sarabun', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  if (f === "Maitree") return "'Maitree', 'Noto Serif Thai', Georgia, serif";
   if (f === "Cinzel") return "'Cinzel', 'Times New Roman', Georgia, serif";
-  if (f === "Maitree") return "'Georgia', 'Maitree', 'Noto Serif Thai', 'Times New Roman', serif";
-  if (f === "Prompt") return "'Prompt', 'Inter', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
-  if (f === "Sarabun") return "'Sarabun', 'Inter', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
-  if (f === "Inter") return "'Inter', 'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
-  if (f === "serif") return "'Georgia', 'Maitree', 'Noto Serif Thai', 'Times New Roman', serif";
-  if (f === "sans-serif") return "'Inter', 'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
-  return "'Georgia', 'Maitree', 'Noto Serif Thai', 'Times New Roman', serif";
+  if (f === "Inter") return "'Inter', 'Sarabun', 'Noto Sans Thai', Arial, sans-serif";
+  if (f === "Prompt") return "'Prompt', 'Sarabun', 'Noto Sans Thai', Arial, sans-serif";
+  if (f === "serif") return "'Maitree', 'Noto Serif Thai', Georgia, serif";
+  if (f === "sans-serif") return "'Sarabun', 'Noto Sans Thai', Arial, sans-serif";
+  return "'Maitree', 'Noto Serif Thai', Georgia, serif";
 }
+
 
 
 function escHtml(s: string): string {
