@@ -29,6 +29,7 @@ import {
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
 import { getAdobeMonthlyUsage, incrementAdobeUsage } from '@/lib/adobeQuota';
+import { generateAdobeCatalogHtml } from '@/lib/generateAdobeHtml';
 import { usePrintEngine } from './usePrintEngine';
 import { CatalogCoverPage } from './CatalogCoverPage';
 import { CatalogStatementPage } from './CatalogStatementPage';
@@ -473,107 +474,22 @@ ${inlinedCss}
       setPdfProgressText('กำลังรวบรวมรูปภาพและเนื้อหาทุกหน้า...');
       setPdfEstimatedSeconds(12);
 
-      const targetEl = document.getElementById('catalog-continuous-stream-container') || document.querySelector('.catalog-continuous-view');
-      if (!targetEl) {
-        throw new Error('ไม่พบข้อมูลหน้าสูจิบัตร');
-      }
+      // Page dimensions (needed for Adobe job pageLayout)
+      const w = customTemplate?.pageWidthInches || (paperSize === 'square8x8' ? 8.0 : 8.27);
+      const h = customTemplate?.pageHeightInches || (paperSize === 'square8x8' ? 8.0 : 11.69);
 
-      const isCustomSize = Boolean(customTemplate?.pageWidthInches && customTemplate?.pageHeightInches);
-      const w = isCustomSize ? (customTemplate?.pageWidthInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 8.27);
-      const h = isCustomSize ? (customTemplate?.pageHeightInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 11.69);
-
-      const cleanHtml = targetEl.innerHTML
-        .replace(/loading="lazy"/g, 'loading="eager"')
-        .replace(/decoding="async"/g, 'decoding="sync"')
-        .replace(/<img /g, '<img onerror="this.style.display=\'none\'" ');
-
-      // Extract ONLY catalog-related CSS rules from compiled browser stylesheets
-      // This avoids sending the entire Next.js/Tailwind bundle (which would exceed Adobe's limits)
-      const CATALOG_KEYWORDS = [
-        'catalog-', 'catalog_', '.font-serif', '.font-bold', '.text-', '.bg-',
-        '.flex', '.grid', '.space-', '.p-', '.px-', '.py-', '.pt-', '.pb-',
-        '.m-', '.mx-', '.my-', '.mt-', '.mb-', '.w-', '.h-', '.min-h-', '.max-',
-        '.border', '.rounded', '.shadow', '.overflow', '.relative', '.absolute',
-        '.truncate', '.uppercase', '.tracking-', '.leading-', '.block',
-        '.items-', '.justify-', '.gap-', '.col-', '.row-', 'Maitree', 'Prompt',
-        'Sarabun', 'Cinzel', 'Inter', '@font-face',
-      ];
-      let inlinedCss = '';
-      try {
-        for (const sheet of Array.from(document.styleSheets)) {
-          try {
-            const rules = Array.from(sheet.cssRules || []);
-            for (const rule of rules) {
-              if (rule instanceof CSSImportRule) continue;
-              const text = rule.cssText;
-              // Only include rules that contain catalog-relevant selectors or font definitions
-              if (CATALOG_KEYWORDS.some(kw => text.includes(kw))) {
-                inlinedCss += text + '\n';
-              }
-            }
-          } catch {
-            // Cross-origin sheets — skip silently
-          }
-        }
-      } catch {
-        // fallback: no extra CSS
-      }
-
-      const fullHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${exhibition.title || 'Art Exhibition'}-Catalog-Adobe</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-${inlinedCss}
-    @page { size: ${w}in ${h}in; margin: 0; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    html, body {
-      width: ${w}in;
-      margin: 0;
-      padding: 0;
-      background: #ffffff;
-      font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
-    }
-    #catalog-continuous-stream-container {
-      display: block !important;
-      width: ${w}in !important;
-      max-width: ${w}in !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-    .hidden {
-      display: block !important;
-    }
-    .catalog-dynamic-page, .catalog-cover-page, .catalog-statement-page, .catalog-a4-page, .catalog-square8-page, section {
-      display: block !important;
-      position: relative !important;
-      width: ${w}in !important;
-      height: ${h}in !important;
-      min-height: ${h}in !important;
-      max-width: ${w}in !important;
-      max-height: ${h}in !important;
-      margin: 0 !important;
-      border: none !important;
-      box-shadow: none !important;
-      page-break-after: always !important;
-      break-after: page !important;
-      overflow: hidden !important;
-      background-color: #ffffff !important;
-      box-sizing: border-box !important;
-    }
-    .no-print { display: none !important; }
-  </style>
-</head>
-<body class="bg-white">
-  ${cleanHtml}
-</body>
-</html>`;
-
-
+      // ✅ Generate clean, minimal HTML from data (NOT from DOM serialization)
+      // This avoids the 64MB DOM explosion that caused INTERNAL_SERVER_ERROR 500
+      const fullHtml = generateAdobeCatalogHtml({
+        exhibition,
+        artworks,
+        curator,
+        peerReviewersList,
+        coverFooter,
+        plateFooter,
+        hasReviewers,
+        template: customTemplate,
+      });
 
       // Step 1: Request Presigned Upload Asset from Adobe Cloud (Instant 50ms)
       setPdfProgressPercent(25);
