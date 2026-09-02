@@ -1262,14 +1262,44 @@ export function CatalogDesignerStudio({
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'เกิดข้อผิดพลาดในการประมวลผลของ Adobe Cloud');
+        throw new Error(errData.error || 'ไม่สามารถส่งคำขอไปยัง Adobe Cloud ได้');
       }
 
-      const blob = await res.blob();
+      const { pollingLocation, filename: outFilename } = await res.json();
+
+      // Poll status on Adobe Cloud
+      let downloadUri = '';
+      let attempts = 0;
+      const maxAttempts = 30;
+
+      while (!downloadUri && attempts < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 1500));
+        attempts++;
+        setExportStatusText(`กำลังประมวลผลบน Adobe Cloud (${attempts * 2}s)...`);
+
+        const pollRes = await fetch(`/api/catalog/adobe-pdf?location=${encodeURIComponent(pollingLocation)}`);
+        if (!pollRes.ok) continue;
+
+        const pollData = await pollRes.json();
+        if (pollData.status === 'done' && pollData.downloadUri) {
+          downloadUri = pollData.downloadUri;
+          break;
+        } else if (pollData.status === 'failed') {
+          throw new Error(pollData.error || 'Adobe Cloud แจ้งว่าการแปลงไฟล์ล้มเหลว');
+        }
+      }
+
+      if (!downloadUri) {
+        throw new Error('หมดเวลาการรอผลจาก Adobe Cloud โปรดลองใหม่อีกครั้ง');
+      }
+
+      setExportStatusText('กำลังดาวน์โหลดไฟล์ PDF คุณภาพสูง...');
+      const pdfRes = await fetch(downloadUri);
+      const blob = await pdfRes.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe.pdf`;
+      a.download = outFilename || `${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();

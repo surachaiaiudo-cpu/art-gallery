@@ -13,7 +13,7 @@ interface GenerateAdobePdfOptions {
 /**
  * 1. Get Adobe OAuth S2S Access Token
  */
-async function getAdobeAccessToken(): Promise<string> {
+export async function getAdobeAccessToken(): Promise<string> {
   const tokenParams = new URLSearchParams({
     client_id: ADOBE_CLIENT_ID,
     client_secret: ADOBE_CLIENT_SECRET,
@@ -39,13 +39,13 @@ async function getAdobeAccessToken(): Promise<string> {
 }
 
 /**
- * 2. Generate PDF from HTML using Adobe PDF Services API
+ * 2. Start Adobe PDF Generation Job (Async Non-Blocking for Cloudflare Pages)
  */
-export async function generateAdobePDF({
+export async function createAdobePdfJob({
   html,
   pageWidthInches = 8.0,
   pageHeightInches = 8.0,
-}: GenerateAdobePdfOptions): Promise<ArrayBuffer> {
+}: GenerateAdobePdfOptions): Promise<{ pollingLocation: string }> {
   const accessToken = await getAdobeAccessToken();
 
   // Step A: Request Presigned Upload Asset URI
@@ -112,51 +112,43 @@ export async function generateAdobePDF({
     throw new Error('Adobe did not return a polling location');
   }
 
-  // Step D: Poll Job Status until completed
-  let downloadUri = '';
-  let attempts = 0;
-  const maxAttempts = 30;
+  return { pollingLocation };
+}
 
-  while (!downloadUri && attempts < maxAttempts) {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    attempts++;
+/**
+ * 3. Check Adobe PDF Job Status
+ */
+export async function checkAdobePdfJob(pollingLocation: string): Promise<{
+  status: 'in_progress' | 'done' | 'failed';
+  downloadUri?: string;
+  error?: string;
+}> {
+  const accessToken = await getAdobeAccessToken();
 
-    const pollRes = await fetch(pollingLocation, {
-      method: 'GET',
-      headers: {
-        'x-api-key': ADOBE_CLIENT_ID,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+  const pollRes = await fetch(pollingLocation, {
+    method: 'GET',
+    headers: {
+      'x-api-key': ADOBE_CLIENT_ID,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 
-    if (!pollRes.ok) {
-      const errorText = await pollRes.text();
-      throw new Error(`Failed to poll Adobe job status (${pollRes.status}): ${errorText}`);
-    }
-
-    const pollData = (await pollRes.json()) as {
-      status: string;
-      asset?: { downloadUri: string };
-      error?: any;
-    };
-
-    if (pollData.status === 'done' && pollData.asset?.downloadUri) {
-      downloadUri = pollData.asset.downloadUri;
-      break;
-    } else if (pollData.status === 'failed') {
-      throw new Error(`Adobe PDF conversion job failed: ${JSON.stringify(pollData.error || pollData)}`);
-    }
+  if (!pollRes.ok) {
+    const errorText = await pollRes.text();
+    throw new Error(`Failed to poll Adobe job status (${pollRes.status}): ${errorText}`);
   }
 
-  if (!downloadUri) {
-    throw new Error('Adobe PDF conversion timed out after maximum polling attempts');
+  const pollData = (await pollRes.json()) as {
+    status: string;
+    asset?: { downloadUri: string };
+    error?: any;
+  };
+
+  if (pollData.status === 'done' && pollData.asset?.downloadUri) {
+    return { status: 'done', downloadUri: pollData.asset.downloadUri };
+  } else if (pollData.status === 'failed') {
+    return { status: 'failed', error: JSON.stringify(pollData.error || 'Job failed') };
   }
 
-  // Step E: Fetch the generated Adobe PDF binary
-  const downloadRes = await fetch(downloadUri);
-  if (!downloadRes.ok) {
-    throw new Error(`Failed to download completed Adobe PDF file (${downloadRes.status})`);
-  }
-
-  return await downloadRes.arrayBuffer();
+  return { status: 'in_progress' };
 }
