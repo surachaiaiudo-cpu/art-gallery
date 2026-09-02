@@ -265,6 +265,25 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         .replace(/decoding="async"/g, 'decoding="sync"')
         .replace(/<img /g, '<img onerror="this.style.display=\'none\'" ');
 
+      // Extract all compiled CSS from document stylesheets (includes Tailwind)
+      let inlinedCss = '';
+      try {
+        for (const sheet of Array.from(document.styleSheets)) {
+          try {
+            const rules = Array.from(sheet.cssRules || []);
+            const sheetText = rules
+              .filter(r => !(r instanceof CSSImportRule))
+              .map(r => r.cssText)
+              .join('\n');
+            inlinedCss += sheetText + '\n';
+          } catch {
+            // Cross-origin sheets — skip silently
+          }
+        }
+      } catch {
+        // fallback: no extra CSS
+      }
+
       const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -274,6 +293,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
+${inlinedCss}
     @page { size: ${w}in ${h}in; margin: 0; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     html, body {
@@ -285,18 +305,18 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       background: #ffffff;
       font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
     }
-    .catalog-dynamic-page, .catalog-cover-page, .catalog-statement-page {
+    .catalog-dynamic-page, .catalog-cover-page, .catalog-statement-page, .catalog-a4-page, .catalog-square8-page, section {
       position: relative !important;
       width: ${w}in !important;
       height: ${h}in !important;
       max-width: ${w}in !important;
       max-height: ${h}in !important;
       margin: 0 !important;
-      padding: 0 !important;
       border: none !important;
       box-shadow: none !important;
       overflow: hidden !important;
       background-color: #ffffff !important;
+      box-sizing: border-box !important;
     }
   </style>
 </head>
@@ -304,6 +324,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   ${cleanHtml}
 </body>
 </html>`;
+
+
 
       // Step 1: Request Presigned Upload Asset from Adobe Cloud (Instant 50ms)
       setPdfProgressPercent(30);
@@ -460,6 +482,26 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         .replace(/decoding="async"/g, 'decoding="sync"')
         .replace(/<img /g, '<img onerror="this.style.display=\'none\'" ');
 
+      // Extract all compiled CSS from document stylesheets (includes Tailwind)
+      let inlinedCss = '';
+      try {
+        for (const sheet of Array.from(document.styleSheets)) {
+          try {
+            const rules = Array.from(sheet.cssRules || []);
+            // Skip Google Fonts @import rules (let them load via <link> instead)
+            const sheetText = rules
+              .filter(r => !(r instanceof CSSImportRule))
+              .map(r => r.cssText)
+              .join('\n');
+            inlinedCss += sheetText + '\n';
+          } catch {
+            // Cross-origin sheets (e.g., fonts.googleapis.com) — skip silently
+          }
+        }
+      } catch {
+        // fallback: no extra CSS
+      }
+
       const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -469,6 +511,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
+${inlinedCss}
     @page { size: ${w}in ${h}in; margin: 0; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     html, body {
@@ -512,6 +555,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   ${cleanHtml}
 </body>
 </html>`;
+
+
 
       // Step 1: Request Presigned Upload Asset from Adobe Cloud (Instant 50ms)
       setPdfProgressPercent(25);
