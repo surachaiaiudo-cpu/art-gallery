@@ -145,38 +145,39 @@ function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: n
     case "artist_email":
       if (!artist?.email && s.hideIfEmpty) return "";
       return renderText(`${s.prefixText || ""}${artist?.email || "artist@artvara.gallery"}${s.suffixText || ""}`, {
-        fontSizePt: 9,
-        fontWeight: 400,
-        color: "#666666",
+        fontSizePt: s.fontSizePt || 9,
+        fontWeight: s.fontWeight || 400,
+        color: s.color || "#666666",
       });
     case "medium":
       if (!artwork.medium && s.hideIfEmpty) return "";
       return renderText(`${s.prefixText || ""}${artwork.medium || ""}${s.suffixText || ""}`, {
-        fontSizePt: 10,
-        fontWeight: 400,
-        color: "#444444",
+        fontSizePt: s.fontSizePt || 10,
+        fontWeight: s.fontWeight || 400,
+        color: s.color || "#444444",
       });
     case "dimensions":
       if (!artwork.dimensions && s.hideIfEmpty) return "";
       return renderText(`${s.prefixText || ""}${artwork.dimensions || ""}${s.suffixText || ""}`, {
-        fontSizePt: 9,
-        fontWeight: 400,
-        color: "#666666",
+        fontSizePt: s.fontSizePt || 9,
+        fontWeight: s.fontWeight || 400,
+        color: s.color || "#666666",
       });
     case "year_created":
       if (!artwork.yearCreated && s.hideIfEmpty) return "";
       return renderText(`${s.prefixText || ""}${artwork.yearCreated || ""}${s.suffixText || ""}`, {
-        fontSizePt: 9,
-        fontWeight: 400,
-        color: "#666666",
+        fontSizePt: s.fontSizePt || 9,
+        fontWeight: s.fontWeight || 400,
+        color: s.color || "#666666",
       });
     case "price":
       if (!artwork.price && s.hideIfEmpty) return "";
       return renderText(`${s.prefixText || ""}${formatPrice(artwork.price)}${s.suffixText || ""}`, {
-        fontSizePt: 10,
-        fontWeight: 700,
-        color: "#8B1B1B",
+        fontSizePt: s.fontSizePt || 10,
+        fontWeight: s.fontWeight || 700,
+        color: s.color || "#8B1B1B",
       });
+
     case "concept": {
       const cText = artwork.concept || artwork.description || "";
       if (!cText && s.hideIfEmpty) return "";
