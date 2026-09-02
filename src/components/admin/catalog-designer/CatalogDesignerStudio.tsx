@@ -19,6 +19,12 @@ import {
 } from '@/types/catalogTemplate';
 import { CatalogDynamicPlate } from '@/components/catalog/CatalogDynamicPlate';
 import { useLanguage } from '@/context/LanguageContext';
+import {
+  getAdobeMonthlyUsage,
+  incrementAdobeUsage,
+  AdobeQuotaStatus,
+  MAX_MONTHLY_ADOBE_PDF_QUOTA,
+} from '@/lib/adobeQuota';
 import html2canvas from 'html2canvas';
 import {
   Layout,
@@ -241,6 +247,7 @@ export function CatalogDesignerStudio({
 
   // Background Color Picker State
   const [isBgColorOpen, setIsBgColorOpen] = useState<boolean>(false);
+  const [adobeQuota, setAdobeQuota] = useState<AdobeQuotaStatus>(() => getAdobeMonthlyUsage());
 
   // Custom Paper Size State
   const [customWidthInput, setCustomWidthInput] = useState<string>(String(template.pageWidthInches));
@@ -1169,12 +1176,24 @@ export function CatalogDesignerStudio({
 
   // 🅰️ DIRECT DOWNLOAD ADOBE POSTSCRIPT PDF (1-Click Genuine Adobe Cloud Engine)
   const handleDirectDownloadAdobePDF = async () => {
+    const currentQuota = getAdobeMonthlyUsage();
+    setAdobeQuota(currentQuota);
+
+    if (currentQuota.isExceeded) {
+      alert(
+        `⚠️ โควต้า Adobe PDF ฟรีประจำเดือน ${currentQuota.monthName} ถูกใช้งานครบ ${currentQuota.max} ครั้งแล้วครับ\n\n` +
+        `ระบบความปลอดภัยจะระงับการเรียก Adobe Cloud ชั่วคราวเพื่อไม่ให้มีค่าใช้จ่ายส่วนเกิน\n\n` +
+        `💡 คุณสามารถเลือก "บันทึกเป็น PDF ผ่านเบราว์เซอร์" หรือ "ดาวน์โหลดรูปภาพ PNG 300 DPI" ได้ฟรี 100% ไม่จำกัดจำนวนครั้งครับ`
+      );
+      return;
+    }
+
     const canvasEl = document.getElementById('catalog-studio-print-target');
     if (!canvasEl) return;
 
     try {
       setIsExportingPDF(true);
-      setExportStatusText('กำลังส่งคำสั่งไปยัง Adobe Cloud เพื่อสร้าง PDF PostScript แท้ 100%...');
+      setExportStatusText(`กำลังส่งคำสั่งไปยัง Adobe Cloud (โควต้าคงเหลือ: ${currentQuota.remaining} ครั้ง)...`);
 
       const w = template.pageWidthInches || 8;
       const h = template.pageHeightInches || 8;
@@ -1255,6 +1274,10 @@ export function CatalogDesignerStudio({
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
+
+      // Increment monthly quota count
+      const updatedQuota = incrementAdobeUsage(1);
+      setAdobeQuota(updatedQuota);
 
       setIsExportingPDF(false);
       setExportStatusText('');
@@ -1864,24 +1887,63 @@ export function CatalogDesignerStudio({
                     setIsExportMenuOpen(false);
                     handleDirectDownloadAdobePDF();
                   }}
-                  disabled={isExportingPDF}
-                  className="w-full p-2.5 rounded-xl hover:bg-gradient-to-r hover:from-[#ED2224] hover:to-[#B30B00] hover:text-white flex items-start gap-2.5 text-left transition-all cursor-pointer group bg-red-50/50 border border-red-200/60"
+                  disabled={isExportingPDF || adobeQuota.isExceeded}
+                  className={`w-full p-2.5 rounded-xl flex items-start gap-2.5 text-left transition-all cursor-pointer group ${
+                    adobeQuota.isExceeded
+                      ? 'bg-neutral-100 opacity-60 cursor-not-allowed border border-neutral-200'
+                      : 'hover:bg-gradient-to-r hover:from-[#ED2224] hover:to-[#B30B00] hover:text-white bg-red-50/50 border border-red-200/60'
+                  }`}
                 >
-                  <div className="p-2 rounded-lg bg-[#ED2224] text-white group-hover:bg-white group-hover:text-[#ED2224] transition-colors shrink-0 shadow-sm">
+                  <div className={`p-2 rounded-lg text-white transition-colors shrink-0 shadow-sm ${
+                    adobeQuota.isExceeded ? 'bg-neutral-400' : 'bg-[#ED2224] group-hover:bg-white group-hover:text-[#ED2224]'
+                  }`}>
                     <FileText className="w-4 h-4" />
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-[#ED2224] group-hover:text-white transition-colors flex items-center gap-1.5">
-                      <span>ดาวน์โหลด Adobe PDF (1-Click)</span>
+                  <div className="flex-1">
+                    <div className="text-xs font-bold flex items-center justify-between">
+                      <span className={adobeQuota.isExceeded ? 'text-neutral-500' : 'text-[#ED2224] group-hover:text-white transition-colors'}>
+                        ดาวน์โหลด Adobe PDF (1-Click)
+                      </span>
                       <span className="text-[9px] bg-[#ED2224] text-white group-hover:bg-white group-hover:text-[#ED2224] px-1.5 py-0.2 rounded-full font-bold">
                         Adobe Engine
                       </span>
                     </div>
                     <div className="text-[10.5px] text-[#666] group-hover:text-white/90 leading-tight mt-0.5">
-                      เอนจิน PostScript แท้จาก Adobe Cloud คุณภาพสูงสุด 100%
+                      {adobeQuota.isExceeded
+                        ? 'โควต้าเดือนนี้ครบ 500 ครั้งแล้ว (ใช้ PDF เบราว์เซอร์แทนได้)'
+                        : 'เอนจิน PostScript แท้จาก Adobe Cloud คุณภาพสูงสุด 100%'}
                     </div>
                   </div>
                 </button>
+
+                {/* 📊 Adobe Monthly Quota Progress Indicator */}
+                <div className="mx-1 my-1 p-2 bg-[#FAF9F6] rounded-xl border border-[#E8E2D5]">
+                  <div className="flex items-center justify-between text-[10.5px] mb-1">
+                    <span className="font-semibold text-[#555] flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${adobeQuota.isExceeded ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
+                      โควต้า Adobe ({adobeQuota.monthName}):
+                    </span>
+                    <span className="font-mono font-bold text-[#1F1C17]">
+                      {adobeQuota.used} / {adobeQuota.max} ครั้ง
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-[#E8E2D5] rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${
+                        adobeQuota.percentUsed >= 90
+                          ? 'bg-red-500'
+                          : adobeQuota.percentUsed >= 60
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-600'
+                      }`}
+                      style={{ width: `${adobeQuota.percentUsed}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] text-[#888] mt-1 font-mono">
+                    <span>คงเหลืออีก {adobeQuota.remaining} ครั้ง</span>
+                    <span>รีเซ็ตทุกวันที่ 1</span>
+                  </div>
+                </div>
 
                 {/* 🖨️ 2. Exact Vector PDF Export (Save as PDF) */}
                 <button

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
+import { getAdobeMonthlyUsage, incrementAdobeUsage } from '@/lib/adobeQuota';
 import { usePrintEngine } from './usePrintEngine';
 import { CatalogCoverPage } from './CatalogCoverPage';
 import { CatalogStatementPage } from './CatalogStatementPage';
@@ -225,9 +226,19 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
   // 🅰️ 1-Click Adobe PostScript Cloud PDF Generation (Full Book)
   const handleDownloadFullAdobePDF = async () => {
+    const currentQuota = getAdobeMonthlyUsage();
+    if (currentQuota.isExceeded) {
+      alert(
+        `⚠️ โควต้า Adobe PDF ฟรีประจำเดือน ${currentQuota.monthName} ถูกใช้งานครบ ${currentQuota.max} ครั้งแล้วครับ\n\n` +
+        `ระบบความปลอดภัยจะระงับการเรียก Adobe Cloud ชั่วคราวเพื่อป้องกันค่าใช้จ่ายส่วนเกิน\n\n` +
+        `💡 คุณสามารถกดปุ่ม "พิมพ์ / PDF เบราว์เซอร์" เพื่อบันทึกไฟล์ PDF ขนาดตามจริงได้ฟรี 100% ไม่จำกัดจำนวนครั้งครับ`
+      );
+      return;
+    }
+
     try {
       setIsGeneratingPdf(true);
-      setPdfProgressText('กำลังเชื่อมต่อ Adobe Cloud เพื่อสร้างสูจิบัตร PDF PostScript แท้ 100%...');
+      setPdfProgressText(`กำลังเชื่อมต่อ Adobe Cloud (โควต้าคงเหลือ: ${currentQuota.remaining} ครั้ง)...`);
 
       const targetEl = document.getElementById('catalog-continuous-stream-container') || document.querySelector('.catalog-continuous-view');
       if (!targetEl) {
@@ -308,6 +319,9 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
+
+      // Increment monthly quota count
+      incrementAdobeUsage(1);
 
       setIsGeneratingPdf(false);
       setPdfProgressText('');
