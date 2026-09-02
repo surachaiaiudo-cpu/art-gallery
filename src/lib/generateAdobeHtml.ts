@@ -56,15 +56,16 @@ function fw(w?: string): number {
 }
 
 function ff(f?: string): string {
-  if (f === "Sarabun") return "'Sarabun', sans-serif";
-  if (f === "Maitree") return "'Maitree', serif";
+  if (f === "Sarabun") return "'Inter', 'Sarabun', sans-serif";
+  if (f === "Maitree") return "'Georgia', 'Maitree', serif";
   if (f === "Cinzel") return "'Cinzel', serif";
-  if (f === "Inter") return "'Sarabun', sans-serif";
-  if (f === "Prompt") return "'Sarabun', sans-serif";
-  if (f === "serif") return "'Maitree', serif";
-  if (f === "sans-serif") return "'Sarabun', sans-serif";
-  return "'Sarabun', sans-serif";
+  if (f === "Inter") return "'Inter', 'Sarabun', sans-serif";
+  if (f === "Prompt") return "'Inter', 'Sarabun', sans-serif";
+  if (f === "serif") return "'Georgia', 'Maitree', serif";
+  if (f === "sans-serif") return "'Inter', 'Sarabun', sans-serif";
+  return "'Inter', 'Sarabun', sans-serif";
 }
+
 
 
 
@@ -180,11 +181,13 @@ function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: n
       const cText = artwork.concept || artwork.description || "";
       if (!cText && s.hideIfEmpty) return "";
       return renderText(`${s.prefixText || ""}${cText}${s.suffixText || ""}`, {
-        fontSizePt: 8.5,
+        fontSizePt: s.fontSizePt || 8.5,
         fontWeight: 400,
-        color: "#555555",
+        color: s.color || "#555555",
+        lineHeight: s.lineHeight || 1.5,
       });
     }
+
 
     case "page_number":
       return renderText(`${s.prefixText || ""}${pageNumber}${s.suffixText || ""}`, {
