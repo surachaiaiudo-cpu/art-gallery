@@ -73,7 +73,7 @@ export async function createAdobePdfJob({
   const uploadRes = await fetch(uploadUri, {
     method: 'PUT',
     headers: {
-      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Type': 'text/html',
     },
     body: html,
   });
