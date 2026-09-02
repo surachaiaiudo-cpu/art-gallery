@@ -261,10 +261,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
       const baseOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://art-gallery-4ty.pages.dev';
 
-      // Ensure all images are eager-loaded and have absolute paths for Adobe Cloud headless engine
+      // Ensure all images are eager-loaded and have fallback onerror to prevent Adobe engine crash
       const cleanHtml = targetEl.innerHTML
         .replace(/loading="lazy"/g, 'loading="eager"')
-        .replace(/decoding="async"/g, 'decoding="sync"');
+        .replace(/decoding="async"/g, 'decoding="sync"')
+        .replace(/<img /g, '<img onerror="this.style.display=\'none\'" ');
 
       const fullHtml = `<!DOCTYPE html>
 <html>
