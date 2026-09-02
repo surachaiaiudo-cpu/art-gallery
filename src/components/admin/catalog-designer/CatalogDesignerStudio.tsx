@@ -2864,8 +2864,107 @@ export function CatalogDesignerStudio({
                   maxLength={7}
                 />
               </div>
+
+              {/* Prefix Text (คำนำหน้า เช่น Medium: / เทคนิค:) */}
+              {['medium', 'dimensions', 'year_created', 'price', 'artist_email', 'artwork_title', 'custom_text'].includes(
+                selectedBlock.type
+              ) && (
+                <div className="flex items-center gap-1.5 pl-2 border-l border-[#E6E0D4]">
+                  <span className="text-[10px] font-medium text-[#777] whitespace-nowrap">คำนำหน้า:</span>
+                  <input
+                    type="text"
+                    placeholder="เช่น Medium:"
+                    value={selectedBlock.style.prefixText ?? ''}
+                    onChange={(e) =>
+                      handleUpdateBlockProp(
+                        selectedBlock.id,
+                        { style: { ...selectedBlock.style, prefixText: e.target.value } },
+                        true
+                      )
+                    }
+                    className="w-24 bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1 text-xs text-[#1F1C17] focus:outline-none placeholder:text-[#999]"
+                  />
+                  {/* Quick Preset Buttons */}
+                  {selectedBlock.type === 'medium' && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, prefixText: 'Medium: ' } }, true)}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-[#F0EDE6] hover:bg-[#8B1B1B] hover:text-white transition-colors cursor-pointer"
+                        title="เปลี่ยนเป็นคำสากล: Medium:"
+                      >
+                        🇬🇧 Medium:
+                      </button>
+                      <button
+                        onClick={() => handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, prefixText: 'เทคนิค: ' } }, true)}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-[#F0EDE6] hover:bg-[#8B1B1B] hover:text-white transition-colors cursor-pointer"
+                        title="เปลี่ยนเป็นภาษาไทย: เทคนิค:"
+                      >
+                        🇹🇭 เทคนิค:
+                      </button>
+                      <button
+                        onClick={() => handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, prefixText: '' } }, true)}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-[#F0EDE6] hover:bg-black/10 transition-colors cursor-pointer"
+                        title="ไม่ใส่คำนำหน้า"
+                      >
+                        ว่าง
+                      </button>
+                    </div>
+                  )}
+                  {selectedBlock.type === 'dimensions' && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, prefixText: 'Dimensions: ' } }, true)}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-[#F0EDE6] hover:bg-[#8B1B1B] hover:text-white transition-colors cursor-pointer"
+                        title="เปลี่ยนเป็นคำสากล: Dimensions:"
+                      >
+                        🇬🇧 Dimensions:
+                      </button>
+                      <button
+                        onClick={() => handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, prefixText: 'ขนาด: ' } }, true)}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-[#F0EDE6] hover:bg-[#8B1B1B] hover:text-white transition-colors cursor-pointer"
+                        title="เปลี่ยนเป็นภาษาไทย: ขนาด:"
+                      >
+                        🇹🇭 ขนาด:
+                      </button>
+                      <button
+                        onClick={() => handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, prefixText: '' } }, true)}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-[#F0EDE6] hover:bg-black/10 transition-colors cursor-pointer"
+                        title="ไม่ใส่คำนำหน้า"
+                      >
+                        ว่าง
+                      </button>
+                    </div>
+                  )}
+                  {selectedBlock.type === 'year_created' && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, prefixText: 'Year: ' } }, true)}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-[#F0EDE6] hover:bg-[#8B1B1B] hover:text-white transition-colors cursor-pointer"
+                        title="เปลี่ยนเป็นคำสากล: Year:"
+                      >
+                        🇬🇧 Year:
+                      </button>
+                      <button
+                        onClick={() => handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, prefixText: 'ปี: ' } }, true)}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-[#F0EDE6] hover:bg-[#8B1B1B] hover:text-white transition-colors cursor-pointer"
+                        title="เปลี่ยนเป็นภาษาไทย: ปี:"
+                      >
+                        🇹🇭 ปี:
+                      </button>
+                      <button
+                        onClick={() => handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, prefixText: '' } }, true)}
+                        className="px-1.5 py-0.5 rounded text-[10px] bg-[#F0EDE6] hover:bg-black/10 transition-colors cursor-pointer"
+                        title="ไม่ใส่คำนำหน้า"
+                      >
+                        ว่าง
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
+
 
           {/* 📏 LINE / BOX STYLING CONTROLS (Divider Line & Custom Box) */}
           {['divider_line', 'custom_box'].includes(selectedBlock.type) && (
