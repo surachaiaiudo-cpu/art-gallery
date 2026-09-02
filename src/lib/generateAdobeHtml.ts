@@ -326,15 +326,11 @@ export function generateAdobeCatalogHtml(params: {
     pages.push(renderArtworkPage(art, artTemplate, pageNum, slug));
   });
 
-  const fontLink = `https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=block`;
   return `<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="utf-8">
 <title>${escHtml(exhibition.title || "Art Exhibition")}-Adobe-Catalog</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="${fontLink}" rel="stylesheet">
 <style>${CATALOG_BASE_CSS(w, h, bg)}</style>
 </head>
 <body>
@@ -370,15 +366,11 @@ export function generateAdobeSinglePageHtml(params: {
     pageHtml = renderArtworkPage(artwork, artTemplate, pageNumber, slug);
   }
 
-  const fontLink = `https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=block`;
   return `<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="utf-8">
 <title>${escHtml(exhibition.title || "Art Exhibition")}-Page-${pageNumber}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="${fontLink}" rel="stylesheet">
 <style>${CATALOG_BASE_CSS(w, h, bg)}</style>
 </head>
 <body>
@@ -386,5 +378,6 @@ ${pageHtml}
 </body>
 </html>`;
 }
+
 
 
