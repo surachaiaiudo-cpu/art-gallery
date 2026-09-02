@@ -260,12 +260,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       const w = isCustomSize ? (customTemplate?.pageWidthInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 8.27);
       const h = isCustomSize ? (customTemplate?.pageHeightInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 11.69);
 
-      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-        .map((el) => el.outerHTML)
-        .join('\n');
-
-      const baseOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://art-gallery-4ty.pages.dev';
-
       const cleanHtml = modalPageEl.outerHTML
         .replace(/loading="lazy"/g, 'loading="eager"')
         .replace(/decoding="async"/g, 'decoding="sync"')
@@ -275,9 +269,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 <html>
 <head>
   <meta charset="utf-8">
-  <base href="${baseOrigin}/">
   <title>${exhibition.title || 'Art Exhibition'}-Page-${pageIndex + 1}-Adobe</title>
-  ${parentStyles}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -463,13 +455,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       const w = isCustomSize ? (customTemplate?.pageWidthInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 8.27);
       const h = isCustomSize ? (customTemplate?.pageHeightInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 11.69);
 
-      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-        .map((el) => el.outerHTML)
-        .join('\n');
-
-      const baseOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://art-gallery-4ty.pages.dev';
-
-      // Ensure all images are eager-loaded and have fallback onerror to prevent Adobe engine crash
       const cleanHtml = targetEl.innerHTML
         .replace(/loading="lazy"/g, 'loading="eager"')
         .replace(/decoding="async"/g, 'decoding="sync"')
@@ -479,9 +464,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 <html>
 <head>
   <meta charset="utf-8">
-  <base href="${baseOrigin}/">
   <title>${exhibition.title || 'Art Exhibition'}-Catalog-Adobe</title>
-  ${parentStyles}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">

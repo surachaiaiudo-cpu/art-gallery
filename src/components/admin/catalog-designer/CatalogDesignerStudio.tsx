@@ -1207,13 +1207,6 @@ export function CatalogDesignerStudio({
       const plateNode = canvasEl.querySelector('.catalog-dynamic-page');
       const plateHtml = plateNode ? plateNode.outerHTML : canvasEl.innerHTML;
 
-      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-        .map((el) => el.outerHTML)
-        .join('\n');
-
-      const baseOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://art-gallery-4ty.pages.dev';
-
-      // Ensure all images are eager-loaded and have fallback onerror to prevent Adobe engine crash
       const cleanHtml = plateHtml
         .replace(/loading="lazy"/g, 'loading="eager"')
         .replace(/decoding="async"/g, 'decoding="sync"')
@@ -1223,9 +1216,7 @@ export function CatalogDesignerStudio({
 <html>
 <head>
   <meta charset="utf-8">
-  <base href="${baseOrigin}/">
   <title>${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe</title>
-  ${parentStyles}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
