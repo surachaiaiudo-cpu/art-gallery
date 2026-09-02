@@ -12,6 +12,7 @@ import {
   getExhibitionCatalogTemplate,
   getArtworkCatalogTemplate,
   getExhibitionPageOverrides,
+  normalizeCatalogTemplate,
   PRINT_CMYK_PALETTE,
   cmykToHex,
   hexToCmyk,
@@ -942,13 +943,20 @@ export function CatalogDesignerStudio({
       }
 
       const nowIso = new Date().toISOString();
-      const masterWithMeta = {
+      const masterWithMeta = normalizeCatalogTemplate({
         ...masterTemplate,
         updatedAt: nowIso,
-      };
+      });
+
+      const normalizedOverrides: Record<string, CatalogTemplateConfig> = {};
+      if (pageOverrides && typeof pageOverrides === 'object') {
+        for (const [key, ov] of Object.entries(pageOverrides)) {
+          if (ov) normalizedOverrides[key] = normalizeCatalogTemplate(ov);
+        }
+      }
 
       currentTheme.catalogTemplate = masterWithMeta;
-      currentTheme.pageOverrides = pageOverrides;
+      currentTheme.pageOverrides = normalizedOverrides;
 
       // 1. Save to database via API
       const res = await fetch('/api/admin/exhibitions', {

@@ -818,26 +818,59 @@ export const BUILTIN_CATALOG_PRESETS: CatalogTemplateConfig[] = [
   PRESET_MINIMALIST_CLEAN,
 ];
 
+export function normalizeCatalogTemplate(template: CatalogTemplateConfig): CatalogTemplateConfig {
+  if (!template || !Array.isArray(template.blocks)) return template;
+  return {
+    ...template,
+    blocks: template.blocks.map((b) => {
+      if (
+        [
+          'artwork_title',
+          'artist_name',
+          'artist_email',
+          'medium',
+          'dimensions',
+          'year_created',
+          'price',
+          'concept',
+          'page_number',
+          'custom_text',
+        ].includes(b.type)
+      ) {
+        const style = b.style || {};
+        return {
+          ...b,
+          style: {
+            ...style,
+            fontFamily: style.fontFamily || 'Maitree',
+          },
+        };
+      }
+      return b;
+    }),
+  };
+}
+
 export function getExhibitionCatalogTemplate(exhibition?: Exhibition | null): CatalogTemplateConfig {
-  if (!exhibition) return PRESET_SQUARE_8X8_MODERN;
+  if (!exhibition) return normalizeCatalogTemplate(PRESET_SQUARE_8X8_MODERN);
 
   if (exhibition.themeConfig) {
     try {
       const parsed = typeof exhibition.themeConfig === 'string' ? JSON.parse(exhibition.themeConfig) : exhibition.themeConfig;
       if (parsed.catalogTemplate && Array.isArray(parsed.catalogTemplate.blocks) && parsed.catalogTemplate.blocks.length > 0) {
-        return parsed.catalogTemplate;
+        return normalizeCatalogTemplate(parsed.catalogTemplate);
       }
     } catch {}
   }
 
-  return PRESET_SQUARE_8X8_MODERN;
+  return normalizeCatalogTemplate(PRESET_SQUARE_8X8_MODERN);
 }
 
 export function getArtworkCatalogTemplate(
   exhibition?: Exhibition | null,
   artworkId?: string
 ): CatalogTemplateConfig {
-  if (!exhibition) return PRESET_SQUARE_8X8_MODERN;
+  if (!exhibition) return normalizeCatalogTemplate(PRESET_SQUARE_8X8_MODERN);
 
   if (exhibition.themeConfig) {
     try {
@@ -845,17 +878,18 @@ export function getArtworkCatalogTemplate(
       if (artworkId && parsed.pageOverrides && parsed.pageOverrides[artworkId]) {
         const override = parsed.pageOverrides[artworkId];
         if (Array.isArray(override.blocks) && override.blocks.length > 0) {
-          return override;
+          return normalizeCatalogTemplate(override);
         }
       }
       if (parsed.catalogTemplate && Array.isArray(parsed.catalogTemplate.blocks) && parsed.catalogTemplate.blocks.length > 0) {
-        return parsed.catalogTemplate;
+        return normalizeCatalogTemplate(parsed.catalogTemplate);
       }
     } catch {}
   }
 
-  return PRESET_SQUARE_8X8_MODERN;
+  return normalizeCatalogTemplate(PRESET_SQUARE_8X8_MODERN);
 }
+
 
 export function getExhibitionPageOverrides(exhibition?: Exhibition | null): Record<string, CatalogTemplateConfig> {
   if (!exhibition?.themeConfig) return {};
