@@ -120,7 +120,9 @@ export interface BlockStyle {
   prefixText?: string;
   suffixText?: string;
   hideIfEmpty?: boolean;
+  rotation?: 0 | 90 | 180 | 270;
 }
+
 
 export interface CatalogBlockElement {
   id: string;

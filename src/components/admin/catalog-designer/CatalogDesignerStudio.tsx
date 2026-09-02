@@ -36,6 +36,7 @@ import {
   Layers,
   Save,
   RotateCcw,
+  RotateCw,
   Sparkles,
   Grid,
   Magnet,
@@ -2368,7 +2369,10 @@ export function CatalogDesignerStudio({
                       width: `${blockPxW}px`,
                       height: `${blockPxH}px`,
                       zIndex: isSelected ? 50 : block.zIndex,
+                      transform: block.style.rotation ? `rotate(${block.style.rotation}deg)` : undefined,
+                      transformOrigin: 'center center',
                     }}
+
                     className={`absolute group cursor-move transition-shadow ${
                       isSelected
                         ? 'ring-2 ring-[#8B1B1B] ring-offset-1 bg-[#8B1B1B]/5'
@@ -2616,6 +2620,32 @@ export function CatalogDesignerStudio({
               <AlignJustify className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* 🔄 Rotation Controls (0°, 90°, 180°, 270°) */}
+          <div className="flex items-center gap-0.5 bg-[#F8F7F4] p-0.5 rounded-xl border border-[#E6E0D4]" title="หมุนบล็อก">
+            <RotateCw className="w-3.5 h-3.5 text-[#777] ml-1 mr-0.5" />
+            {([0, 90, 180, 270] as const).map((deg) => (
+              <button
+                key={deg}
+                onClick={() =>
+                  handleUpdateBlockProp(
+                    selectedBlock.id,
+                    { style: { ...selectedBlock.style, rotation: deg } },
+                    true
+                  )
+                }
+                className={`px-1.5 py-1 rounded-lg text-[10px] font-mono transition-colors cursor-pointer ${
+                  (selectedBlock.style.rotation || 0) === deg
+                    ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
+                    : 'text-[#666] hover:text-[#111]'
+                }`}
+                title={`หมุน ${deg} องศา`}
+              >
+                {deg}°
+              </button>
+            ))}
+          </div>
+
 
           {/* Center Page */}
           <div className="flex items-center gap-1 border-r border-[#E6E0D4] pr-2">

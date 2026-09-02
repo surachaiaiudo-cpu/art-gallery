@@ -77,7 +77,10 @@ function escHtml(s: string): string {
 
 function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: number, exhibitionSlug: string): string {
   const s = block.style || {};
-  const pos = `position:absolute;left:${block.xInches}in;top:${block.yInches}in;width:${block.widthInches}in;height:${block.heightInches}in;z-index:${block.zIndex || 1};overflow:hidden;box-sizing:border-box;`;
+  const rot = s.rotation ? `transform:rotate(${s.rotation}deg);transform-origin:center center;` : "";
+  const pos = `position:absolute;left:${block.xInches}in;top:${block.yInches}in;width:${block.widthInches}in;height:${block.heightInches}in;z-index:${block.zIndex || 1};overflow:hidden;box-sizing:border-box;${rot}`;
+
+
   const artist = artwork.artist;
 
   const getImg = (url: string, w: number) =>

@@ -578,6 +578,8 @@ export function CatalogDynamicPlate({
                 borderWidth: isConcept ? undefined : s.borderWidth ? `${s.borderWidth}px` : undefined,
                 borderColor: isConcept ? 'transparent' : s.borderColor || 'transparent',
                 borderStyle: isConcept ? 'none' : s.borderStyle || 'solid',
+                transform: s.rotation ? `rotate(${s.rotation}deg)` : undefined,
+                transformOrigin: 'center center',
                 boxShadow: isConcept
                   ? 'none'
                   : s.boxShadow === 'sm'
@@ -588,6 +590,7 @@ export function CatalogDynamicPlate({
                   ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                   : undefined,
               }}
+
             >
               {renderBlockContent(block)}
             </div>
