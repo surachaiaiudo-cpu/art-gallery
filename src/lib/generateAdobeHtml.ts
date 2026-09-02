@@ -176,13 +176,16 @@ function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: n
         fontWeight: 700,
         color: "#8B1B1B",
       });
-    case "concept":
-      if (!artwork.concept && s.hideIfEmpty) return "";
-      return renderText(`${s.prefixText || ""}${artwork.concept || ""}${s.suffixText || ""}`, {
-        fontSizePt: 9,
+    case "concept": {
+      const cText = artwork.concept || artwork.description || "";
+      if (!cText && s.hideIfEmpty) return "";
+      return renderText(`${s.prefixText || ""}${cText}${s.suffixText || ""}`, {
+        fontSizePt: 8.5,
         fontWeight: 400,
         color: "#555555",
       });
+    }
+
     case "page_number":
       return renderText(`${s.prefixText || ""}${pageNumber}${s.suffixText || ""}`, {
         fontSizePt: 8,
