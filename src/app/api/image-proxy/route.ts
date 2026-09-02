@@ -9,6 +9,12 @@ const ALLOWED_IMAGE_DOMAINS = [
   'images.unsplash.com',
   'upload.wikimedia.org',
   'flagcdn.com',
+  'picsum.photos',
+  'fastly.picsum.photos',
+  'lh3.googleusercontent.com',
+  'drive.google.com',
+  'i.imgur.com',
+  'raw.githubusercontent.com',
 ];
 
 function isAllowedDomain(urlStr: string): boolean {
