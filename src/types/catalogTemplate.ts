@@ -18,6 +18,7 @@ export type BlockElementType =
   | 'page_number'
   | 'custom_text'
   | 'custom_box'
+  | 'divider_line'
   | 'footer_graphic';
 
 export interface CMYKColor {
@@ -141,6 +142,7 @@ export interface CatalogTemplateConfig {
   paperSize: CatalogPaperSize;
   pageWidthInches: number;
   pageHeightInches: number;
+  bleedInches?: number; // Bleed margin for print (default 0 or 0.125")
   gridSizeInches: number; // default 0.25 (1/4 inch)
   snapToGrid: boolean;
   backgroundColor: string;

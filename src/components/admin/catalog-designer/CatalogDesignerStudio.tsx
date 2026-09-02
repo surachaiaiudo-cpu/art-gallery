@@ -60,6 +60,9 @@ import {
   AlignJustify,
   Bold,
   Italic,
+  Underline,
+  Minus,
+  Scissors,
   BringToFront,
   SendToBack,
   AlignCenterHorizontal,
@@ -107,7 +110,8 @@ const AVAILABLE_MODULES: {
   { type: 'qr_code', label: 'QR Code 3D', icon: QrCode, defaultW: 1.25, defaultH: 1.25, description: 'สแกนเพื่อชม 3D Gallery' },
   { type: 'page_number', label: 'เลขหน้า', icon: Hash, defaultW: 1.0, defaultH: 0.35, description: 'หมายเลขหน้าผลงาน' },
   { type: 'custom_text', label: 'ข้อความอิสระ', icon: Type, defaultW: 3.0, defaultH: 0.5, description: 'ข้อความคงที่' },
-  { type: 'custom_box', label: 'กล่อง/เส้นคั่น', icon: Box, defaultW: 3.0, defaultH: 0.1, description: 'เส้นคั่นหรือกรอบลวดลาย' },
+  { type: 'divider_line', label: 'เส้นคั่น/เส้นประ', icon: Minus, defaultW: 4.0, defaultH: 0.15, description: 'เส้นคั่นหรือเส้นประ สามารถปรับความหนา สี และทำเส้นประได้' },
+  { type: 'custom_box', label: 'กล่อง/กรอบลวดลาย', icon: Box, defaultW: 3.0, defaultH: 1.5, description: 'กล่องสี่เหลี่ยม กรอบข้อความ หรือพื้นหลังลวดลาย' },
   { type: 'footer_graphic', label: 'รูป Footer', icon: PanelBottom, defaultW: 7.0, defaultH: 0.85, description: 'ภาพ/กราฟิกท้ายหน้า (รองรับรูปปกติ และไล่น้ำหนักจากเข้มขึ้นไปบางกลืนกระดาษ)' },
 ];
 
@@ -486,6 +490,32 @@ export function CatalogDesignerStudio({
       opacity: 1,
     };
 
+    if (type === 'divider_line') {
+      initialStyle = {
+        borderWidth: 1,
+        borderColor: '#C5A880',
+        color: '#C5A880',
+        borderStyle: 'solid',
+        opacity: 1,
+      };
+      initW = Math.max(2.0, snap(template.pageWidthInches - padL - (template.paddingInches?.right ?? 0.5)));
+      initH = 0.15;
+    }
+
+    if (type === 'custom_box') {
+      initialStyle = {
+        borderWidth: 1,
+        borderColor: '#D8D2C4',
+        color: '#D8D2C4',
+        borderStyle: 'solid',
+        backgroundColor: 'transparent',
+        borderRadius: 4,
+        opacity: 1,
+      };
+      initW = 3.0;
+      initH = 1.5;
+    }
+
     if (type === 'footer_graphic') {
       initialStyle = {
         objectFit: 'cover',
@@ -758,13 +788,16 @@ export function CatalogDesignerStudio({
       const deltaXInches = (e.clientX - dragState.startX) / pxPerInch;
       const deltaYInches = (e.clientY - dragState.startY) / pxPerInch;
 
+      const bleed = template.bleedInches || 0;
       if (dragState.isDragging) {
-        const maxX = template.pageWidthInches - dragState.initialBlockW;
-        const maxY = template.pageHeightInches - dragState.initialBlockH;
+        const minX = -bleed;
+        const minY = -bleed;
+        const maxX = template.pageWidthInches + bleed - dragState.initialBlockW;
+        const maxY = template.pageHeightInches + bleed - dragState.initialBlockH;
         const rawX = dragState.initialBlockX + deltaXInches;
         const rawY = dragState.initialBlockY + deltaYInches;
-        const clampedX = Math.max(0, Math.min(maxX, rawX));
-        const clampedY = Math.max(0, Math.min(maxY, rawY));
+        const clampedX = Math.max(minX, Math.min(maxX, rawX));
+        const clampedY = Math.max(minY, Math.min(maxY, rawY));
 
         handleUpdateBlockPosition(dragState.blockId, snap(clampedX), snap(clampedY));
       } else if (dragState.isResizing && dragState.resizeHandle) {
@@ -774,19 +807,19 @@ export function CatalogDesignerStudio({
         let newW = dragState.initialBlockW;
         let newH = dragState.initialBlockH;
 
-        if (handle.includes('e')) newW = Math.max(0.5, dragState.initialBlockW + deltaXInches);
-        if (handle.includes('s')) newH = Math.max(0.2, dragState.initialBlockH + deltaYInches);
+        if (handle.includes('e')) newW = Math.max(0.2, dragState.initialBlockW + deltaXInches);
+        if (handle.includes('s')) newH = Math.max(0.05, dragState.initialBlockH + deltaYInches);
         if (handle.includes('w')) {
-          const maxDelta = dragState.initialBlockW - 0.5;
+          const maxDelta = dragState.initialBlockW - 0.2;
           const appliedDelta = Math.min(maxDelta, deltaXInches);
-          newX = Math.max(0, dragState.initialBlockX + appliedDelta);
-          newW = Math.max(0.5, dragState.initialBlockW - appliedDelta);
+          newX = Math.max(-bleed, dragState.initialBlockX + appliedDelta);
+          newW = Math.max(0.2, dragState.initialBlockW - appliedDelta);
         }
         if (handle.includes('n')) {
-          const maxDelta = dragState.initialBlockH - 0.2;
+          const maxDelta = dragState.initialBlockH - 0.05;
           const appliedDelta = Math.min(maxDelta, deltaYInches);
-          newY = Math.max(0, dragState.initialBlockY + appliedDelta);
-          newH = Math.max(0.2, dragState.initialBlockH - appliedDelta);
+          newY = Math.max(-bleed, dragState.initialBlockY + appliedDelta);
+          newH = Math.max(0.05, dragState.initialBlockH - appliedDelta);
         }
 
         handleUpdateBlockDimension(dragState.blockId, snap(newX), snap(newY), snap(newW), snap(newH));
@@ -1293,6 +1326,44 @@ export function CatalogDesignerStudio({
                     </div>
                   </div>
                 </div>
+
+                {/* Bleed Settings (ระยะตัดตกสำหรับงานพิมพ์) */}
+                <div className="pt-2.5 mt-2.5 border-t border-[#E6E0D4]">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-1.5 font-bold text-[#8B1B1B]">
+                      <Scissors className="w-3.5 h-3.5" />
+                      <span>ระยะตัดตก (Bleed)</span>
+                    </div>
+                    <span className="text-[10px] text-[#777]">สำหรับโรงพิมพ์</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 mb-2">
+                    {[
+                      { label: 'ปิด (0")', val: 0 },
+                      { label: '0.125" (3mm)', val: 0.125 },
+                      { label: '0.25" (6mm)', val: 0.25 },
+                    ].map((b) => {
+                      const isCurr = (template.bleedInches ?? 0) === b.val;
+                      return (
+                        <button
+                          key={b.label}
+                          onClick={() => updateTemplateWithHistory({ ...template, bleedInches: b.val })}
+                          className={`py-1 rounded-lg text-[10.5px] font-mono transition-all cursor-pointer ${
+                            isCurr
+                              ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
+                              : 'bg-[#F8F7F4] border border-[#E6E0D4] text-[#555] hover:text-[#111]'
+                          }`}
+                        >
+                          {b.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(template.bleedInches ?? 0) > 0 && (
+                    <div className="text-[10px] text-red-800 bg-red-50 p-1.5 rounded-lg border border-red-200 leading-tight">
+                      ✂️ เปิดระยะตัดตก {template.bleedInches}&quot; (เส้นประสีแดง) สามารถลากรูปภาพหรือเส้นเลยขอบกระดาษจริงได้
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1564,7 +1635,7 @@ export function CatalogDesignerStudio({
           <div
             ref={canvasRef}
             onClick={(e) => e.stopPropagation()}
-            className="relative select-none overflow-hidden rounded-[2px]"
+            className="relative select-none rounded-[2px]"
             style={{
               width: `${template.pageWidthInches * 96}px`,
               height: `${template.pageHeightInches * 96}px`,
@@ -1572,6 +1643,23 @@ export function CatalogDesignerStudio({
               boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08)',
             }}
           >
+            {/* Bleed Area Guideline Outline (ระยะตัดตกเส้นประสีแดง) */}
+            {(template.bleedInches ?? 0) > 0 && (
+              <div
+                className="absolute border-2 border-dashed border-red-500/80 pointer-events-none z-30"
+                style={{
+                  top: `-${(template.bleedInches || 0) * 96}px`,
+                  left: `-${(template.bleedInches || 0) * 96}px`,
+                  right: `-${(template.bleedInches || 0) * 96}px`,
+                  bottom: `-${(template.bleedInches || 0) * 96}px`,
+                }}
+              >
+                <span className="absolute -top-5 left-0 text-[8.5px] font-mono font-bold text-red-600 bg-white/95 px-1.5 py-0.5 rounded shadow-xs border border-red-200">
+                  ✂️ BLEED {(template.bleedInches || 0)}&quot; (ระยะตัดตกโรงพิมพ์)
+                </span>
+              </div>
+            )}
+
             {/* 0.25-Inch Grid Lines */}
             {showGrid && (
               <div
@@ -2086,6 +2174,46 @@ export function CatalogDesignerStudio({
                 </button>
               </div>
 
+              {/* Font Style (Italic & Underline) */}
+              <div className="flex items-center gap-0.5 bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg p-0.5">
+                <button
+                  onClick={() => {
+                    const isItalic = selectedBlock.style.fontStyle === 'italic';
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, fontStyle: isItalic ? 'normal' : 'italic' } },
+                      true
+                    );
+                  }}
+                  className={`p-1 rounded-md transition-all cursor-pointer ${
+                    selectedBlock.style.fontStyle === 'italic'
+                      ? 'bg-[#8B1B1B] text-white shadow-xs'
+                      : 'text-[#666] hover:text-[#111]'
+                  }`}
+                  title="ตัวเอียง (Italic)"
+                >
+                  <Italic className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    const isUnderline = selectedBlock.style.textDecoration === 'underline';
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, textDecoration: isUnderline ? 'none' : 'underline' } },
+                      true
+                    );
+                  }}
+                  className={`p-1 rounded-md transition-all cursor-pointer ${
+                    selectedBlock.style.textDecoration === 'underline'
+                      ? 'bg-[#8B1B1B] text-white shadow-xs'
+                      : 'text-[#666] hover:text-[#111]'
+                  }`}
+                  title="ขีดเส้นใต้ (Underline)"
+                >
+                  <Underline className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {/* Color Picker */}
               <div className="flex items-center gap-1 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl px-2 py-1">
                 <input
@@ -2115,6 +2243,198 @@ export function CatalogDesignerStudio({
                   maxLength={7}
                 />
               </div>
+            </div>
+          )}
+
+          {/* 📏 LINE / BOX STYLING CONTROLS (Divider Line & Custom Box) */}
+          {['divider_line', 'custom_box'].includes(selectedBlock.type) && (
+            <div className="flex items-center gap-2 pl-2 border-l border-[#E6E0D4]">
+              {/* Line / Border Thickness */}
+              <div className="flex items-center gap-1 bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
+                <span className="text-[10px] text-[#777]">ความหนา:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={selectedBlock.style.borderWidth || 1}
+                  onChange={(e) =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderWidth: parseInt(e.target.value) || 1 } },
+                      true
+                    )
+                  }
+                  className="w-7 bg-transparent text-xs font-mono text-[#1F1C17] text-center focus:outline-none font-bold"
+                />
+                <span className="text-[10px] text-[#777]">px</span>
+              </div>
+
+              {/* Quick Thickness Presets */}
+              <div className="flex items-center gap-0.5 bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg p-0.5 text-xs">
+                {[1, 2, 3, 5, 8].map((w) => (
+                  <button
+                    key={w}
+                    onClick={() =>
+                      handleUpdateBlockProp(
+                        selectedBlock.id,
+                        { style: { ...selectedBlock.style, borderWidth: w } },
+                        true
+                      )
+                    }
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-all cursor-pointer ${
+                      (selectedBlock.style.borderWidth || 1) === w
+                        ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
+                        : 'text-[#666] hover:text-[#111]'
+                    }`}
+                  >
+                    {w}px
+                  </button>
+                ))}
+              </div>
+
+              {/* Line Style (ทึบ, ประ, จุดไข่ปลา) */}
+              <div className="flex items-center bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg p-0.5 text-xs">
+                <button
+                  onClick={() =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderStyle: 'solid' } },
+                      true
+                    )
+                  }
+                  className={`px-2 py-1 rounded text-[11px] font-medium transition-all cursor-pointer ${
+                    !selectedBlock.style.borderStyle || selectedBlock.style.borderStyle === 'solid'
+                      ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
+                      : 'text-[#666] hover:text-[#111]'
+                  }`}
+                  title="เส้นทึบ (Solid)"
+                >
+                  — ทึบ
+                </button>
+                <button
+                  onClick={() =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderStyle: 'dashed' } },
+                      true
+                    )
+                  }
+                  className={`px-2 py-1 rounded text-[11px] font-medium transition-all cursor-pointer ${
+                    selectedBlock.style.borderStyle === 'dashed'
+                      ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
+                      : 'text-[#666] hover:text-[#111]'
+                  }`}
+                  title="เส้นประ (Dashed)"
+                >
+                  - - ประ
+                </button>
+                <button
+                  onClick={() =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderStyle: 'dotted' } },
+                      true
+                    )
+                  }
+                  className={`px-2 py-1 rounded text-[11px] font-medium transition-all cursor-pointer ${
+                    selectedBlock.style.borderStyle === 'dotted'
+                      ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
+                      : 'text-[#666] hover:text-[#111]'
+                  }`}
+                  title="เส้นจุดไข่ปลา (Dotted)"
+                >
+                  ··· จุด
+                </button>
+              </div>
+
+              {/* Line / Border Color */}
+              <div className="flex items-center gap-1.5 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl px-2 py-1">
+                <span className="text-[10px] text-[#777]">สีเส้น:</span>
+                <input
+                  type="color"
+                  value={selectedBlock.style.borderColor || selectedBlock.style.color || '#C5A880'}
+                  onChange={(e) =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderColor: e.target.value, color: e.target.value } },
+                      true
+                    )
+                  }
+                  className="w-4 h-4 bg-transparent border-none cursor-pointer"
+                  title="เลือกสีเส้น"
+                />
+                <input
+                  type="text"
+                  value={selectedBlock.style.borderColor || selectedBlock.style.color || '#C5A880'}
+                  onChange={(e) =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, borderColor: e.target.value, color: e.target.value } },
+                      true
+                    )
+                  }
+                  className="w-16 bg-transparent text-[11px] font-mono text-[#1F1C17] focus:outline-none uppercase"
+                  maxLength={7}
+                />
+              </div>
+
+              {/* Quick Palette Colors for Line */}
+              <div className="flex items-center gap-1">
+                {[
+                  { hex: '#C5A880', title: 'ทองเฮอริเทจ' },
+                  { hex: '#8B1B1B', title: 'แดงเพาะช่าง' },
+                  { hex: '#1F1C17', title: 'ชาร์โคลดำ' },
+                  { hex: '#E2DFD7', title: 'เทาอ่อน' },
+                  { hex: '#1A2E40', title: 'ครามสยาม' },
+                ].map((c) => (
+                  <button
+                    key={c.hex}
+                    onClick={() =>
+                      handleUpdateBlockProp(
+                        selectedBlock.id,
+                        { style: { ...selectedBlock.style, borderColor: c.hex, color: c.hex } },
+                        true
+                      )
+                    }
+                    className="w-4 h-4 rounded-full border border-black/20 hover:scale-125 transition-transform"
+                    style={{ backgroundColor: c.hex }}
+                    title={c.title}
+                  />
+                ))}
+              </div>
+
+              {/* If custom_box, allow background fill */}
+              {selectedBlock.type === 'custom_box' && (
+                <div className="flex items-center gap-1.5 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl px-2 py-1">
+                  <span className="text-[10px] text-[#777]">สีพื้น:</span>
+                  <input
+                    type="color"
+                    value={selectedBlock.style.backgroundColor || '#FAF8F5'}
+                    onChange={(e) =>
+                      handleUpdateBlockProp(
+                        selectedBlock.id,
+                        { style: { ...selectedBlock.style, backgroundColor: e.target.value } },
+                        true
+                      )
+                    }
+                    className="w-4 h-4 bg-transparent border-none cursor-pointer"
+                    title="เลือกสีพื้นหลังกล่อง"
+                  />
+                  <button
+                    onClick={() =>
+                      handleUpdateBlockProp(
+                        selectedBlock.id,
+                        { style: { ...selectedBlock.style, backgroundColor: 'transparent' } },
+                        true
+                      )
+                    }
+                    className="text-[9.5px] text-[#8B1B1B] hover:underline"
+                    title="ทำให้พื้นหลังโปร่งใส"
+                  >
+                    โปร่งใส
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

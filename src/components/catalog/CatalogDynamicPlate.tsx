@@ -443,11 +443,27 @@ export function CatalogDynamicPlate({
             style={{
               backgroundColor: s.backgroundColor || 'transparent',
               borderWidth: s.borderWidth ? `${s.borderWidth}px` : undefined,
-              borderColor: s.borderColor || '#E0E0E0',
+              borderColor: s.borderColor || s.color || '#E0E0E0',
               borderStyle: s.borderStyle || 'solid',
               borderRadius: resolveBorderRadius(),
+              opacity: s.opacity ?? 1,
             }}
           />
+        );
+
+      case 'divider_line':
+        return (
+          <div className="w-full h-full flex items-center justify-center">
+            <div
+              className="w-full"
+              style={{
+                borderTopWidth: `${s.borderWidth || 1}px`,
+                borderTopColor: s.borderColor || s.color || '#C5A880',
+                borderTopStyle: s.borderStyle || 'solid',
+                opacity: s.opacity ?? 1,
+              }}
+            />
+          </div>
         );
 
       case 'footer_graphic':
