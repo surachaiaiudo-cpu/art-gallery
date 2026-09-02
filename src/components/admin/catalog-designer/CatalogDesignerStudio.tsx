@@ -1211,10 +1211,18 @@ export function CatalogDesignerStudio({
         .map((el) => el.outerHTML)
         .join('\n');
 
+      const baseOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://art-gallery-4ty.pages.dev';
+
+      // Ensure all images are eager-loaded and have absolute paths for Adobe Cloud headless engine
+      const cleanHtml = plateHtml
+        .replace(/loading="lazy"/g, 'loading="eager"')
+        .replace(/decoding="async"/g, 'decoding="sync"');
+
       const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
+  <base href="${baseOrigin}/">
   <title>${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe</title>
   ${parentStyles}
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1222,7 +1230,7 @@ export function CatalogDesignerStudio({
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     @page { size: ${w}in ${h}in; margin: 0; }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     html, body {
       width: ${w}in;
       height: ${h}in;
@@ -1251,7 +1259,7 @@ export function CatalogDesignerStudio({
   </style>
 </head>
 <body class="bg-white">
-  ${plateHtml}
+  ${cleanHtml}
 </body>
 </html>`;
 

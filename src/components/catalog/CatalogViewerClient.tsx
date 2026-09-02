@@ -259,10 +259,18 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         .map((el) => el.outerHTML)
         .join('\n');
 
+      const baseOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://art-gallery-4ty.pages.dev';
+
+      // Ensure all images are eager-loaded and have absolute paths for Adobe Cloud headless engine
+      const cleanHtml = targetEl.innerHTML
+        .replace(/loading="lazy"/g, 'loading="eager"')
+        .replace(/decoding="async"/g, 'decoding="sync"');
+
       const fullHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
+  <base href="${baseOrigin}/">
   <title>${exhibition.title || 'Art Exhibition'}-Catalog-Adobe</title>
   ${parentStyles}
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -270,7 +278,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     @page { size: ${w}in ${h}in; margin: 0; }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     html, body {
       width: ${w}in;
       margin: 0;
@@ -291,12 +299,13 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       page-break-after: always !important;
       break-after: page !important;
       overflow: hidden !important;
+      background-color: #ffffff !important;
     }
     .no-print { display: none !important; }
   </style>
 </head>
 <body class="bg-white">
-  ${targetEl.innerHTML}
+  ${cleanHtml}
 </body>
 </html>`;
 
