@@ -300,43 +300,74 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 </body>
 </html>`;
 
-      setPdfProgressPercent(28);
-      setPdfProgressStep('กำลังเชื่อมต่อและส่งข้อมูลสู่ Adobe Cloud');
-      setPdfProgressText('อัปโหลดข้อมูลหน้าเอกสารสู่ Adobe Document Services...');
-      setPdfEstimatedSeconds(10);
+      // Step 1: Request Presigned Upload Asset from Adobe Cloud (Instant 50ms)
+      setPdfProgressPercent(25);
+      setPdfProgressStep('กำลังเชื่อมต่อ Adobe Cloud');
+      setPdfProgressText('ขอพื้นที่จัดเก็บเอกสารบน Adobe Cloud Storage...');
+      setPdfEstimatedSeconds(8);
 
-      const res = await fetch('/api/catalog/adobe-pdf', {
+      const initRes = await fetch('/api/catalog/adobe-pdf?action=create-asset', { method: 'POST' });
+      if (!initRes.ok) {
+        const errData = await initRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'ไม่สามารถเชื่อมต่อ Adobe Cloud ได้');
+      }
+      const { uploadUri, assetID } = await initRes.json();
+
+      // Step 2: Upload HTML Document DIRECTLY to AWS S3 (0ms through Cloudflare Worker)
+      setPdfProgressPercent(45);
+      setPdfProgressStep('อัปโหลดข้อมูลสูจิบัตรสู่ Adobe Cloud');
+      setPdfProgressText('กำลังส่งข้อมูลความละเอียดสูงตรงสู่ Adobe Storage...');
+      setPdfEstimatedSeconds(6);
+
+      const uploadRes = await fetch(uploadUri, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'text/html',
+        },
+        body: fullHtml,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error(`ไม่สามารถอัปโหลดข้อมูลไปยัง Adobe Storage ได้ (${uploadRes.status})`);
+      }
+
+      // Step 3: Start Conversion Job on Adobe Engine
+      setPdfProgressPercent(60);
+      setPdfProgressStep('เริ่มประมวลผลด้วย Adobe PostScript Engine');
+      setPdfProgressText('ส่งคำสั่งแปลงไฟล์เข้าสู่ระบบ Adobe Document Cloud...');
+      setPdfEstimatedSeconds(5);
+
+      const startRes = await fetch('/api/catalog/adobe-pdf?action=start-job', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          html: fullHtml,
+          assetID,
           pageWidthInches: w,
           pageHeightInches: h,
-          filename: `${exhibition.slug || 'catalog'}-Full-Adobe.pdf`,
         }),
       });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'ไม่สามารถส่งคำขอไปยัง Adobe Cloud ได้');
+      if (!startRes.ok) {
+        const errData = await startRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'ไม่สามารถเริ่มการแปลงไฟล์บน Adobe Cloud ได้');
       }
 
-      const { pollingLocation, filename: outFilename } = await res.json();
+      const { pollingLocation } = await startRes.json();
 
-      // Poll status on Adobe Cloud
+      // Step 4: Poll status on Adobe Cloud
       let downloadUri = '';
       let attempts = 0;
-      const maxAttempts = 60; // Allow up to 2 minutes for huge multi-page books
+      const maxAttempts = 60;
 
       while (!downloadUri && attempts < maxAttempts) {
         await new Promise((r) => setTimeout(r, 2000));
         attempts++;
 
-        const simulatedPercent = Math.min(88, Math.round(35 + (attempts / 6) * 53));
+        const simulatedPercent = Math.min(92, Math.round(65 + (attempts / 5) * 27));
         setPdfProgressPercent(simulatedPercent);
         setPdfProgressStep('Adobe PostScript Engine กำลังเรนเดอร์ภาพและจัดหน้า');
         setPdfProgressText(`ประมวลผลบน Adobe Cloud (${attempts * 2} วินาที)...`);
-        setPdfEstimatedSeconds(Math.max(2, 12 - attempts * 2));
+        setPdfEstimatedSeconds(Math.max(1, 6 - attempts));
 
         const pollRes = await fetch(`/api/catalog/adobe-pdf?location=${encodeURIComponent(pollingLocation)}`);
         if (!pollRes.ok) continue;
@@ -354,7 +385,8 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         throw new Error('หมดเวลาการรอผลจาก Adobe Cloud โปรดลองใหม่อีกครั้ง');
       }
 
-      setPdfProgressPercent(94);
+      // Step 5: Download PDF directly from AWS S3
+      setPdfProgressPercent(96);
       setPdfProgressStep('Adobe Cloud ประมวลผลเสร็จสิ้น กำลังดาวน์โหลดไฟล์');
       setPdfProgressText('กำลังดาวน์โหลดไฟล์ PDF คุณภาพสูงลงเครื่องของคุณ...');
       setPdfEstimatedSeconds(1);
@@ -364,7 +396,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = outFilename || `${exhibition.slug || 'catalog'}-Full-Adobe.pdf`;
+      a.download = `${exhibition.slug || 'catalog'}-Full-Adobe.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();

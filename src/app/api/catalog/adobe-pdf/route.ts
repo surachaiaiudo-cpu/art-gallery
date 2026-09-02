@@ -1,45 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdobePdfJob, checkAdobePdfJob } from '@/lib/adobePdfService';
+import { getAdobeAccessToken } from '@/lib/adobePdfService';
 
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
+const ADOBE_CLIENT_ID = process.env.ADOBE_CLIENT_ID || '20d5f6dd12a84c8b8e9df6ec40a837bd';
+
 /**
- * POST /api/catalog/adobe-pdf
- * Starts Adobe PDF conversion job and returns polling location immediately (Fast 300ms response)
+ * POST /api/catalog/adobe-pdf?action=create-asset | start-job
+ * Lightweight, 0 CPU overhead, completely bypasses Cloudflare Worker size & timeout limits
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const {
-      html,
-      pageWidthInches = 8.0,
-      pageHeightInches = 8.0,
-      filename = 'artvara-catalog-adobe.pdf',
-    } = body;
+    const action = req.nextUrl.searchParams.get('action') || 'create-asset';
+    const accessToken = await getAdobeAccessToken();
 
-    if (!html || typeof html !== 'string') {
-      return NextResponse.json(
-        { error: 'Valid HTML content is required' },
-        { status: 400 }
-      );
+    // 1. Get Presigned S3 Upload URL from Adobe
+    if (action === 'create-asset') {
+      const assetRes = await fetch('https://pdf-services.adobe.io/assets', {
+        method: 'POST',
+        headers: {
+          'x-api-key': ADOBE_CLIENT_ID,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ mediaType: 'text/html' }),
+      });
+
+      if (!assetRes.ok) {
+        const errorText = await assetRes.text();
+        throw new Error(`Adobe asset creation failed (${assetRes.status}): ${errorText}`);
+      }
+
+      const data = await assetRes.json();
+      return NextResponse.json(data);
     }
 
-    const { pollingLocation } = await createAdobePdfJob({
-      html,
-      pageWidthInches: Number(pageWidthInches) || 8.0,
-      pageHeightInches: Number(pageHeightInches) || 8.0,
-    });
+    // 2. Start HTML-to-PDF Conversion Job (using uploaded assetID)
+    if (action === 'start-job') {
+      const body = await req.json();
+      const { assetID, pageWidthInches = 8.0, pageHeightInches = 8.0 } = body;
 
-    return NextResponse.json({
-      status: 'submitted',
-      pollingLocation,
-      filename,
-    });
+      if (!assetID) {
+        return NextResponse.json({ error: 'assetID is required' }, { status: 400 });
+      }
+
+      const jobBody = {
+        assetID,
+        pageLayout: {
+          pageWidth: Number(pageWidthInches) || 8.0,
+          pageHeight: Number(pageHeightInches) || 8.0,
+        },
+        includeHeaderFooter: false,
+      };
+
+      const jobRes = await fetch('https://pdf-services.adobe.io/operation/htmltopdf', {
+        method: 'POST',
+        headers: {
+          'x-api-key': ADOBE_CLIENT_ID,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(jobBody),
+      });
+
+      if (jobRes.status !== 201) {
+        const errorText = await jobRes.text();
+        throw new Error(`Adobe job submission failed (${jobRes.status}): ${errorText}`);
+      }
+
+      const pollingLocation = jobRes.headers.get('location');
+      return NextResponse.json({ pollingLocation });
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (err: any) {
-    console.error('Adobe PDF Job submission error:', err);
+    console.error('Adobe PDF API error:', err);
     return NextResponse.json(
-      { error: err.message || 'Failed to submit Adobe PDF job' },
+      { error: err.message || 'Failed to process Adobe PDF request' },
       { status: 500 }
     );
   }
@@ -56,8 +94,33 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Polling location parameter is required' }, { status: 400 });
     }
 
-    const jobResult = await checkAdobePdfJob(location);
-    return NextResponse.json(jobResult);
+    const accessToken = await getAdobeAccessToken();
+    const pollRes = await fetch(location, {
+      method: 'GET',
+      headers: {
+        'x-api-key': ADOBE_CLIENT_ID,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!pollRes.ok) {
+      const errorText = await pollRes.text();
+      throw new Error(`Failed to poll Adobe job status (${pollRes.status}): ${errorText}`);
+    }
+
+    const pollData = (await pollRes.json()) as {
+      status: string;
+      asset?: { downloadUri: string };
+      error?: any;
+    };
+
+    if (pollData.status === 'done' && pollData.asset?.downloadUri) {
+      return NextResponse.json({ status: 'done', downloadUri: pollData.asset.downloadUri });
+    } else if (pollData.status === 'failed') {
+      return NextResponse.json({ status: 'failed', error: JSON.stringify(pollData.error || 'Job failed') });
+    }
+
+    return NextResponse.json({ status: 'in_progress' });
   } catch (err: any) {
     console.error('Adobe PDF Status Check error:', err);
     return NextResponse.json(

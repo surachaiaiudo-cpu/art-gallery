@@ -1255,30 +1255,61 @@ export function CatalogDesignerStudio({
 </body>
 </html>`;
 
-      setExportProgressPercent(35);
-      setExportProgressStep('ส่งข้อมูลสู่ Adobe Document Cloud');
-      setExportStatusText('กำลังอัปโหลดข้อมูลไปยังเซิร์ฟเวอร์ Adobe Cloud...');
+      // Step 1: Request Presigned Upload Asset from Adobe Cloud (Instant 50ms)
+      setExportProgressPercent(25);
+      setExportProgressStep('กำลังเชื่อมต่อ Adobe Cloud');
+      setExportStatusText('ขอพื้นที่จัดเก็บเอกสารบน Adobe Cloud Storage...');
+      setExportEstimatedSeconds(5);
+
+      const initRes = await fetch('/api/catalog/adobe-pdf?action=create-asset', { method: 'POST' });
+      if (!initRes.ok) {
+        const errData = await initRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'ไม่สามารถเชื่อมต่อ Adobe Cloud ได้');
+      }
+      const { uploadUri, assetID } = await initRes.json();
+
+      // Step 2: Upload HTML Document DIRECTLY to AWS S3
+      setExportProgressPercent(45);
+      setExportProgressStep('อัปโหลดข้อมูลสูจิบัตรสู่ Adobe Cloud');
+      setExportStatusText('กำลังส่งข้อมูลความละเอียดสูงตรงสู่ Adobe Storage...');
       setExportEstimatedSeconds(4);
 
-      const res = await fetch('/api/catalog/adobe-pdf', {
+      const uploadRes = await fetch(uploadUri, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'text/html',
+        },
+        body: fullHtml,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error(`ไม่สามารถอัปโหลดข้อมูลไปยัง Adobe Storage ได้ (${uploadRes.status})`);
+      }
+
+      // Step 3: Start Conversion Job on Adobe Engine
+      setExportProgressPercent(60);
+      setExportProgressStep('เริ่มประมวลผลด้วย Adobe PostScript Engine');
+      setExportStatusText('ส่งคำสั่งแปลงไฟล์เข้าสู่ระบบ Adobe Document Cloud...');
+      setExportEstimatedSeconds(3);
+
+      const startRes = await fetch('/api/catalog/adobe-pdf?action=start-job', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          html: fullHtml,
+          assetID,
           pageWidthInches: w,
           pageHeightInches: h,
-          filename: `${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe.pdf`,
         }),
       });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'ไม่สามารถส่งคำขอไปยัง Adobe Cloud ได้');
+      if (!startRes.ok) {
+        const errData = await startRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'ไม่สามารถเริ่มการแปลงไฟล์บน Adobe Cloud ได้');
       }
 
-      const { pollingLocation, filename: outFilename } = await res.json();
+      const { pollingLocation } = await startRes.json();
 
-      // Poll status on Adobe Cloud
+      // Step 4: Poll status on Adobe Cloud
       let downloadUri = '';
       let attempts = 0;
       const maxAttempts = 30;
@@ -1287,11 +1318,11 @@ export function CatalogDesignerStudio({
         await new Promise((r) => setTimeout(r, 1500));
         attempts++;
 
-        const simulatedPercent = Math.min(88, Math.round(40 + (attempts / 4) * 48));
+        const simulatedPercent = Math.min(92, Math.round(65 + (attempts / 4) * 27));
         setExportProgressPercent(simulatedPercent);
         setExportProgressStep('Adobe PostScript Engine กำลังประมวลผล');
         setExportStatusText(`กำลังประมวลผลบน Adobe Cloud (${attempts * 2}s)...`);
-        setExportEstimatedSeconds(Math.max(1, 5 - attempts));
+        setExportEstimatedSeconds(Math.max(1, 4 - attempts));
 
         const pollRes = await fetch(`/api/catalog/adobe-pdf?location=${encodeURIComponent(pollingLocation)}`);
         if (!pollRes.ok) continue;
@@ -1309,7 +1340,8 @@ export function CatalogDesignerStudio({
         throw new Error('หมดเวลาการรอผลจาก Adobe Cloud โปรดลองใหม่อีกครั้ง');
       }
 
-      setExportProgressPercent(95);
+      // Step 5: Download PDF directly from AWS S3
+      setExportProgressPercent(96);
       setExportProgressStep('กำลังดาวน์โหลดไฟล์ PDF');
       setExportStatusText('กำลังดาวน์โหลดไฟล์ PDF คุณภาพสูงลงเครื่อง...');
       setExportEstimatedSeconds(1);
@@ -1319,7 +1351,7 @@ export function CatalogDesignerStudio({
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = outFilename || `${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe.pdf`;
+      a.download = `${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Adobe.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
