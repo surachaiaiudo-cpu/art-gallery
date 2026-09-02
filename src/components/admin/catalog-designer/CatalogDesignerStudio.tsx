@@ -50,6 +50,7 @@ import {
   Box,
   Hash,
   Download,
+  Printer,
   ExternalLink,
   ArrowLeft,
   Settings,
@@ -1017,6 +1018,62 @@ export function CatalogDesignerStudio({
     setTimeout(() => setSaveSuccessToast(false), 3000);
   };
 
+  // Direct Print / Save Current Page Vector PDF from Studio
+  const handlePrintStudioCurrentPage = () => {
+    if (typeof document === 'undefined') return;
+    const w = template.pageWidthInches || 8;
+    const h = template.pageHeightInches || 8;
+
+    let styleEl = document.getElementById('dynamic-catalog-print-size') as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'dynamic-catalog-print-size';
+      document.head.appendChild(styleEl);
+    }
+    styleEl.innerHTML = `
+      @media print {
+        @page {
+          size: ${w}in ${h}in !important;
+          margin: 0mm !important;
+        }
+        body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #ffffff !important;
+        }
+        header, footer, nav, .no-print, [class*="dock"], [class*="Inspector"] {
+          display: none !important;
+        }
+        #catalog-studio-print-target {
+          position: fixed !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: ${w}in !important;
+          height: ${h}in !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+          border: none !important;
+          background: ${template.backgroundColor || '#FFFFFF'} !important;
+          z-index: 999999 !important;
+          overflow: hidden !important;
+          transform: none !important;
+        }
+      }
+    `;
+
+    const originalTitle = document.title;
+    document.title = `${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Vector`;
+
+    const cleanup = () => {
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
+    setTimeout(cleanup, 2500);
+  };
+
   // Export JSON file
   const handleExportJSON = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(template, null, 2));
@@ -1609,31 +1666,48 @@ export function CatalogDesignerStudio({
                   <span className="text-[10px] text-gray-500 font-normal">({template.paperSize})</span>
                 </div>
 
-                {/* Exact Vector PDF Export */}
+                {/* Direct Current Page Print */}
                 <button
                   onClick={() => {
                     setIsExportMenuOpen(false);
-                    if (currentExhibition?.slug) {
-                      const printUrl = `/catalog/${currentExhibition.slug}?print=1`;
-                      window.open(printUrl, '_blank', 'noopener');
-                    } else {
-                      window.print();
-                    }
+                    handlePrintStudioCurrentPage();
                   }}
                   className="w-full p-2.5 rounded-xl hover:bg-[#F8F7F4] flex items-start gap-2.5 text-left transition-colors cursor-pointer group"
                 >
-                  <div className="p-2 rounded-lg bg-[#8B1B1B]/10 text-[#8B1B1B] group-hover:bg-[#8B1B1B] group-hover:text-white transition-colors">
-                    <Download className="w-4 h-4" />
+                  <div className="p-2 rounded-lg bg-[#8B1B1B] text-white transition-colors">
+                    <Printer className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="text-xs font-bold text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors">
-                      บันทึก PDF ขนาดตามจริง ({template.pageWidthInches}&quot; x {template.pageHeightInches}&quot;)
+                      บันทึกหน้านี้เป็น PDF ทันที ({template.pageWidthInches}&quot; x {template.pageHeightInches}&quot;)
                     </div>
                     <div className="text-[10.5px] text-[#777] leading-tight">
-                      ความคมชัดระดับ Vector 100% ล็อคขนาด {template.pageWidthInches}&quot; x {template.pageHeightInches}&quot; ตรงตามที่ตั้งไว้
+                      พิมพ์หรือบันทึก PDF ทันทีตรงจากหน้าจอนี้ ไม่ต้องรอเปิดหน้าอื่น
                     </div>
                   </div>
                 </button>
+
+                {/* Full Catalog PDF */}
+                {currentExhibition?.slug && (
+                  <Link
+                    href={`/catalog/${currentExhibition.slug}?mode=full`}
+                    target="_blank"
+                    onClick={() => setIsExportMenuOpen(false)}
+                    className="w-full p-2.5 rounded-xl hover:bg-[#F8F7F4] flex items-start gap-2.5 text-left transition-colors cursor-pointer group"
+                  >
+                    <div className="p-2 rounded-lg bg-[#8B1B1B]/10 text-[#8B1B1B] group-hover:bg-[#8B1B1B] group-hover:text-white transition-colors">
+                      <Download className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors">
+                        เปิดสูจิบัตรทั้งเล่ม (ทุกหน้าพร้อมพิมพ์)
+                      </div>
+                      <div className="text-[10.5px] text-[#777] leading-tight">
+                        เปิดหน้ารวมสูจิบัตรต่อเนื่องพร้อมสั่งบันทึก PDF ทั้งเล่ม
+                      </div>
+                    </div>
+                  </Link>
+                )}
 
                 {/* Online Catalog Preview */}
                 {currentExhibition?.slug && (
@@ -1775,6 +1849,7 @@ export function CatalogDesignerStudio({
           {/* Interactive Page Canvas */}
           <div
             ref={canvasRef}
+            id="catalog-studio-print-target"
             onClick={(e) => e.stopPropagation()}
             className="relative select-none rounded-[2px]"
             style={{
