@@ -19,10 +19,6 @@ import {
 } from '@/types/catalogTemplate';
 import { CatalogDynamicPlate } from '@/components/catalog/CatalogDynamicPlate';
 import { useLanguage } from '@/context/LanguageContext';
-import {
-  exportSinglePlateToVectorPDF,
-  exportFullCatalogToVectorPDF,
-} from '@/lib/vectorPdfGenerator';
 import html2canvas from 'html2canvas';
 import {
   Layout,
@@ -1081,28 +1077,7 @@ export function CatalogDesignerStudio({
     setTimeout(cleanup, 2500);
   };
 
-  // 📥 DIRECT DOWNLOAD PURE VECTOR PDF (No Print Dialog, Instant File Download)
-  const handleDirectDownloadPDF = async () => {
-    try {
-      setIsExportingPDF(true);
-      setExportStatusText('กำลังสร้างไฟล์ PDF Vector ขนาดตามจริง (Pure Vector)...');
 
-      await exportSinglePlateToVectorPDF(
-        activeArtwork,
-        template,
-        currentExhibition?.slug || 'catalog',
-        sampleArtworkIndex + 1
-      );
-
-      setIsExportingPDF(false);
-      setExportStatusText('');
-    } catch (err) {
-      console.error('Direct PDF export error:', err);
-      setIsExportingPDF(false);
-      setExportStatusText('');
-      alert('เกิดข้อผิดพลาดในการสร้างไฟล์ PDF');
-    }
-  };
 
   // 🖼️ DIRECT DOWNLOAD HIGH-RES PNG (300 DPI)
   const handleDirectDownloadPNG = async () => {
@@ -1739,13 +1714,12 @@ export function CatalogDesignerStudio({
                   <span className="text-[10px] text-gray-500 font-normal">({template.paperSize})</span>
                 </div>
 
-                {/* 📥 1. DIRECT DOWNLOAD PDF FILE */}
+                {/* 🖨️ 1. Exact Vector PDF Export (Save as PDF) */}
                 <button
                   onClick={() => {
                     setIsExportMenuOpen(false);
-                    handleDirectDownloadPDF();
+                    handlePrintStudioCurrentPage();
                   }}
-                  disabled={isExportingPDF}
                   className="w-full p-2.5 rounded-xl bg-[#8B1B1B]/5 hover:bg-[#8B1B1B] text-left transition-all cursor-pointer group border border-[#8B1B1B]/20 hover:border-[#8B1B1B]"
                 >
                   <div className="flex items-start gap-2.5">
@@ -1754,13 +1728,13 @@ export function CatalogDesignerStudio({
                     </div>
                     <div>
                       <div className="text-xs font-bold text-[#8B1B1B] group-hover:text-white transition-colors flex items-center gap-1.5">
-                        <span>ดาวน์โหลดไฟล์ PDF ขนาดตามจริง</span>
+                        <span>บันทึกเป็น PDF ขนาดตามจริง</span>
                         <span className="text-[9.5px] bg-[#8B1B1B] text-white group-hover:bg-white group-hover:text-[#8B1B1B] px-1.5 py-0.2 rounded-full font-mono">
                           {template.pageWidthInches}&quot;x{template.pageHeightInches}&quot;
                         </span>
                       </div>
                       <div className="text-[10.5px] text-[#666] group-hover:text-white/90 leading-tight mt-0.5">
-                        ดาวน์โหลดเป็นไฟล์ .PDF ลงเครื่องทันที ไม่ต้องผ่านหน้าต่างพิมพ์
+                        ฟอนต์ภาษาไทยและภาพคมชัด 100% (เลือก &apos;Save as PDF&apos;)
                       </div>
                     </div>
                   </div>
@@ -1783,33 +1757,12 @@ export function CatalogDesignerStudio({
                       ดาวน์โหลดเป็นรูปภาพ PNG (300 DPI)
                     </div>
                     <div className="text-[10.5px] text-[#777] leading-tight mt-0.5">
-                      ภาพความละเอียดสูงสำหรับโรงพิมพ์หรืองานกราฟิก
+                      ภาพความละเอียดสูงสำหรับส่งโรงพิมพ์หรืองานกราฟิก
                     </div>
                   </div>
                 </button>
 
-                {/* 🖨️ 3. PRINT TO PHYSICAL PRINTER */}
-                <button
-                  onClick={() => {
-                    setIsExportMenuOpen(false);
-                    handlePrintStudioCurrentPage();
-                  }}
-                  className="w-full p-2.5 rounded-xl hover:bg-[#F8F7F4] flex items-start gap-2.5 text-left transition-colors cursor-pointer group"
-                >
-                  <div className="p-2 rounded-lg bg-black/5 text-[#444] group-hover:bg-[#8B1B1B] group-hover:text-white transition-colors shrink-0">
-                    <Printer className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors">
-                      สั่งพิมพ์ออกเครื่องพิมพ์ (Print Dialog)
-                    </div>
-                    <div className="text-[10.5px] text-[#777] leading-tight mt-0.5">
-                      เปิดหน้าต่างพิมพ์ของระบบสำหรับต่อกับเครื่องพิมพ์จริง
-                    </div>
-                  </div>
-                </button>
-
-                {/* 📚 4. Full Catalog Continuous View */}
+                {/* 📚 3. Full Catalog Continuous View */}
                 {currentExhibition?.slug && (
                   <Link
                     href={`/catalog/${currentExhibition.slug}?mode=full`}
