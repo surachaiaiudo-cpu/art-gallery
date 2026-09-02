@@ -19,8 +19,11 @@ import {
 } from '@/types/catalogTemplate';
 import { CatalogDynamicPlate } from '@/components/catalog/CatalogDynamicPlate';
 import { useLanguage } from '@/context/LanguageContext';
+import {
+  exportSinglePlateToVectorPDF,
+  exportFullCatalogToVectorPDF,
+} from '@/lib/vectorPdfGenerator';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import {
   Layout,
   Plus,
@@ -1078,59 +1081,26 @@ export function CatalogDesignerStudio({
     setTimeout(cleanup, 2500);
   };
 
-  // 📥 DIRECT DOWNLOAD PDF (No Print Dialog, Instant File Download)
+  // 📥 DIRECT DOWNLOAD PURE VECTOR PDF (No Print Dialog, Instant File Download)
   const handleDirectDownloadPDF = async () => {
-    if (!canvasRef.current) return;
     try {
       setIsExportingPDF(true);
-      setExportStatusText('กำลังประมวลผล PDF คมชัดสูง (300 DPI)...');
-      const w = template.pageWidthInches || 8;
-      const h = template.pageHeightInches || 8;
+      setExportStatusText('กำลังสร้างไฟล์ PDF Vector ขนาดตามจริง (Pure Vector)...');
 
-      // Temporarily hide edit guides from capture
-      setShowGrid(false);
-      setShowMarginGuide(false);
-      setSelectedBlockId(null);
+      await exportSinglePlateToVectorPDF(
+        activeArtwork,
+        template,
+        currentExhibition?.slug || 'catalog',
+        sampleArtworkIndex + 1
+      );
 
-      await new Promise((r) => setTimeout(r, 120));
-
-      const canvas = await html2canvas(canvasRef.current, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: template.backgroundColor || '#FFFFFF',
-        logging: false,
-      });
-
-      setExportStatusText('กำลังสร้างไฟล์ PDF ขนาดตามจริง...');
-
-      const imgData = canvas.toDataURL('image/png', 1.0);
-
-      const pdf = new jsPDF({
-        orientation: w > h ? 'landscape' : 'portrait',
-        unit: 'in',
-        format: [w, h],
-        compress: true,
-      });
-
-      pdf.addImage(imgData, 'PNG', 0, 0, w, h, undefined, 'FAST');
-
-      const slug = currentExhibition?.slug || 'catalog';
-      const cleanFileName = `${slug}-Plate-${w}x${h}.pdf`;
-      pdf.save(cleanFileName);
-
-      setShowGrid(true);
-      setShowMarginGuide(true);
       setIsExportingPDF(false);
       setExportStatusText('');
     } catch (err) {
       console.error('Direct PDF export error:', err);
       setIsExportingPDF(false);
       setExportStatusText('');
-      setShowGrid(true);
-      setShowMarginGuide(true);
-      alert('ระบบกำลังเปิดหน้าต่างบันทึกสำรองให้แทน');
-      handlePrintStudioCurrentPage();
+      alert('เกิดข้อผิดพลาดในการสร้างไฟล์ PDF');
     }
   };
 

@@ -33,6 +33,7 @@ import { CatalogStatementPage } from './CatalogStatementPage';
 import { CatalogPlate } from './CatalogPlate';
 import { CatalogDynamicPlate } from './CatalogDynamicPlate';
 import { getExhibitionCatalogTemplate, getArtworkCatalogTemplate, CatalogTemplateConfig } from '@/types/catalogTemplate';
+import { exportFullCatalogToVectorPDF } from '@/lib/vectorPdfGenerator';
 import { CatalogReaderModal } from './CatalogReaderModal';
 import { TooltipBubble } from '@/components/ui/TooltipBubble';
 import { FooterEditorModal } from './FooterEditorModal';
@@ -84,25 +85,34 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   // Print engine hook
   const { handlePrintSinglePage, handleSaveVectorPDF100Percent } = usePrintEngine(exhibition);
 
+  // PDF Generation State
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfProgressText, setPdfProgressText] = useState('');
+
+  // 📥 DIRECT DOWNLOAD FULL CATALOG PURE VECTOR PDF
+  const handleDownloadFullCatalogPDF = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      setPdfProgressText('กำลังเตรียมสร้างเอกสาร PDF...');
+      await exportFullCatalogToVectorPDF(exhibition, (msg) => {
+        setPdfProgressText(msg);
+      });
+      setIsGeneratingPdf(false);
+      setPdfProgressText('');
+    } catch (err) {
+      console.error('Vector PDF export error:', err);
+      setIsGeneratingPdf(false);
+      setPdfProgressText('');
+      alert('เกิดข้อผิดพลาดในการสร้างไฟล์ PDF');
+    }
+  };
+
   // Reading Modes: 'grid3' (3-Column Preview Grid - Default) or 'full' (Continuous Full Pages)
-  const isPrintTrigger = autoPrint || searchParams?.get('export') === 'pdf';
-  const initialMode = isPrintTrigger || searchParams?.get('mode') === 'full' || searchParams?.get('view') === 'full'
+  const initialMode = searchParams?.get('mode') === 'full' || searchParams?.get('view') === 'full'
     ? 'full'
     : 'grid3';
   const [activeViewMode, setActiveViewMode] = useState<'grid3' | 'full'>(initialMode);
   const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
-
-  // Auto-trigger print dialog with exact template size when ?print=1 or ?export=pdf is present
-  useEffect(() => {
-    if (!isPrintTrigger) return;
-    setActiveViewMode('full');
-
-    const timer = setTimeout(() => {
-      handleSaveVectorPDF100Percent(customTemplate);
-    }, 700);
-
-    return () => clearTimeout(timer);
-  }, [isPrintTrigger, customTemplate, handleSaveVectorPDF100Percent]);
   
   // Paper size is automatically determined from admin's configured catalog template
   const paperSize: 'a4' | 'square8x8' =
@@ -337,15 +347,28 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               </>
             )}
 
-            {/* Save Vector PDF 100% Button with Tooltip Bubble */}
-            <TooltipBubble content="บันทึกสูจิบัตรทั้งเล่มเป็นไฟล์ PDF Vector คมชัด 100%" position="bottom">
+            {/* Direct Vector PDF Download Button */}
+            <TooltipBubble content="ดาวน์โหลดสูจิบัตรทั้งเล่มเป็นไฟล์ PDF ขนาดตามจริง (Pure Vector) ลงเครื่องทันที" position="bottom">
               <button
-                onClick={handleSaveVectorPDF100Percent}
-                className="flex items-center gap-2 px-4 py-2 bg-[#8C6D3F] hover:bg-[#735831] text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
-                aria-label="Save PDF"
+                onClick={handleDownloadFullCatalogPDF}
+                disabled={isGeneratingPdf}
+                className="flex items-center gap-2 px-4 py-2 bg-[#8B1B1B] hover:bg-[#721616] text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+                aria-label="Download Full Catalog PDF"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isGeneratingPdf ? 'กำลังดาวน์โหลด...' : 'ดาวน์โหลด PDF (ทั้งเล่ม)'}</span>
+              </button>
+            </TooltipBubble>
+
+            {/* Print Button */}
+            <TooltipBubble content="สั่งพิมพ์ผ่านเครื่องพิมพ์ (Print)" position="bottom">
+              <button
+                onClick={() => handleSaveVectorPDF100Percent(customTemplate)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#FAF6EE] hover:bg-[#F2ECE0] text-[#666] hover:text-[#111] border border-[#DDD6C8] rounded-xl text-xs font-medium transition-all shadow-xs cursor-pointer"
+                aria-label="Print to Printer"
               >
                 <Printer className="w-4 h-4" />
-                <span>PDF (ทั้งเล่ม)</span>
+                <span className="hidden sm:inline">พิมพ์</span>
               </button>
             </TooltipBubble>
           </div>
@@ -568,17 +591,18 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         />
       )}
 
-      {/* Floating Prompt Bar for Print Mode */}
-      {isPrintTrigger && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#8B1B1B] text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-3 text-xs font-bold no-print border border-white/20 animate-slide-down">
-          <Download className="w-4 h-4" />
-          <span>กำลังเตรียมเอกสาร PDF ขนาด {customTemplate.pageWidthInches || 8}&quot; x {customTemplate.pageHeightInches || 8}&quot;</span>
-          <button
-            onClick={() => handleSaveVectorPDF100Percent(customTemplate)}
-            className="bg-white text-[#8B1B1B] px-3.5 py-1 rounded-full text-xs font-bold hover:bg-neutral-100 shadow-xs cursor-pointer active:scale-95 transition-transform"
-          >
-            กดเพื่อเปิดหน้าต่างบันทึก PDF
-          </button>
+      {/* Generating Full Catalog PDF Progress Modal */}
+      {isGeneratingPdf && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white border border-[#E6E0D4] rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-3 text-center max-w-sm">
+            <div className="w-10 h-10 border-3 border-[#8B1B1B] border-t-transparent rounded-full animate-spin" />
+            <h4 className="font-serif font-bold text-sm text-[#1F1C17]">
+              กำลังสร้างและดาวน์โหลดสูจิบัตร PDF...
+            </h4>
+            <p className="text-xs text-[#777]">
+              {pdfProgressText || 'กำลังประมวลผล Pure Vector และดาวน์โหลดลงเครื่อง'}
+            </p>
+          </div>
         </div>
       )}
 
