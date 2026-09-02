@@ -12,8 +12,21 @@ import { formatDateRange, formatPrice } from "@/lib/utils";
 
 const CATALOG_BASE_CSS = (w: number, h: number, bg: string) => `
 @page { size: ${w}in ${h}in; margin: 0; }
-* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-html, body { margin: 0; padding: 0; width: ${w}in; background: #fff; font-family: "Maitree", Georgia, serif; }
+* {
+  box-sizing: border-box;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  width: ${w}in;
+  background: #fff;
+  font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
+}
 .page {
   position: relative;
   width: ${w}in; height: ${h}in;
@@ -37,13 +50,14 @@ function fw(w?: string): number {
 }
 
 function ff(f?: string): string {
-  if (f === "Maitree") return "'Maitree','Noto Serif Thai',Georgia,serif";
-  if (f === "Cinzel") return "'Cinzel','Times New Roman',serif";
-  if (f === "Sarabun") return "'Sarabun','Noto Sans Thai',Helvetica,sans-serif";
-  if (f === "Inter") return "'Inter',Helvetica,sans-serif";
-  if (f === "Prompt") return "'Prompt','Noto Sans Thai',Helvetica,sans-serif";
-  if (f === "serif") return "Georgia,serif";
-  return "'Maitree',Georgia,serif";
+  if (f === "Maitree") return "'Maitree', 'Noto Serif Thai', Georgia, serif";
+  if (f === "Cinzel") return "'Cinzel', 'Times New Roman', serif";
+  if (f === "Sarabun") return "'Sarabun', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  if (f === "Inter") return "'Inter', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  if (f === "Prompt") return "'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  if (f === "serif") return "'Maitree', 'Noto Serif Thai', Georgia, serif";
+  if (f === "sans-serif") return "'Prompt', 'Noto Sans Thai', 'Helvetica Neue', Arial, sans-serif";
+  return "'Maitree', 'Noto Serif Thai', Georgia, serif";
 }
 
 function escHtml(s: string): string {
@@ -61,7 +75,7 @@ function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: n
 
   const renderText = (
     content: string,
-    defaults: { fontSizePt: number; fontWeight: string | number; color: string; textAlign?: string }
+    defaults: { fontSizePt: number; fontWeight: string | number; color: string; textAlign?: string; lineHeight?: number }
   ) => {
     if (!content) return "";
     const align = s.textAlign || defaults.textAlign || "left";
@@ -70,14 +84,17 @@ function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: n
     const color = s.color || defaults.color;
     const fontFamily = ff(s.fontFamily);
     const letterSpacing = s.letterSpacing ? `letter-spacing:${s.letterSpacing};` : "";
-    const textTransform = s.textTransform ? `text-transform:${s.textTransform};` : "";
-    const textDecor = s.textDecoration ? `text-decoration:${s.textDecoration};` : "";
-    const fontStyle = s.fontStyle ? `font-style:${s.fontStyle};` : "";
+    // Only apply text-transform to titles/labels, never to long concept paragraphs unless explicitly intended
+    const textTransform = (block.type !== "concept" && s.textTransform && s.textTransform !== "none") ? `text-transform:${s.textTransform};` : "";
+    const textDecor = s.textDecoration && s.textDecoration !== "none" ? `text-decoration:${s.textDecoration};` : "";
+    const fontStyle = s.fontStyle && s.fontStyle !== "normal" ? `font-style:${s.fontStyle};` : "";
     const isPreWrap = block.type === "concept" || block.type === "custom_text";
     const whiteSpace = isPreWrap ? "white-space:pre-wrap;" : "white-space:normal;";
+    const lineHeight = s.lineHeight || defaults.lineHeight || (isPreWrap ? 1.45 : 1.35);
 
-    return `<div style="${pos}display:block;"><div style="width:100%;text-align:${align};font-family:${fontFamily};font-size:${fontSize};font-weight:${weight};color:${color};line-height:1.25;${letterSpacing}${textTransform}${textDecor}${fontStyle}${whiteSpace}">${escHtml(content)}</div></div>`;
+    return `<div style="${pos}display:block;"><div style="width:100%;text-align:${align};font-family:${fontFamily};font-size:${fontSize};font-weight:${weight};color:${color};line-height:${lineHeight};${letterSpacing}${textTransform}${textDecor}${fontStyle}${whiteSpace}">${escHtml(content)}</div></div>`;
   };
+
 
   switch (block.type) {
     case "artwork_image": {
@@ -299,7 +316,7 @@ export function generateAdobeCatalogHtml(params: {
     pages.push(renderArtworkPage(art, artTemplate, pageNum, slug));
   });
 
-  const fontLink = `https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Maitree:wght@300;400;600;700&family=Prompt:wght@300;400;600;700&family=Sarabun:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap`;
+  const fontLink = `https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap`;
   return `<!DOCTYPE html>
 <html lang="th">
 <head>
@@ -343,7 +360,7 @@ export function generateAdobeSinglePageHtml(params: {
     pageHtml = renderArtworkPage(artwork, artTemplate, pageNumber, slug);
   }
 
-  const fontLink = `https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Maitree:wght@300;400;600;700&family=Prompt:wght@300;400;600;700&family=Sarabun:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap`;
+  const fontLink = `https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Noto+Serif+Thai:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap`;
   return `<!DOCTYPE html>
 <html lang="th">
 <head>
