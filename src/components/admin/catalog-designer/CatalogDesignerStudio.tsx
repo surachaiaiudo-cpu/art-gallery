@@ -1050,7 +1050,14 @@ export function CatalogDesignerStudio({
     const iframeDoc = printIframe.contentDocument || printIframe.contentWindow?.document;
     if (!iframeDoc) return;
 
-    const plateHtml = canvasEl.innerHTML;
+    // 1. Get the clean dynamic plate DOM node
+    const plateNode = canvasEl.querySelector('.catalog-dynamic-page');
+    const plateHtml = plateNode ? plateNode.outerHTML : canvasEl.innerHTML;
+
+    // 2. Clone all parent styles, Tailwind CSS, and stylesheet links
+    const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((el) => el.outerHTML)
+      .join('\n');
 
     iframeDoc.open();
     iframeDoc.write(`
@@ -1058,6 +1065,7 @@ export function CatalogDesignerStudio({
       <html>
         <head>
           <title>${currentExhibition?.slug || 'catalog'}-Plate-${w}x${h}-Vector</title>
+          ${parentStyles}
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
           <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1068,26 +1076,30 @@ export function CatalogDesignerStudio({
             }
             * {
               box-sizing: border-box;
-              margin: 0;
-              padding: 0;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
             html, body {
-              width: ${w}in;
-              height: ${h}in;
-              margin: 0;
-              padding: 0;
-              overflow: hidden;
-              background: ${template.backgroundColor || '#FFFFFF'};
+              width: ${w}in !important;
+              height: ${h}in !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              background: ${template.backgroundColor || '#FFFFFF'} !important;
               font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
             }
-            .plate-container {
-              position: relative;
-              width: ${w}in;
-              height: ${h}in;
-              background: ${template.backgroundColor || '#FFFFFF'};
-              overflow: hidden;
+            .catalog-dynamic-page {
+              position: relative !important;
+              width: ${w}in !important;
+              height: ${h}in !important;
+              max-width: ${w}in !important;
+              max-height: ${h}in !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              background-color: ${template.backgroundColor || '#FFFFFF'} !important;
+              overflow: hidden !important;
             }
             /* Clean out all helper outlines and edit guides */
             [class*="Guideline"], [class*="BLEED"], [class*="border-dashed"], [class*="ring-2"], [class*="cursor-"], [class*="resize-handle"] {
@@ -1095,10 +1107,8 @@ export function CatalogDesignerStudio({
             }
           </style>
         </head>
-        <body>
-          <div class="plate-container">
-            ${plateHtml}
-          </div>
+        <body class="bg-white">
+          ${plateHtml}
         </body>
       </html>
     `);
@@ -1109,10 +1119,8 @@ export function CatalogDesignerStudio({
       printIframe?.contentWindow?.print();
       setShowGrid(true);
       setShowMarginGuide(true);
-    }, 200);
+    }, 250);
   };
-
-
 
   // 🖼️ DIRECT DOWNLOAD HIGH-RES PNG (300 DPI)
   const handleDirectDownloadPNG = async () => {
@@ -1129,8 +1137,10 @@ export function CatalogDesignerStudio({
 
       await new Promise((r) => setTimeout(r, 120));
 
-      const canvas = await html2canvas(canvasRef.current, {
-        scale: 3,
+      const targetEl = (canvasRef.current.querySelector('.catalog-dynamic-page') as HTMLElement) || canvasRef.current;
+
+      const canvas = await html2canvas(targetEl, {
+        scale: 3.125,
         useCORS: true,
         allowTaint: true,
         backgroundColor: template.backgroundColor || '#FFFFFF',
