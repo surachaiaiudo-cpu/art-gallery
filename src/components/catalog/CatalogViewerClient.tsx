@@ -23,6 +23,7 @@ import {
   ZoomIn,
   Loader2,
   Sparkles,
+  Download,
 } from 'lucide-react';
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
@@ -55,16 +56,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const [savingReviewers, setSavingReviewers] = useState(false);
   const [savedReviewersSuccess, setSavedReviewersSuccess] = useState(false);
 
-  // A: Auto-trigger print dialog when ?print=1 query param is present
-  useEffect(() => {
-    if (!autoPrint) return;
-    // Wait for page to fully render before printing
-    const timer = setTimeout(() => {
-      window.print();
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [autoPrint]);
-
   // Initial values from themeConfig
   let initialFooterGraphicType: 'wave_gold' | 'wave_mono' | 'line_gold' | 'custom_image' | 'none' = 'wave_gold';
   let initialCustomFooterImageUrl = '';
@@ -90,12 +81,28 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const hasReviewers = peerReviewersList.length > 0;
   const totalPages = 1 + (hasReviewers ? 1 : 0) + artworks.length;
 
-  // Reading Modes: 'grid3' (3-Column Preview Grid - Default) or 'full' (Continuous Full A4 Pages)
-  const initialMode = searchParams?.get('mode') === 'full' || searchParams?.get('view') === 'full'
+  // Print engine hook
+  const { handlePrintSinglePage, handleSaveVectorPDF100Percent } = usePrintEngine(exhibition);
+
+  // Reading Modes: 'grid3' (3-Column Preview Grid - Default) or 'full' (Continuous Full Pages)
+  const isPrintTrigger = autoPrint || searchParams?.get('export') === 'pdf';
+  const initialMode = isPrintTrigger || searchParams?.get('mode') === 'full' || searchParams?.get('view') === 'full'
     ? 'full'
     : 'grid3';
   const [activeViewMode, setActiveViewMode] = useState<'grid3' | 'full'>(initialMode);
   const [selectedPageModalIndex, setSelectedPageModalIndex] = useState<number | null>(null);
+
+  // Auto-trigger print dialog with exact template size when ?print=1 or ?export=pdf is present
+  useEffect(() => {
+    if (!isPrintTrigger) return;
+    setActiveViewMode('full');
+
+    const timer = setTimeout(() => {
+      handleSaveVectorPDF100Percent(customTemplate);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [isPrintTrigger, customTemplate, handleSaveVectorPDF100Percent]);
   
   // Paper size is automatically determined from admin's configured catalog template
   const paperSize: 'a4' | 'square8x8' =
@@ -132,20 +139,6 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       observer.disconnect();
     };
   }, [activeViewMode, visibleCount, artworks.length]);
-
-  // Print engine hook
-  const { handlePrintSinglePage, handleSaveVectorPDF100Percent } = usePrintEngine(exhibition);
-
-  // Auto-export trigger if URL param ?export=pdf is present
-  useEffect(() => {
-    const exportParam = searchParams.get('export');
-    if (exportParam === 'pdf') {
-      const timer = setTimeout(() => {
-        handleSaveVectorPDF100Percent();
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, handleSaveVectorPDF100Percent]);
 
   // Save Footer Text & Graphic Presets
   const handleSaveFooterText = async (e: React.FormEvent) => {
@@ -575,8 +568,25 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         />
       )}
 
-      {/* Main A4 Visual Catalog Viewer (WYSIWYG 100% True-to-Print A4) */}
-      <main className={`w-full max-w-[210mm] mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16 ${activeViewMode === 'grid3' ? 'hidden print:block' : 'block'}`}>
+      {/* Floating Prompt Bar for Print Mode */}
+      {isPrintTrigger && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#8B1B1B] text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-3 text-xs font-bold no-print border border-white/20 animate-slide-down">
+          <Download className="w-4 h-4" />
+          <span>กำลังเตรียมเอกสาร PDF ขนาด {customTemplate.pageWidthInches || 8}&quot; x {customTemplate.pageHeightInches || 8}&quot;</span>
+          <button
+            onClick={() => handleSaveVectorPDF100Percent(customTemplate)}
+            className="bg-white text-[#8B1B1B] px-3.5 py-1 rounded-full text-xs font-bold hover:bg-neutral-100 shadow-xs cursor-pointer active:scale-95 transition-transform"
+          >
+            กดเพื่อเปิดหน้าต่างบันทึก PDF
+          </button>
+        </div>
+      )}
+
+      {/* Main Visual Catalog Viewer (WYSIWYG 100% True-to-Print Vector) */}
+      <main
+        style={{ maxWidth: customTemplate.pageWidthInches ? `${customTemplate.pageWidthInches}in` : '210mm' }}
+        className={`w-full mx-auto py-8 sm:py-12 space-y-12 sm:space-y-16 ${activeViewMode === 'grid3' ? 'hidden print:block' : 'block'}`}
+      >
         {/* Cover Page */}
         <PlateErrorBoundary pageNumber={1}>
           <CatalogCoverPage
