@@ -1,4 +1,4 @@
-﻿/**
+/**
  * generateAdobeHtml.ts
  * Data-driven HTML generator for Adobe PDF export.
  * Builds clean, minimal HTML directly from exhibition data & template blocks.
@@ -55,19 +55,29 @@ function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: n
   const s = block.style || {};
   const pos = `position:absolute;left:${block.xInches}in;top:${block.yInches}in;width:${block.widthInches}in;height:${block.heightInches}in;z-index:${block.zIndex || 1};overflow:hidden;box-sizing:border-box;`;
   const artist = artwork.artist;
-  const textStyle = [
-    pos,
-    `font-family:${ff(s.fontFamily)};font-size:${s.fontSizePt || 10}pt;font-weight:${fw(s.fontWeight)};`,
-    `font-style:${s.fontStyle || "normal"};color:${s.color || "#1E1D1B"};`,
-    `text-align:${s.textAlign || "left"};`,
-    s.textTransform ? `text-transform:${s.textTransform};` : "",
-    s.letterSpacing ? `letter-spacing:${s.letterSpacing};` : "",
-    `line-height:${s.lineHeight || 1.4};text-decoration:${s.textDecoration || "none"};`,
-    "display:flex;align-items:center;",
-  ].join("");
 
   const getImg = (url: string, w: number) =>
     getOptimizedImageUrl(url, { width: Math.round(w * 96), quality: 80 });
+
+  const renderText = (
+    content: string,
+    defaults: { fontSizePt: number; fontWeight: string | number; color: string; textAlign?: string }
+  ) => {
+    if (!content) return "";
+    const align = s.textAlign || defaults.textAlign || "left";
+    const fontSize = s.fontSizePt ? `${s.fontSizePt}pt` : `${defaults.fontSizePt}pt`;
+    const weight = s.fontWeight ? fw(s.fontWeight) : (typeof defaults.fontWeight === "number" ? defaults.fontWeight : fw(defaults.fontWeight));
+    const color = s.color || defaults.color;
+    const fontFamily = ff(s.fontFamily);
+    const letterSpacing = s.letterSpacing ? `letter-spacing:${s.letterSpacing};` : "";
+    const textTransform = s.textTransform ? `text-transform:${s.textTransform};` : "";
+    const textDecor = s.textDecoration ? `text-decoration:${s.textDecoration};` : "";
+    const fontStyle = s.fontStyle ? `font-style:${s.fontStyle};` : "";
+    const isPreWrap = block.type === "concept" || block.type === "custom_text";
+    const whiteSpace = isPreWrap ? "white-space:pre-wrap;" : "white-space:normal;";
+
+    return `<div style="${pos}display:block;"><div style="width:100%;text-align:${align};font-family:${fontFamily};font-size:${fontSize};font-weight:${weight};color:${color};line-height:1.25;${letterSpacing}${textTransform}${textDecor}${fontStyle}${whiteSpace}">${escHtml(content)}</div></div>`;
+  };
 
   switch (block.type) {
     case "artwork_image": {
@@ -76,7 +86,7 @@ function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: n
       const br = s.borderRadius ? `border-radius:${s.borderRadius}px;` : "";
       const bw = s.borderWidth ? `border:${s.borderWidth}px ${s.borderStyle || "solid"} ${s.borderColor || "#ccc"};` : "";
       const bg2 = s.backgroundColor ? `background:${s.backgroundColor};` : "";
-      return `<div style="${pos}${bg2}${br}${bw}"><img src="${u}" alt="${escHtml(artwork.title || "")}" style="width:100%;height:100%;object-fit:${s.objectFit || "contain"};${br}" onerror="this.style.display='none'"/></div>`;
+      return `<div style="${pos}${bg2}${br}${bw}display:flex;align-items:center;justify-content:center;overflow:hidden;"><img src="${u}" alt="${escHtml(artwork.title || "")}" style="max-width:100%;max-height:100%;width:100%;height:100%;object-fit:${s.objectFit || "contain"};${br}" onerror="this.style.display='none'"/></div>`;
     }
     case "artist_photo": {
       const UNSPLASH = ["unsplash.com/photo-1507003211169", "unsplash.com/photo-1534528741775"];
@@ -93,30 +103,72 @@ function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: n
       return `<div style="${pos}overflow:hidden;${br}"><img src="https://flagcdn.com/w40/${code}.png" alt="${escHtml(artist?.country || "")}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'"/></div>`;
     }
     case "artwork_title":
-      return `<div style="${textStyle}">${escHtml(`${s.prefixText || ""}${artwork.title || ""}${s.suffixText || ""}`)}</div>`;
+      return renderText(`${s.prefixText || ""}${artwork.title || "Untitled"}${s.suffixText || ""}`, {
+        fontSizePt: 13,
+        fontWeight: 700,
+        color: "#8B1B1B",
+      });
     case "artist_name":
-      return `<div style="${textStyle}">${escHtml(`${s.prefixText || ""}${artist?.name || ""}${s.suffixText || ""}`)}</div>`;
+      return renderText(`${s.prefixText || ""}${artist?.name || "Artist"}${s.suffixText || ""}`, {
+        fontSizePt: 14,
+        fontWeight: 600,
+        color: "#1A1918",
+      });
     case "artist_email":
-      return `<div style="${textStyle}">${escHtml(`${s.prefixText || ""}${artist?.email || "artist@artvara.gallery"}${s.suffixText || ""}`)}</div>`;
+      if (!artist?.email && s.hideIfEmpty) return "";
+      return renderText(`${s.prefixText || ""}${artist?.email || "artist@artvara.gallery"}${s.suffixText || ""}`, {
+        fontSizePt: 9,
+        fontWeight: 400,
+        color: "#666666",
+      });
     case "medium":
       if (!artwork.medium && s.hideIfEmpty) return "";
-      return `<div style="${textStyle}">${escHtml(`${s.prefixText || ""}${artwork.medium || ""}${s.suffixText || ""}`)}</div>`;
+      return renderText(`${s.prefixText || ""}${artwork.medium || ""}${s.suffixText || ""}`, {
+        fontSizePt: 10,
+        fontWeight: 400,
+        color: "#444444",
+      });
     case "dimensions":
       if (!artwork.dimensions && s.hideIfEmpty) return "";
-      return `<div style="${textStyle}">${escHtml(`${s.prefixText || ""}${artwork.dimensions || ""}${s.suffixText || ""}`)}</div>`;
+      return renderText(`${s.prefixText || ""}${artwork.dimensions || ""}${s.suffixText || ""}`, {
+        fontSizePt: 9,
+        fontWeight: 400,
+        color: "#666666",
+      });
     case "year_created":
       if (!artwork.yearCreated && s.hideIfEmpty) return "";
-      return `<div style="${textStyle}">${escHtml(`${s.prefixText || ""}${artwork.yearCreated || ""}${s.suffixText || ""}`)}</div>`;
+      return renderText(`${s.prefixText || ""}${artwork.yearCreated || ""}${s.suffixText || ""}`, {
+        fontSizePt: 9,
+        fontWeight: 400,
+        color: "#666666",
+      });
     case "price":
       if (!artwork.price && s.hideIfEmpty) return "";
-      return `<div style="${textStyle}">${escHtml(`${s.prefixText || ""}${formatPrice(artwork.price)}${s.suffixText || ""}`)}</div>`;
+      return renderText(`${s.prefixText || ""}${formatPrice(artwork.price)}${s.suffixText || ""}`, {
+        fontSizePt: 10,
+        fontWeight: 700,
+        color: "#8B1B1B",
+      });
     case "concept":
       if (!artwork.concept && s.hideIfEmpty) return "";
-      return `<div style="${textStyle}white-space:pre-wrap;">${escHtml(`${s.prefixText || ""}${artwork.concept || ""}${s.suffixText || ""}`)}</div>`;
+      return renderText(`${s.prefixText || ""}${artwork.concept || ""}${s.suffixText || ""}`, {
+        fontSizePt: 9,
+        fontWeight: 400,
+        color: "#555555",
+      });
     case "page_number":
-      return `<div style="${textStyle}">${escHtml(`${s.prefixText || ""}${pageNumber}${s.suffixText || ""}`)}</div>`;
+      return renderText(`${s.prefixText || ""}${pageNumber}${s.suffixText || ""}`, {
+        fontSizePt: 8,
+        fontWeight: 400,
+        color: "#888888",
+        textAlign: "center",
+      });
     case "custom_text":
-      return `<div style="${textStyle}white-space:pre-wrap;">${escHtml(block.customContent || "")}</div>`;
+      return renderText(block.customContent || s.prefixText || "", {
+        fontSizePt: 10,
+        fontWeight: 400,
+        color: "#1A1918",
+      });
     case "custom_box": {
       const bg2 = s.backgroundColor ? `background:${s.backgroundColor};` : "";
       const br = s.borderRadius ? `border-radius:${s.borderRadius}px;` : "";
@@ -130,10 +182,23 @@ function renderBlock(block: CatalogBlockElement, artwork: Artwork, pageNumber: n
       const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}&bgcolor=ffffff&color=1a1918&margin=0`;
       return `<div style="${pos}"><img src="${qrImg}" alt="QR" style="width:100%;height:100%;object-fit:contain;" onerror="this.style.display='none'"/></div>`;
     }
+    case "footer_graphic": {
+      const rawFooter = block.customContent || s.imageUrl || "";
+      if (!rawFooter) return "";
+      const footerImg = rawFooter.startsWith("http") ? rawFooter : getOptimizedImageUrl(rawFooter, { width: 1600, quality: 90 });
+      const isFade = s.footerEffect === "gradient_fade";
+      const opacity = s.opacity !== undefined ? s.opacity : 1;
+      const br = s.borderRadius ? `border-radius:${s.borderRadius}px;` : "";
+      const maskStyle = isFade
+        ? `-webkit-mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 100%);mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 100%);`
+        : "";
+      return `<div style="${pos}overflow:hidden;display:flex;align-items:flex-end;justify-content:center;opacity:${opacity};${br}${maskStyle}"><img src="${footerImg}" alt="Footer" style="width:100%;height:100%;object-fit:${s.objectFit || "cover"};display:block;" onerror="this.style.display='none'"/></div>`;
+    }
     default:
       return "";
   }
 }
+
 
 function renderArtworkPage(artwork: Artwork, template: CatalogTemplateConfig, pageNumber: number, exhibitionSlug: string): string {
   const blocks = (template.blocks || [])
@@ -250,3 +315,49 @@ ${pages.join("\n")}
 </body>
 </html>`;
 }
+
+export function generateAdobeSinglePageHtml(params: {
+  exhibition: Exhibition;
+  artwork?: Artwork | null;
+  curator?: User | null;
+  peerReviewersList?: PeerReviewer[];
+  coverFooter: string;
+  plateFooter: string;
+  template: CatalogTemplateConfig;
+  pageType: 'cover' | 'statement' | 'artwork';
+  pageNumber: number;
+}): string {
+  const { exhibition, artwork, curator, peerReviewersList, coverFooter, plateFooter, template, pageType, pageNumber } = params;
+  const w = template.pageWidthInches || 8.0;
+  const h = template.pageHeightInches || 8.0;
+  const bg = template.backgroundColor || "#ffffff";
+  const slug = exhibition.slug || "";
+
+  let pageHtml = "";
+  if (pageType === 'cover') {
+    pageHtml = renderCoverPage(exhibition, curator, coverFooter, w, h, bg);
+  } else if (pageType === 'statement') {
+    pageHtml = renderStatementPage(exhibition, peerReviewersList || [], plateFooter, w, h, bg);
+  } else if (artwork) {
+    const artTemplate = getArtworkCatalogTemplate(exhibition, artwork.id);
+    pageHtml = renderArtworkPage(artwork, artTemplate, pageNumber, slug);
+  }
+
+  const fontLink = `https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Maitree:wght@300;400;600;700&family=Prompt:wght@300;400;600;700&family=Sarabun:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap`;
+  return `<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>${escHtml(exhibition.title || "Art Exhibition")}-Page-${pageNumber}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="${fontLink}" rel="stylesheet">
+<style>${CATALOG_BASE_CSS(w, h, bg)}</style>
+</head>
+<body>
+${pageHtml}
+</body>
+</html>`;
+}
+
+

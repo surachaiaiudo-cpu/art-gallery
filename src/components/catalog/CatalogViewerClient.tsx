@@ -29,7 +29,7 @@ import {
 import { getFlagImageUrl } from '@/components/ui/CountryFlag';
 import { getOptimizedImageUrl } from '@/lib/imagekit';
 import { getAdobeMonthlyUsage, incrementAdobeUsage } from '@/lib/adobeQuota';
-import { generateAdobeCatalogHtml } from '@/lib/generateAdobeHtml';
+import { generateAdobeCatalogHtml, generateAdobeSinglePageHtml } from '@/lib/generateAdobeHtml';
 import { usePrintEngine } from './usePrintEngine';
 import { CatalogCoverPage } from './CatalogCoverPage';
 import { CatalogStatementPage } from './CatalogStatementPage';
@@ -246,92 +246,25 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       setPdfProgressText(`กำลังประมวลผลหน้า ${pageIndex + 1}...`);
       setPdfEstimatedSeconds(5);
 
-      // Find the active modal page container
-      const modalPageEl =
-        document.querySelector('.catalog-reader-modal .catalog-dynamic-page') ||
-        document.querySelector('.catalog-dynamic-page') ||
-        document.querySelector('.catalog-cover-page') ||
-        document.querySelector('.catalog-statement-page');
+      const isCover = pageIndex === 0;
+      const isStatement = hasReviewers && pageIndex === 1;
+      const artworkIdx = hasReviewers ? pageIndex - 2 : pageIndex - 1;
+      const currentArtwork = artworkIdx >= 0 && artworkIdx < artworks.length ? artworks[artworkIdx] : null;
 
-      if (!modalPageEl) {
-        throw new Error('ไม่พบข้อมูลหน้าสูจิบัตรที่เลือก');
-      }
+      const w = customTemplate?.pageWidthInches || (paperSize === 'square8x8' ? 8.0 : 8.27);
+      const h = customTemplate?.pageHeightInches || (paperSize === 'square8x8' ? 8.0 : 11.69);
 
-      const isCustomSize = Boolean(customTemplate?.pageWidthInches && customTemplate?.pageHeightInches);
-      const w = isCustomSize ? (customTemplate?.pageWidthInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 8.27);
-      const h = isCustomSize ? (customTemplate?.pageHeightInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 11.69);
-
-      const cleanHtml = modalPageEl.outerHTML
-        .replace(/loading="lazy"/g, 'loading="eager"')
-        .replace(/decoding="async"/g, 'decoding="sync"')
-        .replace(/<img /g, '<img onerror="this.style.display=\'none\'" ');
-
-      // Extract ONLY catalog-related CSS rules (avoids exceeding Adobe's payload limit)
-      const CATALOG_KEYWORDS = [
-        'catalog-', '.font-serif', '.font-bold', '.text-', '.bg-',
-        '.flex', '.grid', '.space-', '.p-', '.px-', '.py-', '.pt-', '.pb-',
-        '.m-', '.mx-', '.my-', '.mt-', '.mb-', '.w-', '.h-', '.min-h-', '.max-',
-        '.border', '.rounded', '.shadow', '.overflow', '.relative', '.absolute',
-        '.truncate', '.uppercase', '.tracking-', '.leading-', '.block',
-        '.items-', '.justify-', '.gap-', 'Maitree', 'Prompt', 'Sarabun', 'Cinzel', '@font-face',
-      ];
-      let inlinedCss = '';
-      try {
-        for (const sheet of Array.from(document.styleSheets)) {
-          try {
-            for (const rule of Array.from(sheet.cssRules || [])) {
-              if (rule instanceof CSSImportRule) continue;
-              const text = rule.cssText;
-              if (CATALOG_KEYWORDS.some(kw => text.includes(kw))) {
-                inlinedCss += text + '\n';
-              }
-            }
-          } catch { /* cross-origin */ }
-        }
-      } catch { /* fallback */ }
-
-      const fullHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${exhibition.title || 'Art Exhibition'}-Page-${pageIndex + 1}-Adobe</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-${inlinedCss}
-    @page { size: ${w}in ${h}in; margin: 0; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    html, body {
-      width: ${w}in;
-      height: ${h}in;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: #ffffff;
-      font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
-    }
-    .catalog-dynamic-page, .catalog-cover-page, .catalog-statement-page, .catalog-a4-page, .catalog-square8-page, section {
-      position: relative !important;
-      width: ${w}in !important;
-      height: ${h}in !important;
-      max-width: ${w}in !important;
-      max-height: ${h}in !important;
-      margin: 0 !important;
-      border: none !important;
-      box-shadow: none !important;
-      overflow: hidden !important;
-      background-color: #ffffff !important;
-      box-sizing: border-box !important;
-    }
-  </style>
-</head>
-<body class="bg-white">
-  ${cleanHtml}
-</body>
-</html>`;
-
-
+      const fullHtml = generateAdobeSinglePageHtml({
+        exhibition,
+        artwork: currentArtwork,
+        curator,
+        peerReviewersList,
+        coverFooter,
+        plateFooter,
+        template: customTemplate,
+        pageType: isCover ? 'cover' : isStatement ? 'statement' : 'artwork',
+        pageNumber: pageIndex + 1,
+      });
 
       // Step 1: Request Presigned Upload Asset from Adobe Cloud (Instant 50ms)
       setPdfProgressPercent(30);
