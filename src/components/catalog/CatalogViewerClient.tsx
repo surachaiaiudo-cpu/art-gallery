@@ -265,24 +265,29 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         .replace(/decoding="async"/g, 'decoding="sync"')
         .replace(/<img /g, '<img onerror="this.style.display=\'none\'" ');
 
-      // Extract all compiled CSS from document stylesheets (includes Tailwind)
+      // Extract ONLY catalog-related CSS rules (avoids exceeding Adobe's payload limit)
+      const CATALOG_KEYWORDS = [
+        'catalog-', '.font-serif', '.font-bold', '.text-', '.bg-',
+        '.flex', '.grid', '.space-', '.p-', '.px-', '.py-', '.pt-', '.pb-',
+        '.m-', '.mx-', '.my-', '.mt-', '.mb-', '.w-', '.h-', '.min-h-', '.max-',
+        '.border', '.rounded', '.shadow', '.overflow', '.relative', '.absolute',
+        '.truncate', '.uppercase', '.tracking-', '.leading-', '.block',
+        '.items-', '.justify-', '.gap-', 'Maitree', 'Prompt', 'Sarabun', 'Cinzel', '@font-face',
+      ];
       let inlinedCss = '';
       try {
         for (const sheet of Array.from(document.styleSheets)) {
           try {
-            const rules = Array.from(sheet.cssRules || []);
-            const sheetText = rules
-              .filter(r => !(r instanceof CSSImportRule))
-              .map(r => r.cssText)
-              .join('\n');
-            inlinedCss += sheetText + '\n';
-          } catch {
-            // Cross-origin sheets — skip silently
-          }
+            for (const rule of Array.from(sheet.cssRules || [])) {
+              if (rule instanceof CSSImportRule) continue;
+              const text = rule.cssText;
+              if (CATALOG_KEYWORDS.some(kw => text.includes(kw))) {
+                inlinedCss += text + '\n';
+              }
+            }
+          } catch { /* cross-origin */ }
         }
-      } catch {
-        // fallback: no extra CSS
-      }
+      } catch { /* fallback */ }
 
       const fullHtml = `<!DOCTYPE html>
 <html>
@@ -482,20 +487,32 @@ ${inlinedCss}
         .replace(/decoding="async"/g, 'decoding="sync"')
         .replace(/<img /g, '<img onerror="this.style.display=\'none\'" ');
 
-      // Extract all compiled CSS from document stylesheets (includes Tailwind)
+      // Extract ONLY catalog-related CSS rules from compiled browser stylesheets
+      // This avoids sending the entire Next.js/Tailwind bundle (which would exceed Adobe's limits)
+      const CATALOG_KEYWORDS = [
+        'catalog-', 'catalog_', '.font-serif', '.font-bold', '.text-', '.bg-',
+        '.flex', '.grid', '.space-', '.p-', '.px-', '.py-', '.pt-', '.pb-',
+        '.m-', '.mx-', '.my-', '.mt-', '.mb-', '.w-', '.h-', '.min-h-', '.max-',
+        '.border', '.rounded', '.shadow', '.overflow', '.relative', '.absolute',
+        '.truncate', '.uppercase', '.tracking-', '.leading-', '.block',
+        '.items-', '.justify-', '.gap-', '.col-', '.row-', 'Maitree', 'Prompt',
+        'Sarabun', 'Cinzel', 'Inter', '@font-face',
+      ];
       let inlinedCss = '';
       try {
         for (const sheet of Array.from(document.styleSheets)) {
           try {
             const rules = Array.from(sheet.cssRules || []);
-            // Skip Google Fonts @import rules (let them load via <link> instead)
-            const sheetText = rules
-              .filter(r => !(r instanceof CSSImportRule))
-              .map(r => r.cssText)
-              .join('\n');
-            inlinedCss += sheetText + '\n';
+            for (const rule of rules) {
+              if (rule instanceof CSSImportRule) continue;
+              const text = rule.cssText;
+              // Only include rules that contain catalog-relevant selectors or font definitions
+              if (CATALOG_KEYWORDS.some(kw => text.includes(kw))) {
+                inlinedCss += text + '\n';
+              }
+            }
           } catch {
-            // Cross-origin sheets (e.g., fonts.googleapis.com) — skip silently
+            // Cross-origin sheets — skip silently
           }
         }
       } catch {
