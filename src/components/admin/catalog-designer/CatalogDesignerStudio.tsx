@@ -240,6 +240,9 @@ export function CatalogDesignerStudio({
   const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
   const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
   const [exportStatusText, setExportStatusText] = useState<string>('');
+  const [exportProgressPercent, setExportProgressPercent] = useState<number>(0);
+  const [exportProgressStep, setExportProgressStep] = useState<string>('');
+  const [exportEstimatedSeconds, setExportEstimatedSeconds] = useState<number>(0);
   const [showMarginGuide, setShowMarginGuide] = useState<boolean>(true);
   const [isMarginModalOpen, setIsMarginModalOpen] = useState<boolean>(false);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState<boolean>(false);
@@ -1193,7 +1196,10 @@ export function CatalogDesignerStudio({
 
     try {
       setIsExportingPDF(true);
-      setExportStatusText(`กำลังส่งคำสั่งไปยัง Adobe Cloud (โควต้าคงเหลือ: ${currentQuota.remaining} ครั้ง)...`);
+      setExportProgressPercent(15);
+      setExportProgressStep('เตรียมข้อมูลหน้าเอกสาร');
+      setExportStatusText('กำลังรวบรวมรูปภาพและจัดเตรียมเลย์เอาต์...');
+      setExportEstimatedSeconds(6);
 
       const w = template.pageWidthInches || 8;
       const h = template.pageHeightInches || 8;
@@ -1249,6 +1255,11 @@ export function CatalogDesignerStudio({
 </body>
 </html>`;
 
+      setExportProgressPercent(35);
+      setExportProgressStep('ส่งข้อมูลสู่ Adobe Document Cloud');
+      setExportStatusText('กำลังอัปโหลดข้อมูลไปยังเซิร์ฟเวอร์ Adobe Cloud...');
+      setExportEstimatedSeconds(4);
+
       const res = await fetch('/api/catalog/adobe-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1275,7 +1286,12 @@ export function CatalogDesignerStudio({
       while (!downloadUri && attempts < maxAttempts) {
         await new Promise((r) => setTimeout(r, 1500));
         attempts++;
+
+        const simulatedPercent = Math.min(88, Math.round(40 + (attempts / 4) * 48));
+        setExportProgressPercent(simulatedPercent);
+        setExportProgressStep('Adobe PostScript Engine กำลังประมวลผล');
         setExportStatusText(`กำลังประมวลผลบน Adobe Cloud (${attempts * 2}s)...`);
+        setExportEstimatedSeconds(Math.max(1, 5 - attempts));
 
         const pollRes = await fetch(`/api/catalog/adobe-pdf?location=${encodeURIComponent(pollingLocation)}`);
         if (!pollRes.ok) continue;
@@ -1293,7 +1309,11 @@ export function CatalogDesignerStudio({
         throw new Error('หมดเวลาการรอผลจาก Adobe Cloud โปรดลองใหม่อีกครั้ง');
       }
 
-      setExportStatusText('กำลังดาวน์โหลดไฟล์ PDF คุณภาพสูง...');
+      setExportProgressPercent(95);
+      setExportProgressStep('กำลังดาวน์โหลดไฟล์ PDF');
+      setExportStatusText('กำลังดาวน์โหลดไฟล์ PDF คุณภาพสูงลงเครื่อง...');
+      setExportEstimatedSeconds(1);
+
       const pdfRes = await fetch(downloadUri);
       const blob = await pdfRes.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
@@ -1309,13 +1329,22 @@ export function CatalogDesignerStudio({
       const updatedQuota = incrementAdobeUsage(1);
       setAdobeQuota(updatedQuota);
 
-      setIsExportingPDF(false);
-      setExportStatusText('');
+      setExportProgressPercent(100);
+      setExportProgressStep('เสร็จสมบูรณ์ 100%');
+      setExportStatusText('ดาวน์โหลดไฟล์สำเร็จเรียบร้อย');
+      setExportEstimatedSeconds(0);
+
+      setTimeout(() => {
+        setIsExportingPDF(false);
+        setExportStatusText('');
+        setExportProgressPercent(0);
+      }, 1000);
     } catch (err: any) {
       console.error('Adobe PDF export error:', err);
       alert(`ไม่สามารถสร้าง Adobe PDF ได้: ${err.message || 'โปรดตรวจสอบการเชื่อมต่อ'}`);
       setIsExportingPDF(false);
       setExportStatusText('');
+      setExportProgressPercent(0);
     }
   };
 
@@ -3484,17 +3513,84 @@ export function CatalogDesignerStudio({
         </div>
       )}
 
-      {/* Exporting Progress Overlay */}
+      {/* 🚀 Modern Adobe & High-Res PDF/Image Exporting Progress Modal */}
       {isExportingPDF && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white border border-[#E6E0D4] rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-3 text-center max-w-sm">
-            <div className="w-10 h-10 border-3 border-[#8B1B1B] border-t-transparent rounded-full animate-spin" />
-            <h4 className="font-serif font-bold text-sm text-[#1F1C17]">
-              กำลังดาวน์โหลดไฟล์สูจิบัตร...
-            </h4>
-            <p className="text-xs text-[#777]">
-              {exportStatusText || 'กำลังประมวลผลความละเอียดสูง (300 DPI) และดาวน์โหลดลงเครื่อง'}
-            </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-[#DDD7CC] text-center space-y-5 relative overflow-hidden">
+            {/* Background ambient glow */}
+            <div className="absolute -top-12 -right-12 w-36 h-36 bg-red-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Header with Adobe Logo / Icon */}
+            <div className="flex flex-col items-center gap-2.5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#ED2224] to-[#B30B00] flex items-center justify-center text-white shadow-lg shadow-red-500/20">
+                <FileText className="w-7 h-7 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-neutral-900">
+                  กำลังสร้างสูจิบัตรคุณภาพสูง
+                </h3>
+                <p className="text-[11px] text-neutral-500 mt-0.5">
+                  ประมวลผลความละเอียดสูงผ่าน Adobe Document Cloud
+                </p>
+              </div>
+            </div>
+
+            {/* Big Percentage & Progress Bar */}
+            <div className="space-y-2.5">
+              <div className="flex items-baseline justify-between px-1">
+                <span className="text-xs font-semibold text-neutral-700 truncate pr-2">
+                  {exportProgressStep || 'กำลังประมวลผล...'}
+                </span>
+                <span className="text-2xl font-black font-mono text-[#ED2224] shrink-0">
+                  {exportProgressPercent || 5}%
+                </span>
+              </div>
+
+              {/* Progress Bar Container */}
+              <div className="w-full h-3 bg-neutral-100 rounded-full overflow-hidden p-0.5 border border-neutral-200">
+                <div
+                  className="h-full bg-gradient-to-r from-[#ED2224] via-[#FF5E4D] to-[#ED2224] rounded-full transition-all duration-300 ease-out shadow-sm"
+                  style={{ width: `${Math.max(5, exportProgressPercent)}%` }}
+                />
+              </div>
+
+              {/* Estimated Time Remaining */}
+              <div className="flex items-center justify-between text-[10.5px] text-neutral-500 px-1 font-mono">
+                <span className="truncate pr-2">{exportStatusText || 'กำลังประมวลผล...'}</span>
+                {exportEstimatedSeconds > 0 && (
+                  <span className="shrink-0 text-[#8C6D3F] font-semibold">เหลือ ~{exportEstimatedSeconds} วิ</span>
+                )}
+              </div>
+            </div>
+
+            {/* Steps Checklist */}
+            <div className="bg-neutral-50 rounded-2xl p-3 border border-neutral-200/80 text-left space-y-1.5 text-xs">
+              <div className={`flex items-center gap-2 ${exportProgressPercent >= 20 ? 'text-emerald-700 font-semibold' : 'text-neutral-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] shrink-0 ${exportProgressPercent >= 20 ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-200 text-neutral-500'}`}>
+                  {exportProgressPercent >= 20 ? '✓' : '1'}
+                </div>
+                <span className="truncate">รวบรวมเลย์เอาต์และรูปภาพผลงาน</span>
+              </div>
+              <div className={`flex items-center gap-2 ${exportProgressPercent >= 40 ? 'text-emerald-700 font-semibold' : exportProgressPercent >= 20 ? 'text-[#ED2224] font-semibold' : 'text-neutral-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] shrink-0 ${exportProgressPercent >= 40 ? 'bg-emerald-100 text-emerald-700' : exportProgressPercent >= 20 ? 'bg-red-100 text-[#ED2224]' : 'bg-neutral-200 text-neutral-500'}`}>
+                  {exportProgressPercent >= 40 ? '✓' : '2'}
+                </div>
+                <span className="truncate">อัปโหลดสู่ Adobe Cloud Engine</span>
+              </div>
+              <div className={`flex items-center gap-2 ${exportProgressPercent >= 90 ? 'text-emerald-700 font-semibold' : exportProgressPercent >= 40 ? 'text-[#ED2224] font-semibold' : 'text-neutral-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] shrink-0 ${exportProgressPercent >= 90 ? 'bg-emerald-100 text-emerald-700' : exportProgressPercent >= 40 ? 'bg-red-100 text-[#ED2224]' : 'bg-neutral-200 text-neutral-500'}`}>
+                  {exportProgressPercent >= 90 ? '✓' : '3'}
+                </div>
+                <span className="truncate">เรนเดอร์ PostScript คุณภาพสูง 100%</span>
+              </div>
+              <div className={`flex items-center gap-2 ${exportProgressPercent >= 100 ? 'text-emerald-700 font-semibold' : exportProgressPercent >= 90 ? 'text-[#ED2224] font-semibold' : 'text-neutral-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] shrink-0 ${exportProgressPercent >= 100 ? 'bg-emerald-100 text-emerald-700' : exportProgressPercent >= 90 ? 'bg-red-100 text-[#ED2224]' : 'bg-neutral-200 text-neutral-500'}`}>
+                  {exportProgressPercent >= 100 ? '✓' : '4'}
+                </div>
+                <span className="truncate">ดาวน์โหลดไฟล์ PDF ลงเครื่อง</span>
+              </div>
+            </div>
           </div>
         </div>
       )}

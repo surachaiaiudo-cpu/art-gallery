@@ -59,6 +59,9 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
   const [savedReviewersSuccess, setSavedReviewersSuccess] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfProgressText, setPdfProgressText] = useState('');
+  const [pdfProgressPercent, setPdfProgressPercent] = useState(0);
+  const [pdfProgressStep, setPdfProgressStep] = useState('');
+  const [pdfEstimatedSeconds, setPdfEstimatedSeconds] = useState(0);
 
   // Initial values from themeConfig
   let initialFooterGraphicType: 'wave_gold' | 'wave_mono' | 'line_gold' | 'custom_image' | 'none' = 'wave_gold';
@@ -238,7 +241,10 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 
     try {
       setIsGeneratingPdf(true);
-      setPdfProgressText(`กำลังเชื่อมต่อ Adobe Cloud (โควต้าคงเหลือ: ${currentQuota.remaining} ครั้ง)...`);
+      setPdfProgressPercent(10);
+      setPdfProgressStep('เตรียมข้อมูลและเลย์เอาต์หน้าสูจิบัตร');
+      setPdfProgressText('กำลังรวบรวมรูปภาพและเนื้อหาทุกหน้า...');
+      setPdfEstimatedSeconds(12);
 
       const targetEl = document.getElementById('catalog-continuous-stream-container') || document.querySelector('.catalog-continuous-view');
       if (!targetEl) {
@@ -294,6 +300,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
 </body>
 </html>`;
 
+      setPdfProgressPercent(28);
+      setPdfProgressStep('กำลังเชื่อมต่อและส่งข้อมูลสู่ Adobe Cloud');
+      setPdfProgressText('อัปโหลดข้อมูลหน้าเอกสารสู่ Adobe Document Services...');
+      setPdfEstimatedSeconds(10);
+
       const res = await fetch('/api/catalog/adobe-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -320,7 +331,12 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       while (!downloadUri && attempts < maxAttempts) {
         await new Promise((r) => setTimeout(r, 2000));
         attempts++;
-        setPdfProgressText(`กำลังประมวลผลบน Adobe Cloud (${attempts * 2} วินาที)...`);
+
+        const simulatedPercent = Math.min(88, Math.round(35 + (attempts / 6) * 53));
+        setPdfProgressPercent(simulatedPercent);
+        setPdfProgressStep('Adobe PostScript Engine กำลังเรนเดอร์ภาพและจัดหน้า');
+        setPdfProgressText(`ประมวลผลบน Adobe Cloud (${attempts * 2} วินาที)...`);
+        setPdfEstimatedSeconds(Math.max(2, 12 - attempts * 2));
 
         const pollRes = await fetch(`/api/catalog/adobe-pdf?location=${encodeURIComponent(pollingLocation)}`);
         if (!pollRes.ok) continue;
@@ -338,7 +354,11 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         throw new Error('หมดเวลาการรอผลจาก Adobe Cloud โปรดลองใหม่อีกครั้ง');
       }
 
-      setPdfProgressText('กำลังดาวน์โหลดไฟล์ PDF คุณภาพสูงลงเครื่อง...');
+      setPdfProgressPercent(94);
+      setPdfProgressStep('Adobe Cloud ประมวลผลเสร็จสิ้น กำลังดาวน์โหลดไฟล์');
+      setPdfProgressText('กำลังดาวน์โหลดไฟล์ PDF คุณภาพสูงลงเครื่องของคุณ...');
+      setPdfEstimatedSeconds(1);
+
       const pdfRes = await fetch(downloadUri);
       const blob = await pdfRes.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
@@ -353,13 +373,22 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       // Increment monthly quota count
       incrementAdobeUsage(1);
 
-      setIsGeneratingPdf(false);
-      setPdfProgressText('');
+      setPdfProgressPercent(100);
+      setPdfProgressStep('เสร็จสมบูรณ์ 100%');
+      setPdfProgressText('ดาวน์โหลดสูจิบัตร Adobe PDF เรียบร้อยแล้ว');
+      setPdfEstimatedSeconds(0);
+
+      setTimeout(() => {
+        setIsGeneratingPdf(false);
+        setPdfProgressText('');
+        setPdfProgressPercent(0);
+      }, 1000);
     } catch (err: any) {
       console.error('Adobe PDF generation error:', err);
       alert(`ไม่สามารถสร้าง Adobe PDF ได้: ${err.message || 'โปรดลองอีกครั้ง'}`);
       setIsGeneratingPdf(false);
       setPdfProgressText('');
+      setPdfProgressPercent(0);
     }
   };
 
@@ -767,6 +796,88 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           );
         })}
       </main>
+
+      {/* 🚀 Adobe PostScript PDF Progress Modal */}
+      {isGeneratingPdf && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full mx-4 shadow-2xl border border-[#DDD7CC] text-center space-y-5 relative overflow-hidden">
+            {/* Background ambient glow */}
+            <div className="absolute -top-12 -right-12 w-36 h-36 bg-red-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Header with Adobe Logo / Icon */}
+            <div className="flex flex-col items-center gap-2.5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#ED2224] to-[#B30B00] flex items-center justify-center text-white shadow-lg shadow-red-500/20">
+                <FileText className="w-7 h-7 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-neutral-900">
+                  กำลังสร้าง Adobe PostScript PDF
+                </h3>
+                <p className="text-[11px] text-neutral-500 mt-0.5">
+                  ประมวลผลความละเอียดสูงจาก Adobe Document Cloud
+                </p>
+              </div>
+            </div>
+
+            {/* Big Percentage & Progress Bar */}
+            <div className="space-y-2.5">
+              <div className="flex items-baseline justify-between px-1">
+                <span className="text-xs font-semibold text-neutral-700 truncate pr-2">
+                  {pdfProgressStep || 'กำลังประมวลผล...'}
+                </span>
+                <span className="text-2xl font-black font-mono text-[#ED2224] shrink-0">
+                  {pdfProgressPercent}%
+                </span>
+              </div>
+
+              {/* Progress Bar Container */}
+              <div className="w-full h-3 bg-neutral-100 rounded-full overflow-hidden p-0.5 border border-neutral-200">
+                <div
+                  className="h-full bg-gradient-to-r from-[#ED2224] via-[#FF5E4D] to-[#ED2224] rounded-full transition-all duration-300 ease-out shadow-sm"
+                  style={{ width: `${Math.max(5, pdfProgressPercent)}%` }}
+                />
+              </div>
+
+              {/* Estimated Time Remaining */}
+              <div className="flex items-center justify-between text-[10.5px] text-neutral-500 px-1 font-mono">
+                <span className="truncate pr-2">{pdfProgressText}</span>
+                {pdfEstimatedSeconds > 0 && (
+                  <span className="shrink-0 text-[#8C6D3F] font-semibold">เหลือ ~{pdfEstimatedSeconds} วิ</span>
+                )}
+              </div>
+            </div>
+
+            {/* Steps Checklist */}
+            <div className="bg-neutral-50 rounded-2xl p-3 border border-neutral-200/80 text-left space-y-1.5 text-xs">
+              <div className={`flex items-center gap-2 ${pdfProgressPercent >= 20 ? 'text-emerald-700 font-semibold' : 'text-neutral-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] shrink-0 ${pdfProgressPercent >= 20 ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-200 text-neutral-500'}`}>
+                  {pdfProgressPercent >= 20 ? '✓' : '1'}
+                </div>
+                <span className="truncate">รวบรวมเลย์เอาต์และรูปภาพผลงาน</span>
+              </div>
+              <div className={`flex items-center gap-2 ${pdfProgressPercent >= 40 ? 'text-emerald-700 font-semibold' : pdfProgressPercent >= 20 ? 'text-[#ED2224] font-semibold' : 'text-neutral-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] shrink-0 ${pdfProgressPercent >= 40 ? 'bg-emerald-100 text-emerald-700' : pdfProgressPercent >= 20 ? 'bg-red-100 text-[#ED2224]' : 'bg-neutral-200 text-neutral-500'}`}>
+                  {pdfProgressPercent >= 40 ? '✓' : '2'}
+                </div>
+                <span className="truncate">อัปโหลดสู่ Adobe Cloud Engine</span>
+              </div>
+              <div className={`flex items-center gap-2 ${pdfProgressPercent >= 90 ? 'text-emerald-700 font-semibold' : pdfProgressPercent >= 40 ? 'text-[#ED2224] font-semibold' : 'text-neutral-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] shrink-0 ${pdfProgressPercent >= 90 ? 'bg-emerald-100 text-emerald-700' : pdfProgressPercent >= 40 ? 'bg-red-100 text-[#ED2224]' : 'bg-neutral-200 text-neutral-500'}`}>
+                  {pdfProgressPercent >= 90 ? '✓' : '3'}
+                </div>
+                <span className="truncate">เรนเดอร์ PostScript คุณภาพสูง 100%</span>
+              </div>
+              <div className={`flex items-center gap-2 ${pdfProgressPercent >= 100 ? 'text-emerald-700 font-semibold' : pdfProgressPercent >= 90 ? 'text-[#ED2224] font-semibold' : 'text-neutral-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] shrink-0 ${pdfProgressPercent >= 100 ? 'bg-emerald-100 text-emerald-700' : pdfProgressPercent >= 90 ? 'bg-red-100 text-[#ED2224]' : 'bg-neutral-200 text-neutral-500'}`}>
+                  {pdfProgressPercent >= 100 ? '✓' : '4'}
+                </div>
+                <span className="truncate">ดาวน์โหลดไฟล์ PDF ลงเครื่อง</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <FooterEditorModal
