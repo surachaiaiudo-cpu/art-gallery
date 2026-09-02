@@ -1,6 +1,7 @@
 import { db, schema, hasD1Binding } from '@/db';
 import { eq, desc, asc, or, and } from 'drizzle-orm';
 import { Exhibition, Artwork, User, Inquiry, WallPosition } from '@/types/exhibition';
+import { cache as reactCache } from 'react';
 
 // In-Memory Cache with 60s TTL to prevent Worker CPU limit exhaustion & boost response speed
 const cache = new Map<string, { data: any; expiry: number }>();
@@ -22,7 +23,7 @@ export function invalidateDataCache() {
   cache.clear();
 }
 
-export async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition | null> {
+export const getExhibitionBySlug = reactCache(async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition | null> {
   const slug = decodeURIComponent(rawSlug || '').trim();
   const cleanSlug = slug.replace(/-+$/, '');
   const cacheKey = `exh_slug_${slug}`;
@@ -118,7 +119,7 @@ export async function getExhibitionBySlug(rawSlug: string): Promise<Exhibition |
     setCached(cacheKey, mock);
     return mock;
   }
-}
+});
 
 function generateMockExhibition(slug: string): Exhibition {
   const titles = [
@@ -207,7 +208,7 @@ export async function getExhibitionById(id: string): Promise<Exhibition | null> 
 }
 
 // BATCH-OPTIMIZED: Fetch all exhibitions with all artworks and artists concurrently with caching
-export async function getAllExhibitions(): Promise<Exhibition[]> {
+export const getAllExhibitions = reactCache(async function getAllExhibitions(): Promise<Exhibition[]> {
   const cacheKey = 'all_exhibitions';
   const cached = getCached<Exhibition[]>(cacheKey);
   if (cached) return cached;
@@ -287,7 +288,7 @@ export async function getAllExhibitions(): Promise<Exhibition[]> {
     console.error('Error fetching exhibitions from DB:', error);
     return [];
   }
-}
+});
 
 // Fetch only active / visible exhibitions for public visitors (hides 'archived')
 export async function getPublicExhibitions(): Promise<Exhibition[]> {
