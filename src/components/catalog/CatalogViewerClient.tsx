@@ -495,7 +495,18 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       background: #ffffff;
       font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
     }
+    #catalog-continuous-stream-container {
+      display: block !important;
+      width: ${w}in !important;
+      max-width: ${w}in !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .hidden {
+      display: block !important;
+    }
     .catalog-dynamic-page, .catalog-cover-page, .catalog-statement-page {
+      display: block !important;
       position: relative !important;
       width: ${w}in !important;
       height: ${h}in !important;
