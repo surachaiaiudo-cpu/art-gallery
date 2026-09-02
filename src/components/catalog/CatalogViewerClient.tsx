@@ -227,6 +227,214 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
     }
   };
 
+  // 🅰️ 1-Click Adobe PostScript Cloud PDF for a SINGLE page in Reader Modal
+  const handleDownloadAdobePdfSinglePage = async (pageIndex: number) => {
+    const currentQuota = getAdobeMonthlyUsage();
+    if (currentQuota.isExceeded) {
+      alert(
+        `⚠️ โควต้า Adobe PDF ฟรีประจำเดือน ${currentQuota.monthName} ถูกใช้งานครบ ${currentQuota.max} ครั้งแล้วครับ\n\n` +
+        `💡 คุณสามารถกดปุ่ม "พิมพ์หน้านี้" เพื่อบันทึกไฟล์ PDF ได้ฟรี 100% ไม่จำกัดจำนวนครั้งครับ`
+      );
+      return;
+    }
+
+    try {
+      setIsGeneratingPdf(true);
+      setPdfProgressPercent(15);
+      setPdfProgressStep('เตรียมข้อมูลหน้าสูจิบัตร');
+      setPdfProgressText(`กำลังประมวลผลหน้า ${pageIndex + 1}...`);
+      setPdfEstimatedSeconds(5);
+
+      // Find the active modal page container
+      const modalPageEl =
+        document.querySelector('.catalog-reader-modal .catalog-dynamic-page') ||
+        document.querySelector('.catalog-dynamic-page') ||
+        document.querySelector('.catalog-cover-page') ||
+        document.querySelector('.catalog-statement-page');
+
+      if (!modalPageEl) {
+        throw new Error('ไม่พบข้อมูลหน้าสูจิบัตรที่เลือก');
+      }
+
+      const isCustomSize = Boolean(customTemplate?.pageWidthInches && customTemplate?.pageHeightInches);
+      const w = isCustomSize ? (customTemplate?.pageWidthInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 8.27);
+      const h = isCustomSize ? (customTemplate?.pageHeightInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 11.69);
+
+      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .map((el) => el.outerHTML)
+        .join('\n');
+
+      const baseOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://art-gallery-4ty.pages.dev';
+
+      const cleanHtml = modalPageEl.outerHTML
+        .replace(/loading="lazy"/g, 'loading="eager"')
+        .replace(/decoding="async"/g, 'decoding="sync"')
+        .replace(/<img /g, '<img onerror="this.style.display=\'none\'" ');
+
+      const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="${baseOrigin}/">
+  <title>${exhibition.title || 'Art Exhibition'}-Page-${pageIndex + 1}-Adobe</title>
+  ${parentStyles}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=Maitree:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page { size: ${w}in ${h}in; margin: 0; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body {
+      width: ${w}in;
+      height: ${h}in;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #ffffff;
+      font-family: 'Maitree', 'Noto Serif Thai', Georgia, serif;
+    }
+    .catalog-dynamic-page, .catalog-cover-page, .catalog-statement-page {
+      position: relative !important;
+      width: ${w}in !important;
+      height: ${h}in !important;
+      max-width: ${w}in !important;
+      max-height: ${h}in !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      overflow: hidden !important;
+      background-color: #ffffff !important;
+    }
+  </style>
+</head>
+<body class="bg-white">
+  ${cleanHtml}
+</body>
+</html>`;
+
+      // Step 1: Request Presigned Upload Asset from Adobe Cloud (Instant 50ms)
+      setPdfProgressPercent(30);
+      setPdfProgressStep('กำลังเชื่อมต่อ Adobe Cloud');
+      setPdfProgressText('ขอพื้นที่จัดเก็บเอกสารบน Adobe Cloud Storage...');
+      setPdfEstimatedSeconds(4);
+
+      const initRes = await fetch('/api/catalog/adobe-pdf?action=create-asset', { method: 'POST' });
+      if (!initRes.ok) {
+        const errData = await initRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'ไม่สามารถเชื่อมต่อ Adobe Cloud ได้');
+      }
+      const { uploadUri, assetID } = await initRes.json();
+
+      // Step 2: Upload HTML Document DIRECTLY to AWS S3 (0ms through Cloudflare Worker)
+      setPdfProgressPercent(50);
+      setPdfProgressStep('อัปโหลดข้อมูลสู่ Adobe Cloud');
+      setPdfProgressText('กำลังส่งข้อมูลความละเอียดสูงตรงสู่ Adobe Storage...');
+      setPdfEstimatedSeconds(3);
+
+      const uploadRes = await fetch(uploadUri, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'text/html' },
+        body: fullHtml,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error(`ไม่สามารถอัปโหลดข้อมูลไปยัง Adobe Storage ได้ (${uploadRes.status})`);
+      }
+
+      // Step 3: Start Conversion Job on Adobe Engine
+      setPdfProgressPercent(70);
+      setPdfProgressStep('เริ่มประมวลผลด้วย Adobe PostScript Engine');
+      setPdfProgressText('ส่งคำสั่งแปลงไฟล์เข้าสู่ระบบ Adobe Document Cloud...');
+      setPdfEstimatedSeconds(2);
+
+      const startRes = await fetch('/api/catalog/adobe-pdf?action=start-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assetID,
+          pageWidthInches: w,
+          pageHeightInches: h,
+        }),
+      });
+
+      if (!startRes.ok) {
+        const errData = await startRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'ไม่สามารถเริ่มการแปลงไฟล์บน Adobe Cloud ได้');
+      }
+
+      const { pollingLocation } = await startRes.json();
+
+      // Step 4: Poll status on Adobe Cloud
+      let downloadUri = '';
+      let attempts = 0;
+      const maxAttempts = 30;
+
+      while (!downloadUri && attempts < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 1500));
+        attempts++;
+
+        const simulatedPercent = Math.min(94, Math.round(75 + (attempts / 3) * 19));
+        setPdfProgressPercent(simulatedPercent);
+        setPdfProgressStep('Adobe PostScript Engine กำลังประมวลผล');
+        setPdfProgressText(`ประมวลผลบน Adobe Cloud (${attempts * 1.5}s)...`);
+        setPdfEstimatedSeconds(Math.max(1, 3 - attempts));
+
+        const pollRes = await fetch(`/api/catalog/adobe-pdf?location=${encodeURIComponent(pollingLocation)}`);
+        if (!pollRes.ok) continue;
+
+        const pollData = await pollRes.json();
+        if (pollData.status === 'done' && pollData.downloadUri) {
+          downloadUri = pollData.downloadUri;
+          break;
+        } else if (pollData.status === 'failed') {
+          throw new Error(pollData.error || 'Adobe Cloud แจ้งว่าการแปลงไฟล์ล้มเหลว');
+        }
+      }
+
+      if (!downloadUri) {
+        throw new Error('หมดเวลาการรอผลจาก Adobe Cloud โปรดลองใหม่อีกครั้ง');
+      }
+
+      // Step 5: Download PDF directly from AWS S3
+      setPdfProgressPercent(98);
+      setPdfProgressStep('ดาวน์โหลดไฟล์ PDF');
+      setPdfProgressText('กำลังบันทึกไฟล์ PDF ลงเครื่อง...');
+      setPdfEstimatedSeconds(1);
+
+      const pdfRes = await fetch(downloadUri);
+      const blob = await pdfRes.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `${exhibition.slug || 'catalog'}-Page-${pageIndex + 1}-Adobe.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      // Increment monthly quota count
+      incrementAdobeUsage(1);
+
+      setPdfProgressPercent(100);
+      setPdfProgressStep('เสร็จสมบูรณ์ 100%');
+      setPdfProgressText('ดาวน์โหลดหน้า Adobe PDF เรียบร้อยแล้ว');
+      setPdfEstimatedSeconds(0);
+
+      setTimeout(() => {
+        setIsGeneratingPdf(false);
+        setPdfProgressText('');
+        setPdfProgressPercent(0);
+      }, 1000);
+    } catch (err: any) {
+      console.error('Adobe Single Page PDF generation error:', err);
+      alert(`ไม่สามารถสร้าง Adobe PDF หน้านี้ได้: ${err.message || 'โปรดลองอีกครั้ง'}`);
+      setIsGeneratingPdf(false);
+      setPdfProgressText('');
+      setPdfProgressPercent(0);
+    }
+  };
+
   // 🅰️ 1-Click Adobe PostScript Cloud PDF Generation (Full Book)
   const handleDownloadFullAdobePDF = async () => {
     const currentQuota = getAdobeMonthlyUsage();
@@ -779,6 +987,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
           onSelectPageIndex={setSelectedPageModalIndex}
           paperSize={paperSize}
           onPrintSinglePage={handlePrintSinglePage}
+          onDownloadAdobePdfSinglePage={handleDownloadAdobePdfSinglePage}
         />
       )}
 

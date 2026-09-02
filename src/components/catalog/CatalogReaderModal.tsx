@@ -23,6 +23,7 @@ interface CatalogReaderModalProps {
   onClose: () => void;
   onSelectPageIndex: (index: number) => void;
   onPrintSinglePage: (index: number) => void;
+  onDownloadAdobePdfSinglePage?: (index: number) => void;
 }
 
 export function CatalogReaderModal({
@@ -38,6 +39,7 @@ export function CatalogReaderModal({
   onClose,
   onSelectPageIndex,
   onPrintSinglePage,
+  onDownloadAdobePdfSinglePage,
 }: CatalogReaderModalProps) {
   const artworks = exhibition.artworks || [];
   const hasReviewers = peerReviewersList.length > 0;
@@ -111,8 +113,18 @@ export function CatalogReaderModal({
           </button>
         </div>
 
-        {/* Right: Print Single Page & Close Button */}
+        {/* Right: Adobe PDF & Print Single Page & Close Button */}
         <div className="flex items-center gap-2">
+          {onDownloadAdobePdfSinglePage && (
+            <button
+              onClick={() => onDownloadAdobePdfSinglePage(selectedPageModalIndex)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#ED2224] to-[#B30B00] hover:from-[#FF3333] hover:to-[#C40C00] text-white rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              title="ดาวน์โหลดเฉพาะหน้านี้เป็น PDF ด้วยเอนจิน Adobe PostScript แท้ 100%"
+            >
+              <span>🔥 Adobe PDF (หน้านี้)</span>
+            </button>
+          )}
+
           <button
             onClick={() => onPrintSinglePage(selectedPageModalIndex)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8C6D3F] hover:bg-[#A3804C] text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
