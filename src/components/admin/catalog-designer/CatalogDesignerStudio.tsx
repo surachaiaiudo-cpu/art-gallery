@@ -229,6 +229,7 @@ export function CatalogDesignerStudio({
   const [presetModalTab, setPresetModalTab] = useState<'custom' | 'official'>('custom');
   const [editingPreset, setEditingPreset] = useState<{ id: string; name: string; description: string } | null>(null);
   const [isCmykModalOpen, setIsCmykModalOpen] = useState<boolean>(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
   const [showMarginGuide, setShowMarginGuide] = useState<boolean>(true);
   const [isMarginModalOpen, setIsMarginModalOpen] = useState<boolean>(false);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState<boolean>(false);
@@ -1586,32 +1587,78 @@ export function CatalogDesignerStudio({
             <span className="hidden md:inline">บันทึกเป็นแม่แบบ</span>
           </button>
 
-          {/* Print / Export PDF */}
-          {currentExhibition?.slug && (
+          {/* Export / Print Dropdown */}
+          <div className="relative pointer-events-auto">
             <button
-              onClick={() => {
-                const printUrl = `/catalog/${currentExhibition.slug}?print=1`;
-                window.open(printUrl, '_blank', 'noopener');
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-xs font-medium text-[#555] hover:text-[#8B1B1B] hover:border-[#8B1B1B]/40 shadow-sm transition-all cursor-pointer"
-              title="พิมพ์ / ส่งออก PDF"
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-xs font-semibold text-[#444] hover:text-[#8B1B1B] hover:border-[#8B1B1B]/40 shadow-sm transition-all cursor-pointer"
+              title="ส่งออกเอกสาร / บันทึก PDF ขนาดตามจริง"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">พิมพ์ PDF</span>
+              <Download className="w-3.5 h-3.5 text-[#8B1B1B]" />
+              <span>ส่งออก / พิมพ์ PDF</span>
+              <ChevronDown className="w-3 h-3 text-[#777]" />
             </button>
-          )}
 
-          {/* Live Catalog View */}
-          {currentExhibition?.slug && (
-            <Link
-              href={`/catalog/${currentExhibition.slug}?preview=admin`}
-              target="_blank"
-              className="p-2 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-[#666] hover:text-[#8B1B1B] shadow-sm transition-all"
-              title="เปิดดูสูจิบัตรออนไลน์จริง"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </Link>
-          )}
+            {isExportMenuOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full mt-2 w-72 bg-white/95 backdrop-blur-2xl border border-[#E6E0D4] rounded-2xl p-2 shadow-2xl z-50 animate-fade-in space-y-1"
+              >
+                <div className="px-3 py-1.5 border-b border-[#E6E0D4] text-[11px] font-bold text-[#8B1B1B] flex items-center justify-between">
+                  <span>ขนาดงานจริง: {template.pageWidthInches}&quot; x {template.pageHeightInches}&quot;</span>
+                  <span className="text-[10px] text-gray-500 font-normal">({template.paperSize})</span>
+                </div>
+
+                {/* Exact Vector PDF Export */}
+                <button
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    if (currentExhibition?.slug) {
+                      const printUrl = `/catalog/${currentExhibition.slug}?print=1`;
+                      window.open(printUrl, '_blank', 'noopener');
+                    } else {
+                      window.print();
+                    }
+                  }}
+                  className="w-full p-2.5 rounded-xl hover:bg-[#F8F7F4] flex items-start gap-2.5 text-left transition-colors cursor-pointer group"
+                >
+                  <div className="p-2 rounded-lg bg-[#8B1B1B]/10 text-[#8B1B1B] group-hover:bg-[#8B1B1B] group-hover:text-white transition-colors">
+                    <Download className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors">
+                      บันทึก PDF ขนาดตามจริง ({template.pageWidthInches}&quot; x {template.pageHeightInches}&quot;)
+                    </div>
+                    <div className="text-[10.5px] text-[#777] leading-tight">
+                      ความคมชัดระดับ Vector 100% ล็อคขนาด {template.pageWidthInches}&quot; x {template.pageHeightInches}&quot; ตรงตามที่ตั้งไว้
+                    </div>
+                  </div>
+                </button>
+
+                {/* Online Catalog Preview */}
+                {currentExhibition?.slug && (
+                  <Link
+                    href={`/catalog/${currentExhibition.slug}?preview=admin`}
+                    target="_blank"
+                    onClick={() => setIsExportMenuOpen(false)}
+                    className="w-full p-2.5 rounded-xl hover:bg-[#F8F7F4] flex items-start gap-2.5 text-left transition-colors cursor-pointer group"
+                  >
+                    <div className="p-2 rounded-lg bg-black/5 text-[#555] group-hover:bg-[#8B1B1B] group-hover:text-white transition-colors">
+                      <ExternalLink className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors">
+                        เปิดดูสูจิบัตรออนไลน์จริง (Web Viewer)
+                      </div>
+                      <div className="text-[10.5px] text-[#777] leading-tight">
+                        เปิดดูในมุมมอง E-Book / Reader เต็มจอ
+                      </div>
+                    </div>
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Save Button */}
           <button

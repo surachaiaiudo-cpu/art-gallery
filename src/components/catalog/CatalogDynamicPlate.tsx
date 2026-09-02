@@ -526,12 +526,14 @@ export function CatalogDynamicPlate({
         isPrintMode ? 'print-exact-page' : 'shadow-xl mx-auto border border-[#E0E0E0]'
       }`}
       style={{
-        width: isPrintMode ? `${widthMm}mm` : '100%',
-        height: isPrintMode ? `${heightMm}mm` : '100%',
+        width: isPrintMode ? `${widthInches}in` : '100%',
+        height: isPrintMode ? `${heightInches}in` : '100%',
         aspectRatio: `${widthInches} / ${heightInches}`,
-        maxWidth: `${widthMm}mm`,
-        maxHeight: `${heightMm}mm`,
+        maxWidth: `${widthInches}in`,
+        maxHeight: `${heightInches}in`,
         backgroundColor: template.backgroundColor || '#FFFFFF',
+        ['--page-width' as any]: `${widthInches}in`,
+        ['--page-height' as any]: `${heightInches}in`,
       }}
     >
       {/* Dynamic Blocks Container */}
