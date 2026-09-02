@@ -1373,29 +1373,29 @@ export function CatalogDesignerStudio({
         <div className="flex items-center gap-2 pointer-events-auto">
           {/* 🌟 PAGE OVERRIDE TOGGLE (Customize this page vs Master) */}
           {activeArtwork?.id && (
-            <div className="flex items-center gap-1.5 bg-white/92 backdrop-blur-xl border border-[#E6E0D4] rounded-full px-3 py-1 shadow-sm text-xs">
+            <div className="flex items-center gap-2 bg-white/95 backdrop-blur-xl border border-[#E6E0D4] rounded-full px-3 py-1 shadow-xs text-xs">
               {isCurrentPageCustom ? (
                 <>
-                  <span className="flex items-center gap-1 text-[11px] font-bold text-[#8B1B1B] bg-[#8B1B1B]/10 px-2 py-0.5 rounded-full">
-                    <Sparkles className="w-3 h-3" />
-                    <span>จัดเฉพาะหน้านี้</span>
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full shadow-xs animate-pulse">
+                    <span>✨</span>
+                    <span>จัดเฉพาะหน้านี้ (Custom Page)</span>
                   </span>
                   <button
                     onClick={handleResetCurrentPageToMaster}
-                    className="text-[11px] text-[#666] hover:text-[#8B1B1B] underline font-medium cursor-pointer ml-1"
-                    title="ยกเลิกการปรับแต่งเฉพาะหน้านี้ และกลับไปใช้แม่แบบหลัก"
+                    className="text-[11px] text-[#666] hover:text-[#8B1B1B] hover:underline font-medium cursor-pointer ml-1"
+                    title="ยกเลิกการจัดเฉพาะหน้านี้ และคืนค่ากลับไปใช้แม่แบบหลัก"
                   >
-                    รีเซ็ตเป็นแม่แบบหลัก
+                    คืนค่าแม่แบบหลัก
                   </button>
                 </>
               ) : (
                 <button
                   onClick={handleEnableCustomLayoutForCurrentPage}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-[#444] hover:text-[#8B1B1B] transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 text-[11px] font-semibold text-[#444] hover:text-[#8B1B1B] hover:bg-[#8B1B1B]/5 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
                   title="ปลดล็อคเพื่อจัดตำแหน่งรูปภาพหรือข้อความเฉพาะผลงานชิ้นนี้ โดยไม่กระทบหน้าอื่น"
                 >
                   <Unlock className="w-3.5 h-3.5 text-[#8B1B1B]" />
-                  <span>ปรับแต่งเฉพาะหน้านี้</span>
+                  <span>🔓 ปลดล็อคจัดเฉพาะหน้านี้</span>
                 </button>
               )}
             </div>
@@ -1503,7 +1503,9 @@ export function CatalogDesignerStudio({
         {/* Floating Sample Artwork Switcher Pill */}
         <div
           onClick={(e) => e.stopPropagation()}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-white/92 backdrop-blur-xl px-3.5 py-1.5 rounded-full border border-[#E6E0D4] shadow-md text-xs transition-all hover:shadow-lg"
+          className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-white/95 backdrop-blur-xl px-3.5 py-1.5 rounded-full border shadow-md text-xs transition-all hover:shadow-lg ${
+            isCurrentPageCustom ? 'border-amber-400 bg-amber-50/90 ring-2 ring-amber-400/40' : 'border-[#E6E0D4]'
+          }`}
           title="ตัวอย่างผลงานที่นำมาพรีวิวบนแม่แบบ"
         >
           <button
@@ -1517,9 +1519,15 @@ export function CatalogDesignerStudio({
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[11px] font-semibold text-[#1F1C17] truncate max-w-[140px] sm:max-w-[200px]" title={activeArtwork.title}>
+          <span className="text-[11px] font-semibold text-[#1F1C17] truncate max-w-[140px] sm:max-w-[180px]" title={activeArtwork.title}>
             {activeArtwork.title}
           </span>
+          {isCurrentPageCustom && (
+            <span className="text-[9px] font-bold text-amber-900 bg-amber-200/90 px-1.5 py-0.5 rounded-full shrink-0 flex items-center gap-0.5 shadow-xs">
+              <span>✨</span>
+              <span>เฉพาะหน้า</span>
+            </span>
+          )}
           <button
             onClick={() =>
               handleSelectArtworkIndex((sampleArtworkIndex + 1) % (exhibitionArtworks.length || 1))
@@ -1722,10 +1730,19 @@ export function CatalogDesignerStudio({
           onClick={(e) => e.stopPropagation()}
           className="fixed right-4 top-20 bottom-20 z-30 flex flex-col pointer-events-auto"
         >
-          <div className="bg-white/92 backdrop-blur-xl border border-[#E6E0D4] rounded-2xl p-2 shadow-md flex flex-col gap-1.5 w-28 max-h-full overflow-y-auto custom-scrollbar">
-            {/* Panel Header */}
-            <div className="text-[10px] uppercase font-bold text-[#8B1B1B] tracking-wider text-center pb-1.5 border-b border-[#E6E0D4]">
-              {exhibitionArtworks.length} หน้า
+          <div className="bg-white/95 backdrop-blur-xl border border-[#E6E0D4] rounded-2xl p-2.5 shadow-lg flex flex-col gap-2 w-36 sm:w-40 max-h-full overflow-y-auto custom-scrollbar">
+            {/* Panel Header with summary */}
+            <div className="text-center pb-2 border-b border-[#E6E0D4] space-y-1">
+              <div className="text-[11px] font-bold text-[#1F1C17] flex items-center justify-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-[#8B1B1B]" />
+                <span>ทุกหน้า ({exhibitionArtworks.length})</span>
+              </div>
+              {Object.keys(pageOverrides).length > 0 && (
+                <div className="text-[9.5px] font-bold text-amber-900 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5 inline-flex items-center gap-1 shadow-xs">
+                  <span>✨</span>
+                  <span>จัดเฉพาะ {Object.keys(pageOverrides).length} หน้า</span>
+                </div>
+              )}
             </div>
 
             {/* Artwork Thumbnails */}
@@ -1737,44 +1754,76 @@ export function CatalogDesignerStudio({
                 <button
                   key={art.id}
                   onClick={() => handleSelectArtworkIndex(idx)}
-                  className={`relative group flex flex-col items-center gap-1 p-1.5 rounded-xl cursor-pointer transition-all ${
+                  className={`relative group flex flex-col items-center gap-1.5 p-2 rounded-xl cursor-pointer transition-all ${
                     isActive
-                      ? 'bg-[#8B1B1B]/10 ring-2 ring-[#8B1B1B]'
-                      : 'hover:bg-black/5'
+                      ? 'bg-[#8B1B1B]/10 ring-2 ring-[#8B1B1B] shadow-sm'
+                      : hasCustomLayout
+                      ? 'bg-amber-50/80 border border-amber-300/90 hover:bg-amber-100/70'
+                      : 'bg-gray-50/80 hover:bg-black/5 border border-transparent'
                   }`}
-                  title={`หน้า ${idx + 1}: ${art.title} ${hasCustomLayout ? '(จัดเฉพาะหน้า)' : ''}`}
+                  title={`หน้า ${idx + 1}: ${art.title} ${hasCustomLayout ? '(จัดเลย์เอาต์เฉพาะหน้านี้)' : ''}`}
                 >
+                  {/* Card Top Row: Page Number + Status Pill */}
+                  <div className="w-full flex items-center justify-between gap-1">
+                    <span
+                      className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                        isActive ? 'bg-[#8B1B1B] text-white' : 'bg-white text-gray-700 border border-gray-200'
+                      }`}
+                    >
+                      #{idx + 1}
+                    </span>
+
+                    {hasCustomLayout ? (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500 text-white shadow-xs flex items-center gap-0.5">
+                        <span>✨</span>
+                        <span>เฉพาะหน้า</span>
+                      </span>
+                    ) : (
+                      <span className="text-[8.5px] text-gray-400 group-hover:text-gray-600">
+                        แม่แบบหลัก
+                      </span>
+                    )}
+                  </div>
+
                   {/* Miniature Canvas Preview */}
                   <div
                     className="relative w-full overflow-hidden rounded shadow-xs"
                     style={{
                       aspectRatio: `${template.pageWidthInches} / ${template.pageHeightInches}`,
-                      backgroundColor: template.backgroundColor || '#FFFFFF',
-                      border: isActive ? '1px solid #8B1B1B' : '1px solid rgba(0,0,0,0.1)',
+                      backgroundColor:
+                        (hasCustomLayout ? pageOverrides[art.id]?.backgroundColor : masterTemplate.backgroundColor) ||
+                        '#FFFFFF',
+                      border: isActive
+                        ? '1.5px solid #8B1B1B'
+                        : hasCustomLayout
+                        ? '1.5px solid #F59E0B'
+                        : '1px solid rgba(0,0,0,0.1)',
                     }}
                   >
-                    {art.imageUrl && (
+                    {art.imageUrl ? (
                       <img
                         src={art.imageUrl}
                         alt={art.title}
                         className="w-full h-full object-contain p-1"
                         loading="lazy"
                       />
-                    )}
-                    {/* Page Number Badge */}
-                    <div className={`absolute bottom-0.5 right-0.5 text-[7px] font-bold px-1 rounded ${isActive ? 'bg-[#8B1B1B] text-white' : 'bg-black/60 text-white'}`}>
-                      {idx + 1}
-                    </div>
-                    {/* Custom Page Indicator */}
-                    {hasCustomLayout && (
-                      <div className="absolute top-0.5 left-0.5 text-[6.5px] font-bold px-1 rounded bg-[#8B1B1B] text-white">
-                        ✨
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400">
+                        ไม่มีรูป
                       </div>
                     )}
                   </div>
 
                   {/* Artwork Title */}
-                  <span className={`text-[8.5px] leading-tight text-center line-clamp-2 w-full ${isActive ? 'text-[#8B1B1B] font-bold' : 'text-[#666]'}`}>
+                  <span
+                    className={`text-[9.5px] leading-tight text-center line-clamp-2 w-full ${
+                      isActive
+                        ? 'text-[#8B1B1B] font-bold'
+                        : hasCustomLayout
+                        ? 'text-amber-950 font-bold'
+                        : 'text-[#555]'
+                    }`}
+                  >
                     {art.title}
                   </span>
                 </button>
