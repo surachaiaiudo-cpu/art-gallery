@@ -1022,10 +1022,16 @@ export function CatalogDesignerStudio({
   };
 
   // Direct Print / Save Current Page Vector PDF from Studio
+  // Direct Print / Save Current Page Vector PDF from Studio
   const handlePrintStudioCurrentPage = () => {
     if (typeof document === 'undefined') return;
     const w = template.pageWidthInches || 8;
     const h = template.pageHeightInches || 8;
+
+    // Deselect and hide guides for clean capture
+    setSelectedBlockId(null);
+    setShowGrid(false);
+    setShowMarginGuide(false);
 
     let styleEl = document.getElementById('dynamic-catalog-print-size') as HTMLStyleElement | null;
     if (!styleEl) {
@@ -1043,8 +1049,10 @@ export function CatalogDesignerStudio({
           margin: 0 !important;
           padding: 0 !important;
           background: #ffffff !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
-        header, footer, nav, .no-print, [class*="dock"], [class*="Inspector"] {
+        header, footer, nav, .no-print, [class*="dock"], [class*="Inspector"], [class*="Guideline"], [class*="BLEED"], [class*="border-dashed"], button, input, select {
           display: none !important;
         }
         #catalog-studio-print-target {
@@ -1070,11 +1078,15 @@ export function CatalogDesignerStudio({
 
     const cleanup = () => {
       document.title = originalTitle;
+      setShowGrid(true);
+      setShowMarginGuide(true);
       window.removeEventListener('afterprint', cleanup);
     };
     window.addEventListener('afterprint', cleanup);
-    window.print();
-    setTimeout(cleanup, 2500);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+    setTimeout(cleanup, 3000);
   };
 
 
