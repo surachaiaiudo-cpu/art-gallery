@@ -252,6 +252,9 @@ export function CatalogDesignerStudio({
 
   // Background Color Picker State
   const [isBgColorOpen, setIsBgColorOpen] = useState<boolean>(false);
+  const [isPageSetupMenuOpen, setIsPageSetupMenuOpen] = useState<boolean>(false);
+  const [isViewMenuOpen, setIsViewMenuOpen] = useState<boolean>(false);
+  const [isTemplateFileMenuOpen, setIsTemplateFileMenuOpen] = useState<boolean>(false);
   const [adobeQuota, setAdobeQuota] = useState<AdobeQuotaStatus>(() => getAdobeMonthlyUsage());
 
   // Custom Paper Size State
@@ -1459,240 +1462,181 @@ export function CatalogDesignerStudio({
           </select>
         </div>
 
-        {/* Center Pill: Canvas Tools */}
-        <div className="hidden lg:flex items-center gap-2 bg-white/92 backdrop-blur-xl border border-[#E6E0D4] rounded-full px-3.5 py-1.5 shadow-sm pointer-events-auto text-xs">
-          {/* Paper Size */}
-          <select
-            value={template.paperSize}
-            onChange={(e) => handlePaperSizeChange(e.target.value as CatalogPaperSize)}
-            className="bg-transparent text-xs text-[#8B1B1B] font-bold focus:outline-none cursor-pointer"
-          >
-            <option value="square_8x8">8×8&quot; (203mm)</option>
-            <option value="square_10x10">10×10&quot; (254mm)</option>
-            <option value="a4_portrait">A4 แนวตั้ง</option>
-            <option value="a4_landscape">A4 แนวนอน</option>
-            <option value="custom">กำหนดเอง…</option>
-          </select>
-
-          {template.paperSize === 'custom' && (
-            <div className="flex items-center gap-1 ml-1">
-              <input
-                type="number"
-                min="1" max="36" step="0.5"
-                value={customWidthInput}
-                onChange={(e) => setCustomWidthInput(e.target.value)}
-                onBlur={handleApplyCustomPaperSize}
-                onKeyDown={(e) => e.key === 'Enter' && handleApplyCustomPaperSize()}
-                className="w-10 bg-white border border-[#E6E0D4] rounded text-[10px] font-mono text-[#1F1C17] text-center focus:outline-none px-1 py-0.5"
-                title="ความกว้าง (นิ้ว)"
-              />
-              <span className="text-[10px] text-[#737067]">×</span>
-              <input
-                type="number"
-                min="1" max="36" step="0.5"
-                value={customHeightInput}
-                onChange={(e) => setCustomHeightInput(e.target.value)}
-                onBlur={handleApplyCustomPaperSize}
-                onKeyDown={(e) => e.key === 'Enter' && handleApplyCustomPaperSize()}
-                className="w-10 bg-white border border-[#E6E0D4] rounded text-[10px] font-mono text-[#1F1C17] text-center focus:outline-none px-1 py-0.5"
-                title="ความสูง (นิ้ว)"
-              />
-              <span className="text-[9px] text-[#737067]">&quot;</span>
-            </div>
-          )}
-
-          <div className="h-3.5 w-px bg-[#E6E0D4] mx-0.5" />
-
-          {/* Page Background Color Picker */}
+        {/* Center Pills: 3 Organized Dropdown Menus */}
+        <div className="hidden lg:flex items-center gap-2 pointer-events-auto text-xs">
+          
+          {/* ========================================================================= */}
+          {/* 📄 DROPDOWN 1: PAGE SETUP & STYLES (หน้ากระดาษและสไตล์) */}
+          {/* ========================================================================= */}
           <div className="relative">
             <button
-              onClick={() => setIsBgColorOpen(!isBgColorOpen)}
-              className={`px-2 py-1 rounded-full flex items-center gap-1.5 text-[11px] transition-all cursor-pointer ${
-                isBgColorOpen ? 'bg-[#8B1B1B]/10 border border-[#8B1B1B]/30 text-[#8B1B1B]' : 'text-[#666] hover:text-[#1F1C17] hover:bg-black/5'
+              onClick={() => {
+                setIsPageSetupMenuOpen(!isPageSetupMenuOpen);
+                setIsViewMenuOpen(false);
+                setIsTemplateFileMenuOpen(false);
+                setIsExportMenuOpen(false);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border transition-all cursor-pointer shadow-xs ${
+                isPageSetupMenuOpen
+                  ? 'border-[#8B1B1B] text-[#8B1B1B] bg-[#8B1B1B]/5 ring-2 ring-[#8B1B1B]/20'
+                  : 'border-[#E6E0D4] text-[#444] hover:text-[#1F1C17] hover:border-[#8B1B1B]/40'
               }`}
-              title="เปลี่ยนสีพื้นหลังกระดาษ"
+              title="ตั้งค่าหน้ากระดาษ สีพื้นหลัง ระยะขอบ และตัดตก"
             >
-              <div
-                className="w-3.5 h-3.5 rounded-full border border-black/20 shadow-xs"
-                style={{ backgroundColor: template.backgroundColor || '#FFFFFF' }}
-              />
-              <span className="hidden xl:inline text-[11px] font-medium text-[#444]">พื้นหลัง</span>
-            </button>
-
-            {/* Background Color Popover */}
-            {isBgColorOpen && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-white border border-[#E6E0D4] rounded-2xl p-4 shadow-xl w-60 z-50 text-xs text-[#1F1C17]"
-              >
-                <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E6E0D4]">
-                  <span className="font-bold text-[#8B1B1B] flex items-center gap-1.5">
-                    <Palette className="w-3.5 h-3.5" />
-                    สีพื้นหลังกระดาษ
-                  </span>
-                  <button onClick={() => setIsBgColorOpen(false)} className="p-1 rounded hover:bg-black/5 text-[#777]">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-6 gap-1.5 mb-3">
-                  {[
-                    { hex: '#FFFFFF', label: 'ขาวกระดาษ' },
-                    { hex: '#F5F4F0', label: 'ครีมหอศิลป์' },
-                    { hex: '#F0EDE6', label: 'ครีมอุ่น' },
-                    { hex: '#EAE6DE', label: 'ทรายทอง' },
-                    { hex: '#1F1C17', label: 'ดำชาร์โคล' },
-                    { hex: '#141413', label: 'ดำหอศิลป์' },
-                    { hex: '#8B1B1B', label: 'แดงเพาะช่าง' },
-                    { hex: '#1A2E40', label: 'ครามสยาม' },
-                    { hex: '#2D5A3F', label: 'เขียวพงไพร' },
-                    { hex: '#C85227', label: 'ส้มดินเผา' },
-                    { hex: '#C5A880', label: 'ทองเฮอริเทจ' },
-                    { hex: '#D4AF37', label: 'ทองแท้' },
-                  ].map((c) => (
-                    <button
-                      key={c.hex}
-                      onClick={() => {
-                        updateTemplateWithHistory({ ...template, backgroundColor: c.hex });
-                      }}
-                      className={`w-7 h-7 rounded-full border transition-all cursor-pointer hover:scale-110 ${
-                        template.backgroundColor === c.hex ? 'border-[#8B1B1B] ring-2 ring-[#8B1B1B]/30 scale-110' : 'border-black/10'
-                      }`}
-                      style={{ backgroundColor: c.hex }}
-                      title={c.label}
-                    />
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl px-2 py-1.5">
-                  <div className="w-4 h-4 rounded-full border border-black/20" style={{ backgroundColor: template.backgroundColor || '#FFFFFF' }} />
-                  <input
-                    type="color"
-                    value={template.backgroundColor || '#FFFFFF'}
-                    onChange={(e) => updateTemplateWithHistory({ ...template, backgroundColor: e.target.value })}
-                    className="w-5 h-5 bg-transparent border-none cursor-pointer"
-                    title="เลือกสีกำหนดเอง"
-                  />
-                  <input
-                    type="text"
-                    value={template.backgroundColor || '#FFFFFF'}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (/^#[0-9A-Fa-f]{6}$/.test(v)) updateTemplateWithHistory({ ...template, backgroundColor: v });
-                    }}
-                    className="flex-1 bg-transparent text-[11px] font-mono text-[#1F1C17] focus:outline-none"
-                    placeholder="#FFFFFF"
-                    maxLength={7}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Grid Toggle */}
-          <button
-            onClick={() => setShowGrid(!showGrid)}
-            className={`px-2 py-1 rounded-full flex items-center gap-1 text-[11px] transition-all cursor-pointer ${
-              showGrid ? 'bg-[#8B1B1B] text-white shadow-xs' : 'text-[#666] hover:text-[#1F1C17] hover:bg-black/5'
-            }`}
-            title="เปิด/ปิดเส้น Grid 0.25 นิ้ว"
-          >
-            <Grid className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">.25&quot;</span>
-          </button>
-
-          {/* Magnet Snap */}
-          <button
-            onClick={() => setSnapToGrid(!snapToGrid)}
-            className={`px-2 py-1 rounded-full flex items-center gap-1 text-[11px] transition-all cursor-pointer ${
-              snapToGrid ? 'bg-[#8B1B1B]/10 text-[#8B1B1B] border border-[#8B1B1B]/30' : 'text-[#666] hover:text-[#1F1C17] hover:bg-black/5'
-            }`}
-            title="ระบบดูดเข้าตาราง (Snap to Grid)"
-          >
-            <Magnet className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Margin Settings & Popover */}
-          <div className="relative">
-            <button
-              onClick={() => setIsMarginModalOpen(!isMarginModalOpen)}
-              className={`px-2 py-1 rounded-full flex items-center gap-1 text-[11px] transition-all cursor-pointer ${
-                isMarginModalOpen || showMarginGuide
-                  ? 'bg-[#8B1B1B]/10 text-[#8B1B1B] border border-[#8B1B1B]/30'
-                  : 'text-[#666] hover:text-[#1F1C17] hover:bg-black/5'
-              }`}
-              title="ตั้งค่าและแสดงระยะขอบกระดาษ (Margins)"
-            >
-              <Frame className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">
-                Margin {template.paddingInches?.top ?? 0.5}&quot;
+              <Layout className="w-3.5 h-3.5 text-[#8B1B1B]" />
+              <span className="font-semibold">หน้ากระดาษ</span>
+              <span className="text-[10px] bg-[#8B1B1B]/10 text-[#8B1B1B] font-bold px-1.5 py-0.2 rounded-full font-mono">
+                {template.paperSize === 'a4_portrait' ? 'A4' : template.paperSize === 'a4_landscape' ? 'A4 แนวนอน' : template.paperSize === 'square_8x8' ? '8×8"' : template.paperSize === 'square_10x10' ? '10×10"' : 'กำหนดเอง'}
               </span>
+              <ChevronDown className="w-3 h-3 text-[#777]" />
             </button>
 
-            {/* Margin Settings Popover */}
-            {isMarginModalOpen && (
+            {isPageSetupMenuOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-white border border-[#E6E0D4] rounded-2xl p-4 shadow-xl w-64 z-50 text-xs text-[#1F1C17]"
+                className="absolute left-0 top-full mt-2 w-72 bg-white/98 backdrop-blur-2xl border border-[#E6E0D4] rounded-2xl p-3.5 shadow-2xl z-50 animate-fade-in space-y-3.5"
               >
-                <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E6E0D4]">
-                  <div className="flex items-center gap-1.5 font-bold text-[#8B1B1B]">
-                    <Frame className="w-3.5 h-3.5" />
-                    <span>ระยะขอบกระดาษ (Margins)</span>
+                {/* 1. Paper Size Selector */}
+                <div>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#8B1B1B] mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <Layout className="w-3.5 h-3.5" />
+                      ขนาดกระดาษ
+                    </span>
+                    <span className="text-[10px] text-[#777] font-mono">
+                      {template.pageWidthInches}&quot; × {template.pageHeightInches}&quot;
+                    </span>
                   </div>
-                  <button
-                    onClick={() => setIsMarginModalOpen(false)}
-                    className="p-1 rounded hover:bg-black/5 text-[#777]"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { id: 'square_8x8', label: '8×8" (203mm)', desc: 'จัตุรัสมาตรฐาน' },
+                      { id: 'square_10x10', label: '10×10" (254mm)', desc: 'จัตุรัสแกลเลอรี' },
+                      { id: 'a4_portrait', label: 'A4 แนวตั้ง', desc: 'เล่มมาตรฐานสากล' },
+                      { id: 'a4_landscape', label: 'A4 แนวนอน', desc: 'พาโนรามา' },
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => handlePaperSizeChange(p.id as CatalogPaperSize)}
+                        className={`p-2 rounded-xl text-left transition-all cursor-pointer border ${
+                          template.paperSize === p.id
+                            ? 'bg-[#8B1B1B]/10 border-[#8B1B1B] text-[#8B1B1B] font-bold shadow-xs'
+                            : 'bg-[#F8F7F4] border-[#E6E0D4] text-[#444] hover:border-[#8B1B1B]/40 hover:text-[#111]'
+                        }`}
+                      >
+                        <div className="text-xs">{p.label}</div>
+                        <div className="text-[10px] text-[#777] font-normal">{p.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom Size Inputs */}
+                  <div className="mt-2 flex items-center justify-between bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl p-2">
+                    <span className="text-[11px] text-[#555] font-medium">กำหนดเอง (นิ้ว):</span>
+                    <div className="flex items-center gap-1 font-mono">
+                      <input
+                        type="number"
+                        min="1" max="36" step="0.5"
+                        value={customWidthInput}
+                        onChange={(e) => setCustomWidthInput(e.target.value)}
+                        onBlur={handleApplyCustomPaperSize}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyCustomPaperSize()}
+                        className="w-11 bg-white border border-[#E6E0D4] rounded text-xs text-center p-1 focus:outline-none focus:border-[#8B1B1B]"
+                        placeholder="กว้าง"
+                      />
+                      <span className="text-[#888]">×</span>
+                      <input
+                        type="number"
+                        min="1" max="36" step="0.5"
+                        value={customHeightInput}
+                        onChange={(e) => setCustomHeightInput(e.target.value)}
+                        onBlur={handleApplyCustomPaperSize}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyCustomPaperSize()}
+                        className="w-11 bg-white border border-[#E6E0D4] rounded text-xs text-center p-1 focus:outline-none focus:border-[#8B1B1B]"
+                        placeholder="สูง"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8F7F4] border border-[#E6E0D4] mb-3">
-                  <span className="text-[#333] text-xs">แสดงเส้นนำสายตา Margin</span>
-                  <button
-                    onClick={() => setShowMarginGuide(!showMarginGuide)}
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
-                      showMarginGuide
-                        ? 'bg-[#8B1B1B] text-white'
-                        : 'bg-white text-[#777] border border-[#E6E0D4]'
-                    }`}
-                  >
-                    {showMarginGuide ? 'เปิดอยู่' : 'ปิด'}
-                  </button>
+                {/* 2. Background Color */}
+                <div className="pt-3 border-t border-[#E6E0D4]">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#8B1B1B] mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <Palette className="w-3.5 h-3.5" />
+                      สีพื้นหลังกระดาษ
+                    </span>
+                    <span className="text-[10px] font-mono text-[#777]">{template.backgroundColor || '#FFFFFF'}</span>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1.5 mb-2">
+                    {[
+                      { hex: '#FFFFFF', label: 'ขาวกระดาษ' },
+                      { hex: '#F5F4F0', label: 'ครีมหอศิลป์' },
+                      { hex: '#F0EDE6', label: 'ครีมอุ่น' },
+                      { hex: '#EAE6DE', label: 'ทรายทอง' },
+                      { hex: '#1F1C17', label: 'ดำชาร์โคล' },
+                      { hex: '#8B1B1B', label: 'แดงเพาะช่าง' },
+                    ].map((c) => (
+                      <button
+                        key={c.hex}
+                        onClick={() => updateTemplateWithHistory({ ...template, backgroundColor: c.hex })}
+                        className={`w-7 h-7 rounded-full border transition-transform cursor-pointer hover:scale-110 ${
+                          template.backgroundColor === c.hex ? 'border-[#8B1B1B] ring-2 ring-[#8B1B1B]/40 scale-110' : 'border-black/10'
+                        }`}
+                        style={{ backgroundColor: c.hex }}
+                        title={c.label}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl px-2.5 py-1.5">
+                    <input
+                      type="color"
+                      value={template.backgroundColor || '#FFFFFF'}
+                      onChange={(e) => updateTemplateWithHistory({ ...template, backgroundColor: e.target.value })}
+                      className="w-5 h-5 bg-transparent border-none cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={template.backgroundColor || '#FFFFFF'}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (/^#[0-9A-Fa-f]{6}$/.test(v)) updateTemplateWithHistory({ ...template, backgroundColor: v });
+                      }}
+                      className="flex-1 bg-transparent text-xs font-mono text-[#1F1C17] focus:outline-none uppercase"
+                      maxLength={7}
+                    />
+                  </div>
                 </div>
 
-                <div className="mb-3">
-                  <div className="text-[10px] uppercase font-bold text-[#777] mb-1.5">
-                    ระยะสำเร็จรูป (Presets)
+                {/* 3. Margins & Bleed */}
+                <div className="pt-3 border-t border-[#E6E0D4]">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#8B1B1B] mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <Frame className="w-3.5 h-3.5" />
+                      ระยะขอบ (Margins)
+                    </span>
+                    <button
+                      onClick={() => setShowMarginGuide(!showMarginGuide)}
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors cursor-pointer ${
+                        showMarginGuide ? 'bg-[#8B1B1B] text-white' : 'bg-[#EAE6DE] text-[#666]'
+                      }`}
+                    >
+                      {showMarginGuide ? 'เส้นขอบ: เปิด' : 'เส้นขอบ: ปิด'}
+                    </button>
                   </div>
-                  <div className="grid grid-cols-4 gap-1">
+                  <div className="grid grid-cols-4 gap-1 mb-2">
                     {[
                       { label: '0.25"', val: 0.25 },
                       { label: '0.50"', val: 0.5 },
                       { label: '0.75"', val: 0.75 },
                       { label: '1.00"', val: 1.0 },
                     ].map((p) => {
-                      const isCurr =
-                        template.paddingInches?.top === p.val &&
-                        template.paddingInches?.bottom === p.val &&
-                        template.paddingInches?.left === p.val &&
-                        template.paddingInches?.right === p.val;
+                      const isCurr = template.paddingInches?.top === p.val;
                       return (
                         <button
                           key={p.label}
-                          onClick={() =>
-                            handleUpdateMargin({
-                              top: p.val,
-                              bottom: p.val,
-                              left: p.val,
-                              right: p.val,
-                            })
-                          }
-                          className={`py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
-                            isCurr
-                              ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
-                              : 'bg-[#F8F7F4] border border-[#E6E0D4] text-[#555] hover:text-[#111] hover:border-[#8B1B1B]'
+                          onClick={() => handleUpdateMargin({ top: p.val, bottom: p.val, left: p.val, right: p.val })}
+                          className={`py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                            isCurr ? 'bg-[#8B1B1B] text-white font-bold shadow-xs' : 'bg-[#F8F7F4] border border-[#E6E0D4] text-[#555] hover:text-[#111]'
                           }`}
                         >
                           {p.label}
@@ -1701,182 +1645,269 @@ export function CatalogDesignerStudio({
                     })}
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
 
+          {/* ========================================================================= */}
+          {/* 🔍 DROPDOWN 2: VIEW & GRID (มุมมองและตาราง) */}
+          {/* ========================================================================= */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setIsViewMenuOpen(!isViewMenuOpen);
+                setIsPageSetupMenuOpen(false);
+                setIsTemplateFileMenuOpen(false);
+                setIsExportMenuOpen(false);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border transition-all cursor-pointer shadow-xs ${
+                isViewMenuOpen
+                  ? 'border-[#8B1B1B] text-[#8B1B1B] bg-[#8B1B1B]/5 ring-2 ring-[#8B1B1B]/20'
+                  : 'border-[#E6E0D4] text-[#444] hover:text-[#1F1C17] hover:border-[#8B1B1B]/40'
+              }`}
+              title="ตั้งค่ามุมมอง ซูม ตาราง Grid และประวัติการแก้ไข"
+            >
+              <ZoomIn className="w-3.5 h-3.5 text-[#8B1B1B]" />
+              <span className="font-semibold">มุมมอง & ตาราง</span>
+              <span className="text-[10px] bg-[#8B1B1B]/10 text-[#8B1B1B] font-bold px-1.5 py-0.2 rounded-full font-mono">
+                {zoomLevel}%
+              </span>
+              <ChevronDown className="w-3 h-3 text-[#777]" />
+            </button>
+
+            {isViewMenuOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 top-full mt-2 w-64 bg-white/98 backdrop-blur-2xl border border-[#E6E0D4] rounded-2xl p-3.5 shadow-2xl z-50 animate-fade-in space-y-3"
+              >
+                {/* 1. Zoom Controls */}
                 <div>
-                  <div className="text-[10px] uppercase font-bold text-[#777] mb-1.5">
-                    กำหนดเอง (นิ้ว - Inches)
+                  <div className="text-[11px] font-bold text-[#8B1B1B] mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ZoomIn className="w-3.5 h-3.5" />
+                      ระดับการซูม (Zoom)
+                    </span>
+                    <span className="font-mono text-xs text-[#1F1C17] font-bold">{zoomLevel}%</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center justify-between bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
-                      <span className="text-[10px] text-[#777]">บน (T)</span>
-                      <input
-                        type="number"
-                        step="0.125"
-                        min="0"
-                        max="3"
-                        value={template.paddingInches?.top ?? 0.5}
-                        onChange={(e) =>
-                          handleUpdateMargin({ top: parseFloat(e.target.value) || 0 })
-                        }
-                        className="w-10 bg-transparent text-xs font-mono text-[#1F1C17] text-right focus:outline-none"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
-                      <span className="text-[10px] text-[#777]">ล่าง (B)</span>
-                      <input
-                        type="number"
-                        step="0.125"
-                        min="0"
-                        max="3"
-                        value={template.paddingInches?.bottom ?? 0.5}
-                        onChange={(e) =>
-                          handleUpdateMargin({ bottom: parseFloat(e.target.value) || 0 })
-                        }
-                        className="w-10 bg-transparent text-xs font-mono text-[#1F1C17] text-right focus:outline-none"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
-                      <span className="text-[10px] text-[#777]">ซ้าย (L)</span>
-                      <input
-                        type="number"
-                        step="0.125"
-                        min="0"
-                        max="3"
-                        value={template.paddingInches?.left ?? 0.5}
-                        onChange={(e) =>
-                          handleUpdateMargin({ left: parseFloat(e.target.value) || 0 })
-                        }
-                        className="w-10 bg-transparent text-xs font-mono text-[#1F1C17] text-right focus:outline-none"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
-                      <span className="text-[10px] text-[#777]">ขวา (R)</span>
-                      <input
-                        type="number"
-                        step="0.125"
-                        min="0"
-                        max="3"
-                        value={template.paddingInches?.right ?? 0.5}
-                        onChange={(e) =>
-                          handleUpdateMargin({ right: parseFloat(e.target.value) || 0 })
-                        }
-                        className="w-10 bg-transparent text-xs font-mono text-[#1F1C17] text-right focus:outline-none"
-                      />
-                    </div>
+                  <div className="grid grid-cols-4 gap-1 mb-2">
+                    {[50, 75, 100, 125].map((z) => (
+                      <button
+                        key={z}
+                        onClick={() => setZoomLevel(z)}
+                        className={`py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                          zoomLevel === z ? 'bg-[#8B1B1B] text-white font-bold shadow-xs' : 'bg-[#F8F7F4] border border-[#E6E0D4] text-[#555] hover:text-[#111]'
+                        }`}
+                      >
+                        {z}%
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl p-1.5">
+                    <button
+                      onClick={() => setZoomLevel(Math.max(40, zoomLevel - 10))}
+                      className="p-1 rounded bg-white hover:bg-black/5 text-[#444] cursor-pointer shadow-xs"
+                      title="ซูมออก"
+                    >
+                      <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <input
+                      type="range"
+                      min="40"
+                      max="160"
+                      step="5"
+                      value={zoomLevel}
+                      onChange={(e) => setZoomLevel(parseInt(e.target.value))}
+                      className="flex-1 accent-[#8B1B1B] cursor-pointer"
+                    />
+                    <button
+                      onClick={() => setZoomLevel(Math.min(160, zoomLevel + 10))}
+                      className="p-1 rounded bg-white hover:bg-black/5 text-[#444] cursor-pointer shadow-xs"
+                      title="ซูมเข้า"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Bleed Settings (ระยะตัดตกสำหรับงานพิมพ์) */}
-                <div className="pt-2.5 mt-2.5 border-t border-[#E6E0D4]">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-1.5 font-bold text-[#8B1B1B]">
-                      <Scissors className="w-3.5 h-3.5" />
-                      <span>ระยะตัดตก (Bleed)</span>
+                {/* 2. Grid & Magnet */}
+                <div className="pt-2.5 border-t border-[#E6E0D4] space-y-2">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8F7F4] border border-[#E6E0D4]">
+                    <div className="flex items-center gap-2 text-xs text-[#333]">
+                      <Grid className="w-3.5 h-3.5 text-[#8B1B1B]" />
+                      <span>เส้นตาราง Grid (0.25&quot;)</span>
                     </div>
-                    <span className="text-[10px] text-[#777]">สำหรับโรงพิมพ์</span>
+                    <button
+                      onClick={() => setShowGrid(!showGrid)}
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
+                        showGrid ? 'bg-[#8B1B1B] text-white' : 'bg-white text-[#777] border border-[#E6E0D4]'
+                      }`}
+                    >
+                      {showGrid ? 'เปิด' : 'ปิด'}
+                    </button>
                   </div>
-                  <div className="grid grid-cols-3 gap-1 mb-2">
-                    {[
-                      { label: 'ปิด (0")', val: 0 },
-                      { label: '0.125" (3mm)', val: 0.125 },
-                      { label: '0.25" (6mm)', val: 0.25 },
-                    ].map((b) => {
-                      const isCurr = (template.bleedInches ?? 0) === b.val;
-                      return (
-                        <button
-                          key={b.label}
-                          onClick={() => updateTemplateWithHistory({ ...template, bleedInches: b.val })}
-                          className={`py-1 rounded-lg text-[10.5px] font-mono transition-all cursor-pointer ${
-                            isCurr
-                              ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
-                              : 'bg-[#F8F7F4] border border-[#E6E0D4] text-[#555] hover:text-[#111]'
-                          }`}
-                        >
-                          {b.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {(template.bleedInches ?? 0) > 0 && (
-                    <div className="text-[10px] text-red-800 bg-red-50 p-1.5 rounded-lg border border-red-200 leading-tight">
-                      ✂️ เปิดระยะตัดตก {template.bleedInches}&quot; (เส้นประสีแดง) สามารถลากรูปภาพหรือเส้นเลยขอบกระดาษจริงได้
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8F7F4] border border-[#E6E0D4]">
+                    <div className="flex items-center gap-2 text-xs text-[#333]">
+                      <Magnet className="w-3.5 h-3.5 text-[#8B1B1B]" />
+                      <span>ดูดติดเส้นตาราง (Snap)</span>
                     </div>
-                  )}
+                    <button
+                      onClick={() => setSnapToGrid(!snapToGrid)}
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
+                        snapToGrid ? 'bg-[#8B1B1B] text-white' : 'bg-white text-[#777] border border-[#E6E0D4]'
+                      }`}
+                    >
+                      {snapToGrid ? 'เปิด' : 'ปิด'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Undo / Redo */}
+                <div className="pt-2.5 border-t border-[#E6E0D4] flex items-center justify-between">
+                  <button
+                    onClick={handleUndo}
+                    disabled={historyIndex <= 0}
+                    className="flex-1 flex items-center justify-center gap-1.5 p-1.5 rounded-xl bg-[#F8F7F4] hover:bg-[#8B1B1B]/10 hover:text-[#8B1B1B] disabled:opacity-30 transition-colors text-xs text-[#555] cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>เลิกทำ (Undo)</span>
+                  </button>
+                  <div className="w-2" />
+                  <button
+                    onClick={handleRedo}
+                    disabled={historyIndex >= history.length - 1}
+                    className="flex-1 flex items-center justify-center gap-1.5 p-1.5 rounded-xl bg-[#F8F7F4] hover:bg-[#8B1B1B]/10 hover:text-[#8B1B1B] disabled:opacity-30 transition-colors text-xs text-[#555] cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 scale-x-[-1]" />
+                    <span>ทำซ้ำ (Redo)</span>
+                  </button>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="h-3.5 w-px bg-[#E6E0D4] mx-0.5" />
-
-          {/* Zoom */}
-          <button
-            onClick={() => setZoomLevel(Math.max(50, zoomLevel - 15))}
-            className="p-1 text-[#666] hover:text-[#111] hover:bg-black/5 rounded cursor-pointer"
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <span className="font-mono text-[11px] text-[#8B1B1B] font-bold w-9 text-center">{zoomLevel}%</span>
-          <button
-            onClick={() => setZoomLevel(Math.min(150, zoomLevel + 15))}
-            className="p-1 text-[#666] hover:text-[#111] hover:bg-black/5 rounded cursor-pointer"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-
-          <div className="h-3.5 w-px bg-[#E6E0D4] mx-0.5" />
-
-          {/* Undo + Redo pair */}
-          <div className="flex items-center gap-0.5">
+          {/* ========================================================================= */}
+          {/* ✨ DROPDOWN 3: PRESETS & FILE ACTIONS (แม่แบบและไฟล์) */}
+          {/* ========================================================================= */}
+          <div className="relative">
             <button
-              onClick={handleUndo}
-              disabled={historyIndex <= 0}
-              className="p-1 text-[#666] hover:text-[#111] hover:bg-black/5 disabled:opacity-30 cursor-pointer rounded"
-              title="เลิกทำ Ctrl+Z (Undo)"
+              onClick={() => {
+                setIsTemplateFileMenuOpen(!isTemplateFileMenuOpen);
+                setIsPageSetupMenuOpen(false);
+                setIsViewMenuOpen(false);
+                setIsExportMenuOpen(false);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border transition-all cursor-pointer shadow-xs ${
+                isTemplateFileMenuOpen
+                  ? 'border-[#8B1B1B] text-[#8B1B1B] bg-[#8B1B1B]/5 ring-2 ring-[#8B1B1B]/20'
+                  : 'border-[#E6E0D4] text-[#444] hover:text-[#1F1C17] hover:border-[#8B1B1B]/40'
+              }`}
+              title="คลังแม่แบบ บันทึกแม่แบบ นำเข้า/ส่งออกไฟล์เลย์เอาต์"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5 text-[#8B1B1B]" />
+              <span className="font-semibold">แม่แบบ & ไฟล์</span>
+              {customPresets.length > 0 && (
+                <span className="text-[10px] bg-[#8B1B1B]/10 text-[#8B1B1B] font-bold px-1.5 py-0.2 rounded-full">
+                  {customPresets.length}
+                </span>
+              )}
+              <ChevronDown className="w-3 h-3 text-[#777]" />
             </button>
-            <button
-              onClick={handleRedo}
-              disabled={historyIndex >= history.length - 1}
-              className="p-1 text-[#666] hover:text-[#111] hover:bg-black/5 disabled:opacity-30 cursor-pointer rounded"
-              title="ทำซ้ำ Ctrl+Y (Redo)"
-            >
-              <RotateCcw className="w-3.5 h-3.5 scale-x-[-1]" />
-            </button>
+
+            {isTemplateFileMenuOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 top-full mt-2 w-64 bg-white/98 backdrop-blur-2xl border border-[#E6E0D4] rounded-2xl p-2.5 shadow-2xl z-50 animate-fade-in space-y-1"
+              >
+                {/* 1. Preset Library */}
+                <button
+                  onClick={() => {
+                    setIsTemplateFileMenuOpen(false);
+                    setPresetModalTab(customPresets.length > 0 ? 'custom' : 'official');
+                    setIsPresetModalOpen(true);
+                  }}
+                  className="w-full p-2 rounded-xl hover:bg-[#8B1B1B]/10 hover:text-[#8B1B1B] flex items-center gap-2.5 text-left transition-colors cursor-pointer text-xs text-[#333]"
+                >
+                  <Sparkles className="w-4 h-4 text-[#8B1B1B] shrink-0" />
+                  <div>
+                    <div className="font-bold">คลังแม่แบบสูจิบัตร (Presets)</div>
+                    <div className="text-[10px] text-[#777]">เลือกใช้แม่แบบทางการหรือที่บันทึกไว้</div>
+                  </div>
+                </button>
+
+                {/* 2. Save As Preset */}
+                <button
+                  onClick={() => {
+                    setIsTemplateFileMenuOpen(false);
+                    setNewPresetName(template.name || 'แม่แบบกำหนดเอง');
+                    setNewPresetDesc(template.description || '');
+                    if (selectedOverwritePresetId && customPresets.some((p) => p.id === selectedOverwritePresetId)) {
+                      setSavePresetMode('overwrite');
+                    } else {
+                      setSavePresetMode('new');
+                    }
+                    setIsSavePresetModalOpen(true);
+                  }}
+                  className="w-full p-2 rounded-xl hover:bg-[#8B1B1B]/10 hover:text-[#8B1B1B] flex items-center gap-2.5 text-left transition-colors cursor-pointer text-xs text-[#333]"
+                >
+                  <BookmarkPlus className="w-4 h-4 text-[#8B1B1B] shrink-0" />
+                  <div>
+                    <div className="font-bold">บันทึกเป็นแม่แบบส่วนตัว</div>
+                    <div className="text-[10px] text-[#777]">เก็บเลย์เอาต์ไว้ใช้กับเล่มอื่น</div>
+                  </div>
+                </button>
+
+                <div className="my-1 border-t border-[#E6E0D4]" />
+
+                {/* 3. Export JSON */}
+                <button
+                  onClick={() => {
+                    setIsTemplateFileMenuOpen(false);
+                    handleExportJSON();
+                  }}
+                  className="w-full p-2 rounded-xl hover:bg-black/5 flex items-center gap-2.5 text-left transition-colors cursor-pointer text-xs text-[#444]"
+                >
+                  <Download className="w-4 h-4 text-[#666] shrink-0" />
+                  <div>
+                    <div className="font-semibold">ส่งออกไฟล์เลย์เอาต์ (.json)</div>
+                    <div className="text-[10px] text-[#777]">ดาวน์โหลดไฟล์เพื่อสำรองข้อมูล</div>
+                  </div>
+                </button>
+
+                {/* 4. Import JSON */}
+                <label
+                  className="w-full p-2 rounded-xl hover:bg-black/5 flex items-center gap-2.5 text-left transition-colors cursor-pointer text-xs text-[#444]"
+                >
+                  <Upload className="w-4 h-4 text-[#666] shrink-0" />
+                  <div>
+                    <div className="font-semibold">นำเข้าไฟล์เลย์เอาต์ (.json)</div>
+                    <div className="text-[10px] text-[#777]">โหลดไฟล์เลย์เอาต์จากเครื่อง</div>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => {
+                      setIsTemplateFileMenuOpen(false);
+                      handleImportJSON(e);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* 5. Reload */}
+                <button
+                  onClick={() => {
+                    setIsTemplateFileMenuOpen(false);
+                    handleReloadSavedTemplate();
+                  }}
+                  className="w-full p-2 rounded-xl hover:bg-black/5 flex items-center gap-2.5 text-left transition-colors cursor-pointer text-xs text-[#777] hover:text-[#8B1B1B]"
+                >
+                  <RefreshCw className="w-4 h-4 shrink-0" />
+                  <div className="font-medium">โหลดเลย์เอาต์ที่บันทึกไว้ล่าสุด</div>
+                </button>
+              </div>
+            )}
           </div>
-
-          {/* Reload Saved Template */}
-          <button
-            onClick={handleReloadSavedTemplate}
-            className="p-1 text-[#666] hover:text-[#8B1B1B] hover:bg-black/5 rounded cursor-pointer"
-            title="โหลดเลย์เอาต์ที่บันทึกไว้ล่าสุด"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Export JSON file */}
-          <button
-            onClick={handleExportJSON}
-            className="p-1 text-[#666] hover:text-[#8B1B1B] hover:bg-black/5 rounded cursor-pointer"
-            title="ส่งออกไฟล์เลย์เอาต์ (.json)"
-          >
-            <Download className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Import JSON file */}
-          <label
-            className="p-1 text-[#666] hover:text-[#8B1B1B] hover:bg-black/5 rounded cursor-pointer flex items-center"
-            title="นำเข้าไฟล์เลย์เอาต์ (.json)"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportJSON}
-              className="hidden"
-            />
-          </label>
         </div>
 
         {/* Right Pill: Page Customization Mode, Presets, Export, Save */}
@@ -1888,7 +1919,7 @@ export function CatalogDesignerStudio({
                 <>
                   <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full shadow-xs animate-pulse">
                     <span>✨</span>
-                    <span>จัดเฉพาะหน้านี้ (Custom Page)</span>
+                    <span>จัดเฉพาะหน้านี้</span>
                   </span>
                   <button
                     onClick={handleResetCurrentPageToMaster}
@@ -1905,7 +1936,7 @@ export function CatalogDesignerStudio({
                   title="ปลดล็อคเพื่อจัดตำแหน่งรูปภาพหรือข้อความเฉพาะผลงานชิ้นนี้ โดยไม่กระทบหน้าอื่น"
                 >
                   <Unlock className="w-3.5 h-3.5 text-[#8B1B1B]" />
-                  <span>🔓 ปลดล็อคจัดเฉพาะหน้านี้</span>
+                  <span>ปลดล็อคจัดเฉพาะหน้านี้</span>
                 </button>
               )}
             </div>
@@ -1914,50 +1945,19 @@ export function CatalogDesignerStudio({
           {/* Multi-Page Preview Panel Toggle */}
           <button
             onClick={() => setIsPagesPanelOpen(!isPagesPanelOpen)}
-            className={`p-2 rounded-full bg-white/92 backdrop-blur-xl border shadow-sm transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border shadow-sm transition-all cursor-pointer text-xs font-semibold ${
               isPagesPanelOpen ? 'border-[#8B1B1B]/40 text-[#8B1B1B] bg-[#8B1B1B]/5' : 'border-[#E6E0D4] text-[#666] hover:text-[#111]'
             }`}
             title={isPagesPanelOpen ? 'ซ่อนแผงพรีวิวหน้า' : 'แสดงแผงพรีวิวทุกหน้า (Multi-Page Preview)'}
           >
-            <Layers className="w-4 h-4" />
+            <Layers className="w-3.5 h-3.5 text-[#8B1B1B]" />
+            <span className="hidden sm:inline">ทุกหน้า</span>
+            <span className="text-[10px] bg-[#8B1B1B]/10 text-[#8B1B1B] font-bold px-1.5 py-0.2 rounded-full">
+              {exhibitionArtworks.length}
+            </span>
+
           </button>
 
-          {/* Preset Library Button */}
-          <button
-            onClick={() => {
-              setPresetModalTab(customPresets.length > 0 ? 'custom' : 'official');
-              setIsPresetModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-xs font-semibold text-[#444] hover:text-[#8B1B1B] hover:bg-[#8B1B1B]/5 shadow-sm transition-all cursor-pointer"
-            title="เปิดคลังแม่แบบสูจิบัตร (Presets)"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#8B1B1B]" />
-            <span className="hidden sm:inline">แม่แบบ</span>
-            {customPresets.length > 0 && (
-              <span className="text-[10px] bg-[#8B1B1B]/10 text-[#8B1B1B] font-bold px-1.5 py-0.2 rounded-full">
-                {customPresets.length}
-              </span>
-            )}
-          </button>
-
-          {/* Save as Preset Button */}
-          <button
-            onClick={() => {
-              setNewPresetName(template.name || 'แม่แบบกำหนดเอง');
-              setNewPresetDesc(template.description || '');
-              if (selectedOverwritePresetId && customPresets.some((p) => p.id === selectedOverwritePresetId)) {
-                setSavePresetMode('overwrite');
-              } else {
-                setSavePresetMode('new');
-              }
-              setIsSavePresetModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-xs font-semibold text-[#444] hover:text-[#8B1B1B] hover:bg-[#8B1B1B]/5 shadow-sm transition-all cursor-pointer"
-            title="บันทึกเลย์เอาต์ปัจจุบันเป็นแม่แบบใหม่ หรือบันทึกซ้ำลงแม่แบบเดิม"
-          >
-            <BookmarkPlus className="w-3.5 h-3.5 text-[#8B1B1B]" />
-            <span className="hidden md:inline">บันทึกเป็นแม่แบบ</span>
-          </button>
 
           {/* Export / Print Dropdown */}
           <div className="relative pointer-events-auto">
