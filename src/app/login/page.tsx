@@ -106,9 +106,6 @@ function LoginForm() {
                 >
                   รหัสผ่านสำหรับผู้ดูแล (Admin Password)
                 </label>
-                <span className="text-[10px] text-[#A59582] bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                  Localhost: admin1234
-                </span>
               </div>
               <div className="relative">
                 <input
@@ -116,7 +113,7 @@ function LoginForm() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="กรอก admin1234 หรือ admin..."
+                  placeholder="กรอกรหัสผ่านผู้ดูแลระบบ..."
                   autoFocus
                   required
                   className="w-full px-4 py-3 bg-[#14110E] border border-white/15 focus:border-[#D9B878] rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-[#D9B878]/30 transition-all font-sans"
