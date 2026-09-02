@@ -31,7 +31,7 @@ import { CatalogCoverPage } from './CatalogCoverPage';
 import { CatalogStatementPage } from './CatalogStatementPage';
 import { CatalogPlate } from './CatalogPlate';
 import { CatalogDynamicPlate } from './CatalogDynamicPlate';
-import { getExhibitionCatalogTemplate, CatalogTemplateConfig } from '@/types/catalogTemplate';
+import { getExhibitionCatalogTemplate, getArtworkCatalogTemplate, CatalogTemplateConfig } from '@/types/catalogTemplate';
 import { CatalogReaderModal } from './CatalogReaderModal';
 import { TooltipBubble } from '@/components/ui/TooltipBubble';
 import { FooterEditorModal } from './FooterEditorModal';
@@ -601,12 +601,13 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
         {/* Artwork Plates */}
         {artworks.map((art, idx) => {
           const pageNum = (hasReviewers ? idx + 2 : idx + 1) + 1;
+          const artTemplate = getArtworkCatalogTemplate(exhibition, art.id);
           return (
             <PlateErrorBoundary key={art.id} pageNumber={pageNum}>
-              {customTemplate && customTemplate.blocks && customTemplate.blocks.length > 0 ? (
+              {artTemplate && artTemplate.blocks && artTemplate.blocks.length > 0 ? (
                 <CatalogDynamicPlate
                   artwork={art}
-                  template={customTemplate}
+                  template={artTemplate}
                   pageNumber={pageNum}
                   exhibitionSlug={exhibition.slug}
                 />

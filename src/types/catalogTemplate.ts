@@ -830,3 +830,39 @@ export function getExhibitionCatalogTemplate(exhibition?: Exhibition | null): Ca
 
   return PRESET_SQUARE_8X8_MODERN;
 }
+
+export function getArtworkCatalogTemplate(
+  exhibition?: Exhibition | null,
+  artworkId?: string
+): CatalogTemplateConfig {
+  if (!exhibition) return PRESET_SQUARE_8X8_MODERN;
+
+  if (exhibition.themeConfig) {
+    try {
+      const parsed = typeof exhibition.themeConfig === 'string' ? JSON.parse(exhibition.themeConfig) : exhibition.themeConfig;
+      if (artworkId && parsed.pageOverrides && parsed.pageOverrides[artworkId]) {
+        const override = parsed.pageOverrides[artworkId];
+        if (Array.isArray(override.blocks) && override.blocks.length > 0) {
+          return override;
+        }
+      }
+      if (parsed.catalogTemplate && Array.isArray(parsed.catalogTemplate.blocks) && parsed.catalogTemplate.blocks.length > 0) {
+        return parsed.catalogTemplate;
+      }
+    } catch {}
+  }
+
+  return PRESET_SQUARE_8X8_MODERN;
+}
+
+export function getExhibitionPageOverrides(exhibition?: Exhibition | null): Record<string, CatalogTemplateConfig> {
+  if (!exhibition?.themeConfig) return {};
+  try {
+    const parsed = typeof exhibition.themeConfig === 'string' ? JSON.parse(exhibition.themeConfig) : exhibition.themeConfig;
+    if (parsed.pageOverrides && typeof parsed.pageOverrides === 'object') {
+      return parsed.pageOverrides;
+    }
+  } catch {}
+  return {};
+}
+

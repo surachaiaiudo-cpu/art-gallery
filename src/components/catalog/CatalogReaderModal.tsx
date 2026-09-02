@@ -7,7 +7,7 @@ import { CatalogCoverPage } from './CatalogCoverPage';
 import { CatalogStatementPage } from './CatalogStatementPage';
 import { CatalogPlate } from './CatalogPlate';
 import { CatalogDynamicPlate } from './CatalogDynamicPlate';
-import { getExhibitionCatalogTemplate } from '@/types/catalogTemplate';
+import { getExhibitionCatalogTemplate, getArtworkCatalogTemplate } from '@/types/catalogTemplate';
 import { PlateErrorBoundary } from './PlateErrorBoundary';
 
 interface CatalogReaderModalProps {
@@ -178,12 +178,12 @@ export function CatalogReaderModal({
               (() => {
                 const artIdx = hasReviewers ? selectedPageModalIndex - 2 : selectedPageModalIndex - 1;
                 const art = artworks[artIdx];
-                const customTemplate = getExhibitionCatalogTemplate(exhibition);
-                if (customTemplate && customTemplate.blocks && customTemplate.blocks.length > 0) {
+                const artTemplate = getArtworkCatalogTemplate(exhibition, art?.id);
+                if (artTemplate && artTemplate.blocks && artTemplate.blocks.length > 0) {
                   return (
                     <CatalogDynamicPlate
                       artwork={art}
-                      template={customTemplate}
+                      template={artTemplate}
                       pageNumber={selectedPageModalIndex + 1}
                       isReaderModal
                       exhibitionSlug={exhibition.slug}

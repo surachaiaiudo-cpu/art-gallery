@@ -10,6 +10,8 @@ import {
   BlockElementType,
   BUILTIN_CATALOG_PRESETS,
   getExhibitionCatalogTemplate,
+  getArtworkCatalogTemplate,
+  getExhibitionPageOverrides,
   PRINT_CMYK_PALETTE,
   cmykToHex,
   hexToCmyk,
@@ -73,6 +75,9 @@ import {
   FolderOpen,
   RefreshCw,
   PanelBottom,
+  Unlock,
+  Lock,
+  FileEdit,
 } from 'lucide-react';
 
 interface CatalogDesignerStudioProps {
@@ -160,10 +165,33 @@ export function CatalogDesignerStudio({
   const currentExhibition = exhibitions.find((e) => e.id === selectedExhibitionId) || exhibitions[0];
   const exhibitionArtworks = currentExhibition?.artworks || [];
 
-  // Active Template
-  const [template, setTemplate] = useState<CatalogTemplateConfig>(() =>
+  // Active Artwork Sample Index
+  const [sampleArtworkIndex, setSampleArtworkIndex] = useState<number>(0);
+  const activeArtwork: Artwork =
+    exhibitionArtworks.length > 0
+      ? exhibitionArtworks[sampleArtworkIndex % exhibitionArtworks.length]
+      : MOCK_ARTWORK_SAMPLE;
+
+  // Master Template
+  const [masterTemplate, setMasterTemplate] = useState<CatalogTemplateConfig>(() =>
     getExhibitionCatalogTemplate(currentExhibition)
   );
+
+  // Page-Level Overrides (Keyed by artworkId)
+  const [pageOverrides, setPageOverrides] = useState<Record<string, CatalogTemplateConfig>>(() =>
+    getExhibitionPageOverrides(currentExhibition)
+  );
+
+  // Is current active artwork using a custom page layout?
+  const isCurrentPageCustom = Boolean(activeArtwork?.id && pageOverrides[activeArtwork.id]);
+
+  // Active Template being edited (either Custom for current artwork or Master)
+  const [template, setTemplate] = useState<CatalogTemplateConfig>(() => {
+    if (activeArtwork?.id && pageOverrides[activeArtwork.id]) {
+      return pageOverrides[activeArtwork.id];
+    }
+    return getExhibitionCatalogTemplate(currentExhibition);
+  });
 
   // Selected Block ID
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -172,7 +200,6 @@ export function CatalogDesignerStudio({
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
-  const [sampleArtworkIndex, setSampleArtworkIndex] = useState<number>(0);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccessToast, setSaveSuccessToast] = useState<boolean>(false);
   const [isPresetModalOpen, setIsPresetModalOpen] = useState<boolean>(false);
@@ -197,14 +224,14 @@ export function CatalogDesignerStudio({
   const [isAddMenuOpen, setIsAddMenuOpen] = useState<boolean>(false);
   const [showFullInspector, setShowFullInspector] = useState<boolean>(false);
 
-  // B: Background Color Picker State
+  // Background Color Picker State
   const [isBgColorOpen, setIsBgColorOpen] = useState<boolean>(false);
 
-  // D: Custom Paper Size State
+  // Custom Paper Size State
   const [customWidthInput, setCustomWidthInput] = useState<string>(String(template.pageWidthInches));
   const [customHeightInput, setCustomHeightInput] = useState<string>(String(template.pageHeightInches));
 
-  // F: Multi-Page Preview Panel State
+  // Multi-Page Preview Panel State
   const [isPagesPanelOpen, setIsPagesPanelOpen] = useState<boolean>(true);
 
   // History for Undo/Redo
@@ -228,12 +255,13 @@ export function CatalogDesignerStudio({
     initialBlockH: number;
   } | null>(null);
 
-  // Update template when switching exhibition or when exhibitions are loaded from server
+  // Load exhibition and templates on change
   useEffect(() => {
     if (currentExhibition) {
       let loadedTpl = getExhibitionCatalogTemplate(currentExhibition);
+      let loadedOverrides = getExhibitionPageOverrides(currentExhibition);
 
-      // Check if local browser storage has a saved layout for this exhibition
+      // Check local storage backup
       if (typeof window !== 'undefined') {
         const localSaved = localStorage.getItem(`artvara_catalog_template_${currentExhibition.id}`);
         if (localSaved) {
@@ -248,11 +276,26 @@ export function CatalogDesignerStudio({
             }
           } catch {}
         }
+
+        const localOverridesSaved = localStorage.getItem(`artvara_catalog_page_overrides_${currentExhibition.id}`);
+        if (localOverridesSaved) {
+          try {
+            const parsed = JSON.parse(localOverridesSaved);
+            if (parsed && typeof parsed === 'object') {
+              loadedOverrides = { ...loadedOverrides, ...parsed };
+            }
+          } catch {}
+        }
       }
 
-      setTemplate(loadedTpl);
+      setMasterTemplate(loadedTpl);
+      setPageOverrides(loadedOverrides);
+
+      const art = currentExhibition?.artworks?.[0] || MOCK_ARTWORK_SAMPLE;
+      const initialActiveTpl = (art?.id && loadedOverrides[art.id]) ? loadedOverrides[art.id] : loadedTpl;
+      setTemplate(initialActiveTpl);
       setSelectedBlockId(null);
-      setHistory([loadedTpl]);
+      setHistory([initialActiveTpl]);
       setHistoryIndex(0);
     }
   }, [selectedExhibitionId, exhibitions]);
@@ -261,62 +304,112 @@ export function CatalogDesignerStudio({
   const selectedBlock = template.blocks.find((b) => b.id === selectedBlockId) || null;
   const [imageRatios, setImageRatios] = useState<Record<string, number>>({});
 
-  // Active Artwork for Live Preview
-  const activeArtwork: Artwork =
-    exhibitionArtworks.length > 0
-      ? exhibitionArtworks[sampleArtworkIndex % exhibitionArtworks.length]
-      : MOCK_ARTWORK_SAMPLE;
-
   // Snap helper: rounds value to nearest 0.25 inches
   const snap = (val: number, step = template.gridSizeInches || 0.25): number => {
     if (!snapToGrid) return Math.round(val * 100) / 100;
     return Math.round(val / step) * step;
   };
 
-  // Push to undo history
+  // Push to undo history and sync active state
   const updateTemplateWithHistory = (newTemplate: CatalogTemplateConfig) => {
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newTemplate);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
     setTemplate(newTemplate);
+
+    if (activeArtwork?.id && pageOverrides[activeArtwork.id]) {
+      setPageOverrides((prev) => ({
+        ...prev,
+        [activeArtwork.id]: newTemplate,
+      }));
+    } else {
+      setMasterTemplate(newTemplate);
+    }
   };
 
   const handleUndo = () => {
     if (historyIndex > 0) {
       setHistoryIndex(historyIndex - 1);
-      setTemplate(history[historyIndex - 1]);
+      const prevTpl = history[historyIndex - 1];
+      setTemplate(prevTpl);
+      if (activeArtwork?.id && pageOverrides[activeArtwork.id]) {
+        setPageOverrides((prev) => ({ ...prev, [activeArtwork.id]: prevTpl }));
+      } else {
+        setMasterTemplate(prevTpl);
+      }
     }
   };
 
   const handleRedo = () => {
     if (historyIndex < history.length - 1) {
       setHistoryIndex(historyIndex + 1);
-      setTemplate(history[historyIndex + 1]);
+      const nextTpl = history[historyIndex + 1];
+      setTemplate(nextTpl);
+      if (activeArtwork?.id && pageOverrides[activeArtwork.id]) {
+        setPageOverrides((prev) => ({ ...prev, [activeArtwork.id]: nextTpl }));
+      } else {
+        setMasterTemplate(nextTpl);
+      }
     }
   };
 
-  // C: Keyboard Shortcuts (Delete, Arrow Keys, Ctrl+D/Z/Y, Escape)
+  // Select Artwork Sample
+  const handleSelectArtworkIndex = (index: number) => {
+    setSampleArtworkIndex(index);
+    setSelectedBlockId(null);
+    const art = exhibitionArtworks.length > 0 ? exhibitionArtworks[index % exhibitionArtworks.length] : MOCK_ARTWORK_SAMPLE;
+    const targetTpl = (art?.id && pageOverrides[art.id]) ? pageOverrides[art.id] : masterTemplate;
+    setTemplate(targetTpl);
+    setHistory([targetTpl]);
+    setHistoryIndex(0);
+  };
+
+  // Enable Custom Layout Override for current page
+  const handleEnableCustomLayoutForCurrentPage = () => {
+    if (!activeArtwork?.id) return;
+    const customTpl: CatalogTemplateConfig = {
+      ...JSON.parse(JSON.stringify(template)),
+      id: `override-${activeArtwork.id}-${Date.now().toString(36)}`,
+      name: `${activeArtwork.title} (Custom Page Layout)`,
+      updatedAt: new Date().toISOString(),
+    };
+    const updated = {
+      ...pageOverrides,
+      [activeArtwork.id]: customTpl,
+    };
+    setPageOverrides(updated);
+    updateTemplateWithHistory(customTpl);
+  };
+
+  // Revert / Reset current page override to master template
+  const handleResetCurrentPageToMaster = () => {
+    if (!activeArtwork?.id) return;
+    if (confirm('คุณต้องการรีเซ็ตหน้านี้กลับไปใช้แม่แบบหลัก (Master Template) ใช่หรือไม่? (การปรับแต่งเฉพาะหน้านี้จะถูกยกเลิก)')) {
+      const updated = { ...pageOverrides };
+      delete updated[activeArtwork.id];
+      setPageOverrides(updated);
+      updateTemplateWithHistory(masterTemplate);
+    }
+  };
+
+  // Keyboard Shortcuts (Delete, Arrow Keys, Ctrl+D/Z/Y, Escape)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      // Skip if typing in an input / textarea / select
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
 
-      // Escape → deselect block
       if (e.key === 'Escape') {
         setSelectedBlockId(null);
         return;
       }
 
-      // Ctrl+Z → Undo
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
         return;
       }
 
-      // Ctrl+Shift+Z or Ctrl+Y → Redo
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
         handleRedo();
@@ -325,22 +418,19 @@ export function CatalogDesignerStudio({
 
       if (!selectedBlockId) return;
 
-      // Delete / Backspace → delete selected block
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         handleDeleteBlock(selectedBlockId);
         return;
       }
 
-      // Ctrl+D → Duplicate selected block
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         e.preventDefault();
         handleDuplicateBlock(selectedBlockId);
         return;
       }
 
-      // Arrow Keys → nudge block position
-      const nudge = e.shiftKey ? 0.0625 : 0.25; // Shift = fine 1/16", normal = 1/4"
+      const nudge = e.shiftKey ? 0.0625 : 0.25;
       const current = template.blocks.find((b) => b.id === selectedBlockId);
       if (!current) return;
 
@@ -352,9 +442,11 @@ export function CatalogDesignerStudio({
       else if (e.key === 'ArrowDown') { e.preventDefault(); dy = nudge; }
 
       if (dx !== 0 || dy !== 0) {
-        const newX = Math.max(0, Math.min(current.xInches + dx, template.pageWidthInches - current.widthInches));
-        const newY = Math.max(0, Math.min(current.yInches + dy, template.pageHeightInches - current.heightInches));
-        handleUpdateBlockProp(selectedBlockId, { xInches: Math.round(newX * 1000) / 1000, yInches: Math.round(newY * 1000) / 1000 }, true);
+        const maxX = template.pageWidthInches - current.widthInches;
+        const maxY = template.pageHeightInches - current.heightInches;
+        const newX = Math.max(0, Math.min(maxX, Math.round((current.xInches + dx) * 1000) / 1000));
+        const newY = Math.max(0, Math.min(maxY, Math.round((current.yInches + dy) * 1000) / 1000));
+        handleUpdateBlockPosition(selectedBlockId, newX, newY);
       }
     };
 
@@ -362,540 +454,258 @@ export function CatalogDesignerStudio({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [selectedBlockId, template, historyIndex, history]);
 
-  // D: Apply Custom Paper Size from W×H inputs
-  const handleApplyCustomPaperSize = () => {
-    const w = parseFloat(customWidthInput);
-    const h = parseFloat(customHeightInput);
-    if (isNaN(w) || isNaN(h) || w < 1 || h < 1 || w > 36 || h > 36) return;
-    updateTemplateWithHistory({
-      ...template,
-      paperSize: 'custom',
-      pageWidthInches: Math.round(w * 100) / 100,
-      pageHeightInches: Math.round(h * 100) / 100,
-    });
-  };
-
-  // Change Paper Size
-  const handlePaperSizeChange = (size: CatalogPaperSize) => {
-    let width = 8.0;
-    let height = 8.0;
-
-    switch (size) {
-      case 'square_8x8':
-        width = 8.0;
-        height = 8.0;
-        break;
-      case 'square_10x10':
-        width = 10.0;
-        height = 10.0;
-        break;
-      case 'a4_portrait':
-        width = 8.27;
-        height = 11.69;
-        break;
-      case 'a4_landscape':
-        width = 11.69;
-        height = 8.27;
-        break;
-      case 'custom':
-        width = template.pageWidthInches;
-        height = template.pageHeightInches;
-        break;
-    }
-
-    const updated: CatalogTemplateConfig = {
-      ...template,
-      paperSize: size,
-      pageWidthInches: width,
-      pageHeightInches: height,
-    };
-    updateTemplateWithHistory(updated);
-  };
-
-  // Add a new module block
-  const handleAddModule = (modType: BlockElementType) => {
-    const modDef = AVAILABLE_MODULES.find((m) => m.type === modType);
+  // Handle Add Module Block
+  const handleAddModule = (type: BlockElementType) => {
+    const modDef = AVAILABLE_MODULES.find((m) => m.type === type);
     if (!modDef) return;
 
-    const newId = `blk-${modType}-${Date.now().toString(36)}`;
-    const newBlock: CatalogBlockElement = {
-      id: newId,
-      type: modType,
-      label: modDef.label,
-      xInches: snap(template.pageWidthInches / 2 - modDef.defaultW / 2),
-      yInches: snap(template.pageHeightInches / 2 - modDef.defaultH / 2),
-      widthInches: modDef.defaultW,
-      heightInches: modDef.defaultH,
-      zIndex: template.blocks.length + 1,
-      style: {
-        fontFamily: 'Maitree',
-        fontSizePt: modType === 'artwork_title' ? 14 : modType === 'artist_name' ? 13 : 10,
-        fontWeight: modType === 'artwork_title' || modType === 'artist_name' ? 'bold' : 'normal',
-        color: modType === 'artwork_title' ? '#8B1B1B' : '#1A1918',
-        textAlign: 'left',
-        objectFit: 'contain',
-      },
+    let initW = modDef.defaultW;
+    let initH = modDef.defaultH;
+
+    if (type === 'artwork_image') {
+      const padL = template.paddingInches?.left ?? 0.5;
+      const padR = template.paddingInches?.right ?? 0.5;
+      const padT = template.paddingInches?.top ?? 0.5;
+      initW = Math.max(2.0, snap(template.pageWidthInches - padL - padR));
+      initH = Math.max(2.0, snap(template.pageHeightInches * 0.55));
+    }
+
+    const padL = template.paddingInches?.left ?? 0.5;
+    const padT = template.paddingInches?.top ?? 0.5;
+    const newX = Math.min(padL, Math.max(0, template.pageWidthInches - initW));
+    const newY = Math.min(padT, Math.max(0, template.pageHeightInches - initH));
+
+    let initialStyle: any = {
+      fontFamily: 'Maitree',
+      fontSizePt: type === 'artwork_title' ? 14 : type === 'artist_name' ? 12 : 9.5,
+      fontWeight: type === 'artwork_title' || type === 'artist_name' ? 'bold' : 'normal',
+      color: type === 'artwork_title' ? '#8B1B1B' : type === 'artist_name' ? '#1A1918' : '#444444',
+      textAlign: 'left',
+      objectFit: 'contain',
+      borderRadius: type === 'artist_photo' ? 8 : 0,
+      opacity: 1,
     };
 
-    const updated: CatalogTemplateConfig = {
+    if (type === 'footer_graphic') {
+      initialStyle = {
+        objectFit: 'cover',
+        opacity: 1,
+        footerEffect: 'solid',
+        borderRadius: 0,
+      };
+      initW = template.pageWidthInches;
+      initH = 0.85;
+    }
+
+    const newBlock: CatalogBlockElement = {
+      id: `blk-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      type,
+      label: modDef.label,
+      xInches: snap(newX),
+      yInches: snap(newY),
+      widthInches: initW,
+      heightInches: initH,
+      zIndex: template.blocks.length + 1,
+      style: initialStyle,
+      customContent: type === 'custom_text' ? 'ข้อความกำหนดเอง' : '',
+    };
+
+    const newTemplate = {
       ...template,
       blocks: [...template.blocks, newBlock],
     };
-    updateTemplateWithHistory(updated);
-    setSelectedBlockId(newId);
-    setIsAddMenuOpen(false);
+
+    updateTemplateWithHistory(newTemplate);
+    setSelectedBlockId(newBlock.id);
   };
 
-  // Delete selected block
+  // Handle Delete Block
   const handleDeleteBlock = (blockId: string) => {
-    const updated: CatalogTemplateConfig = {
+    const newTemplate = {
       ...template,
       blocks: template.blocks.filter((b) => b.id !== blockId),
     };
-    updateTemplateWithHistory(updated);
-    if (selectedBlockId === blockId) setSelectedBlockId(null);
+    updateTemplateWithHistory(newTemplate);
+    if (selectedBlockId === blockId) {
+      setSelectedBlockId(null);
+    }
   };
 
-  // Duplicate selected block
+  // Handle Duplicate Block
   const handleDuplicateBlock = (blockId: string) => {
-    const orig = template.blocks.find((b) => b.id === blockId);
-    if (!orig) return;
+    const src = template.blocks.find((b) => b.id === blockId);
+    if (!src) return;
 
-    const dupId = `blk-${orig.type}-${Date.now().toString(36)}`;
-    const dupBlock: CatalogBlockElement = {
-      ...orig,
-      id: dupId,
-      xInches: snap(Math.min(orig.xInches + 0.25, template.pageWidthInches - orig.widthInches)),
-      yInches: snap(Math.min(orig.yInches + 0.25, template.pageHeightInches - orig.heightInches)),
+    const newBlock: CatalogBlockElement = {
+      ...JSON.parse(JSON.stringify(src)),
+      id: `blk-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      xInches: snap(Math.min(template.pageWidthInches - src.widthInches, src.xInches + 0.25)),
+      yInches: snap(Math.min(template.pageHeightInches - src.heightInches, src.yInches + 0.25)),
       zIndex: template.blocks.length + 1,
     };
 
-    const updated: CatalogTemplateConfig = {
+    const newTemplate = {
       ...template,
-      blocks: [...template.blocks, dupBlock],
+      blocks: [...template.blocks, newBlock],
     };
-    updateTemplateWithHistory(updated);
-    setSelectedBlockId(dupId);
+
+    updateTemplateWithHistory(newTemplate);
+    setSelectedBlockId(newBlock.id);
   };
 
-  // Update single property with instant reactive state update
+  // Handle Update Block Position
+  const handleUpdateBlockPosition = (blockId: string, xInches: number, yInches: number) => {
+    const updated = template.blocks.map((b) => {
+      if (b.id !== blockId) return b;
+      return { ...b, xInches, yInches };
+    });
+    setTemplate({ ...template, blocks: updated });
+  };
+
+  // Handle Update Block Dimension
+  const handleUpdateBlockDimension = (
+    blockId: string,
+    xInches: number,
+    yInches: number,
+    widthInches: number,
+    heightInches: number
+  ) => {
+    const updated = template.blocks.map((b) => {
+      if (b.id !== blockId) return b;
+      return { ...b, xInches, yInches, widthInches, heightInches };
+    });
+    setTemplate({ ...template, blocks: updated });
+  };
+
+  // Handle Update Block Properties
   const handleUpdateBlockProp = (
     blockId: string,
-    updates: Partial<CatalogBlockElement>,
-    commitHistory = false
+    patch: Partial<CatalogBlockElement>,
+    recordHistory = true
   ) => {
-    const targetBlock = template.blocks.find((b) => b.id === blockId);
-    const sanitizedUpdates = { ...updates };
-    if (targetBlock?.type === 'artist_photo') {
-      if (typeof sanitizedUpdates.heightInches === 'number') {
-        sanitizedUpdates.heightInches = Math.min(sanitizedUpdates.heightInches, 1.5);
-        const currentAspect = (targetBlock.widthInches || 1.25) / (targetBlock.heightInches || 1.5);
-        if (sanitizedUpdates.widthInches === undefined) {
-          sanitizedUpdates.widthInches = snap(sanitizedUpdates.heightInches * currentAspect);
-        }
-      }
-    }
-
-    const updatedBlocks = template.blocks.map((b) => {
-      if (b.id === blockId) {
-        return {
-          ...b,
-          ...sanitizedUpdates,
-          style: {
-            ...b.style,
-            ...(sanitizedUpdates.style || {}),
-          },
-        };
-      }
-      return b;
+    const updated = template.blocks.map((b) => {
+      if (b.id !== blockId) return b;
+      return { ...b, ...patch };
     });
-
-    const updatedTemplate: CatalogTemplateConfig = {
-      ...template,
-      blocks: updatedBlocks,
-    };
-
-    if (commitHistory) {
-      updateTemplateWithHistory(updatedTemplate);
+    const newTemplate = { ...template, blocks: updated };
+    if (recordHistory) {
+      updateTemplateWithHistory(newTemplate);
     } else {
-      setTemplate(updatedTemplate);
+      setTemplate(newTemplate);
     }
   };
 
-  // Quick Alignment Actions for Selected Block
-  const handleSetAlignment = (align: 'left' | 'center' | 'right' | 'justify') => {
+  // Handle Set Alignment
+  const handleSetAlignment = (textAlign: 'left' | 'center' | 'right' | 'justify') => {
     if (!selectedBlockId) return;
-    const current = template.blocks.find((b) => b.id === selectedBlockId);
-    if (!current) return;
-
-    const updatedBlocks = template.blocks.map((b) => {
-      if (b.id === selectedBlockId) {
-        return {
-          ...b,
-          style: {
-            ...b.style,
-            textAlign: align,
-          },
-        };
-      }
-      return b;
+    const target = template.blocks.find((b) => b.id === selectedBlockId);
+    if (!target) return;
+    handleUpdateBlockProp(selectedBlockId, {
+      style: {
+        ...target.style,
+        textAlign,
+      },
     });
+  };
+
+  // Handle Center Horizontal / Vertical
+  const handleCenterBlock = (axis: 'h' | 'v' | 'both') => {
+    if (!selectedBlockId) return;
+    const target = template.blocks.find((b) => b.id === selectedBlockId);
+    if (!target) return;
+
+    let newX = target.xInches;
+    let newY = target.yInches;
+
+    if (axis === 'h' || axis === 'both') {
+      newX = snap((template.pageWidthInches - target.widthInches) / 2);
+    }
+    if (axis === 'v' || axis === 'both') {
+      newY = snap((template.pageHeightInches - target.heightInches) / 2);
+    }
+
+    handleUpdateBlockProp(selectedBlockId, {
+      xInches: newX,
+      yInches: newY,
+    });
+  };
+
+  // Handle Bring to Front / Send to Back
+  const handleZIndex = (direction: 'front' | 'back') => {
+    if (!selectedBlockId) return;
+    const target = template.blocks.find((b) => b.id === selectedBlockId);
+    if (!target) return;
+
+    const sorted = [...template.blocks].sort((a, b) => a.zIndex - b.zIndex);
+    const maxZ = Math.max(...template.blocks.map((b) => b.zIndex), 1);
+    const minZ = Math.min(...template.blocks.map((b) => b.zIndex), 1);
+
+    const newZ = direction === 'front' ? maxZ + 1 : Math.max(1, minZ - 1);
+    handleUpdateBlockProp(selectedBlockId, { zIndex: newZ });
+  };
+
+  // Paper Size Change
+  const handlePaperSizeChange = (size: CatalogPaperSize) => {
+    let w = 8.0;
+    let h = 8.0;
+    switch (size) {
+      case 'square_8x8':
+        w = 8.0;
+        h = 8.0;
+        break;
+      case 'square_10x10':
+        w = 10.0;
+        h = 10.0;
+        break;
+      case 'a4_portrait':
+        w = 8.27;
+        h = 11.69;
+        break;
+      case 'a4_landscape':
+        w = 11.69;
+        h = 8.27;
+        break;
+      case 'custom':
+        w = parseFloat(customWidthInput) || template.pageWidthInches || 8.0;
+        h = parseFloat(customHeightInput) || template.pageHeightInches || 8.0;
+        break;
+    }
 
     updateTemplateWithHistory({
       ...template,
-      blocks: updatedBlocks,
+      paperSize: size,
+      pageWidthInches: w,
+      pageHeightInches: h,
     });
   };
 
-  // Snap Block to Page Center Horizontally
-  const handleSnapCenterHorizontal = () => {
-    if (!selectedBlockId) return;
-    const current = template.blocks.find((b) => b.id === selectedBlockId);
-    if (!current) return;
-
-    const centeredX = snap((template.pageWidthInches - current.widthInches) / 2);
-    handleUpdateBlockProp(selectedBlockId, { xInches: centeredX }, true);
+  // Apply custom paper size
+  const handleApplyCustomPaperSize = () => {
+    const w = parseFloat(customWidthInput);
+    const h = parseFloat(customHeightInput);
+    if (!w || !h || w <= 0 || h <= 0) return;
+    updateTemplateWithHistory({
+      ...template,
+      paperSize: 'custom',
+      pageWidthInches: Math.min(36, Math.max(2, w)),
+      pageHeightInches: Math.min(36, Math.max(2, h)),
+    });
   };
 
-  // Snap Block to Page Center Vertically
-  const handleSnapCenterVertical = () => {
-    if (!selectedBlockId) return;
-    const current = template.blocks.find((b) => b.id === selectedBlockId);
-    if (!current) return;
-
-    const centeredY = snap((template.pageHeightInches - current.heightInches) / 2);
-    handleUpdateBlockProp(selectedBlockId, { yInches: centeredY }, true);
-  };
-
-  // Scale selected block by percentage (+5%, -5%, +10%, -10%, etc.)
-  const handleScaleBlockPercent = (deltaPercent: number) => {
-    if (!selectedBlockId) return;
-    const current = template.blocks.find((b) => b.id === selectedBlockId);
-    if (!current) return;
-
-    const factor = 1 + deltaPercent / 100;
-    let newW = snap(Math.max(0.2, current.widthInches * factor));
-    let newH = snap(Math.max(0.15, current.heightInches * factor));
-
-    if (current.type === 'artist_photo') {
-      newH = Math.min(newH, 1.5);
-      const aspect = (current.widthInches || 1.25) / (current.heightInches || 1.5);
-      newW = snap(newH * aspect);
-    } else if (current.type === 'artwork_image' || current.type === 'country_flag') {
-      const aspect = (current.widthInches || 1) / (current.heightInches || 1);
-      newW = snap(newH * aspect);
-    }
-
-    // Keep within page boundaries
-    newW = Math.min(newW, template.pageWidthInches);
-    newH = Math.min(newH, template.pageHeightInches);
-
-    handleUpdateBlockProp(
-      selectedBlockId,
-      {
-        widthInches: newW,
-        heightInches: newH,
-      },
-      true
-    );
-  };
-
-  // Layer order
-  const handleBringToFront = () => {
-    if (!selectedBlockId) return;
-    const maxZ = Math.max(...template.blocks.map((b) => b.zIndex || 1), 1);
-    handleUpdateBlockProp(selectedBlockId, { zIndex: maxZ + 1 }, true);
-  };
-
-  const handleSendToBack = () => {
-    if (!selectedBlockId) return;
-    const minZ = Math.min(...template.blocks.map((b) => b.zIndex || 1), 1);
-    handleUpdateBlockProp(selectedBlockId, { zIndex: Math.max(0, minZ - 1) }, true);
-  };
-
-  // Mouse Move & Up handlers for Canvas Drag & Resize
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!dragState || !canvasRef.current) return;
-
-      const rect = canvasRef.current.getBoundingClientRect();
-      const scaleX = template.pageWidthInches / rect.width;
-      const scaleY = template.pageHeightInches / rect.height;
-
-      const deltaXInches = (e.clientX - dragState.startX) * scaleX;
-      const deltaYInches = (e.clientY - dragState.startY) * scaleY;
-
-      if (dragState.isDragging) {
-        const rawNewX = dragState.initialBlockX + deltaXInches;
-        const rawNewY = dragState.initialBlockY + deltaYInches;
-
-        const newX = snap(
-          Math.max(0, Math.min(rawNewX, template.pageWidthInches - dragState.initialBlockW))
-        );
-        const newY = snap(
-          Math.max(0, Math.min(rawNewY, template.pageHeightInches - dragState.initialBlockH))
-        );
-
-        handleUpdateBlockProp(dragState.blockId, { xInches: newX, yInches: newY });
-      } else if (dragState.isResizing && dragState.resizeHandle) {
-        let newX = dragState.initialBlockX;
-        let newY = dragState.initialBlockY;
-        let newW = dragState.initialBlockW;
-        let newH = dragState.initialBlockH;
-
-        const targetBlock = template.blocks.find((b) => b.id === dragState.blockId);
-        const isImageBlock = targetBlock?.type === 'artwork_image' || targetBlock?.type === 'artist_photo';
-        const aspectRatio = dragState.initialBlockW / (dragState.initialBlockH || 1);
-        const trueRatio = (dragState.blockId && imageRatios[dragState.blockId]) || aspectRatio;
-
-        if (isImageBlock) {
-          // Proportional scale lock: keep true aspect ratio without distortion
-          if (dragState.resizeHandle === 'se' || dragState.resizeHandle === 'e') {
-            newW = snap(Math.max(0.5, dragState.initialBlockW + deltaXInches));
-            newH = snap(newW / trueRatio);
-          } else if (dragState.resizeHandle === 's') {
-            newH = snap(Math.max(0.25, dragState.initialBlockH + deltaYInches));
-            newW = snap(newH * trueRatio);
-          } else if (dragState.resizeHandle === 'sw') {
-            const possibleW = snap(dragState.initialBlockW - deltaXInches);
-            if (possibleW >= 0.5) {
-              newW = possibleW;
-              newX = snap(dragState.initialBlockX + (dragState.initialBlockW - newW));
-              newH = snap(newW / trueRatio);
-            }
-          } else if (dragState.resizeHandle === 'ne') {
-            newW = snap(Math.max(0.5, dragState.initialBlockW + deltaXInches));
-            newH = snap(newW / trueRatio);
-            newY = snap(dragState.initialBlockY + (dragState.initialBlockH - newH));
-          } else if (dragState.resizeHandle === 'nw') {
-            const possibleW = snap(dragState.initialBlockW - deltaXInches);
-            if (possibleW >= 0.5) {
-              newW = possibleW;
-              newX = snap(dragState.initialBlockX + (dragState.initialBlockW - newW));
-              newH = snap(newW / trueRatio);
-              newY = snap(dragState.initialBlockY + (dragState.initialBlockH - newH));
-            }
-          } else if (dragState.resizeHandle === 'w') {
-            const possibleW = snap(dragState.initialBlockW - deltaXInches);
-            if (possibleW >= 0.5) {
-              newW = possibleW;
-              newX = snap(dragState.initialBlockX + (dragState.initialBlockW - newW));
-              newH = snap(newW / trueRatio);
-            }
-          } else if (dragState.resizeHandle === 'n') {
-            const possibleH = snap(dragState.initialBlockH - deltaYInches);
-            if (possibleH >= 0.25) {
-              newH = possibleH;
-              newY = snap(dragState.initialBlockY + (dragState.initialBlockH - newH));
-              newW = snap(newH * trueRatio);
-            }
-          }
-
-          if (targetBlock?.type === 'artist_photo' && newH > 1.5) {
-            newH = 1.5;
-            newW = snap(newH * trueRatio);
-          }
-        } else {
-          // General rectangular box resize for text/containers
-          if (dragState.resizeHandle.includes('e')) {
-            newW = snap(Math.max(0.5, dragState.initialBlockW + deltaXInches));
-          }
-          if (dragState.resizeHandle.includes('s')) {
-            newH = snap(Math.max(0.25, dragState.initialBlockH + deltaYInches));
-          }
-          if (dragState.resizeHandle.includes('w')) {
-            const possibleW = snap(dragState.initialBlockW - deltaXInches);
-            if (possibleW >= 0.5) {
-              newW = possibleW;
-              newX = snap(dragState.initialBlockX + deltaXInches);
-            }
-          }
-          if (dragState.resizeHandle.includes('n')) {
-            const possibleH = snap(dragState.initialBlockH - deltaYInches);
-            if (possibleH >= 0.25) {
-              newH = possibleH;
-              newY = snap(dragState.initialBlockY + deltaYInches);
-            }
-          }
-        }
-
-        handleUpdateBlockProp(dragState.blockId, {
-          xInches: newX,
-          yInches: newY,
-          widthInches: newW,
-          heightInches: newH,
-        });
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (dragState) {
-        setDragState(null);
-        updateTemplateWithHistory(template);
-      }
-    };
-
-    if (dragState) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [dragState, template]);
-
-  // Save template to exhibition themeConfig
-  // Save template to exhibition themeConfig (DB + LocalStorage + In-Memory State)
-  const handleSaveTemplate = async () => {
-    if (!currentExhibition) return;
-    setIsSaving(true);
-
-    try {
-      let currentTheme: any = {};
-      if (currentExhibition.themeConfig) {
-        try {
-          currentTheme =
-            typeof currentExhibition.themeConfig === 'string'
-              ? JSON.parse(currentExhibition.themeConfig)
-              : currentExhibition.themeConfig;
-        } catch {}
-      }
-
-      const nowIso = new Date().toISOString();
-      const templateWithMeta = {
-        ...template,
-        updatedAt: nowIso,
-      };
-
-      currentTheme.catalogTemplate = templateWithMeta;
-
-      // 1. Save to database via API
-      const res = await fetch('/api/admin/exhibitions', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: currentExhibition.id,
-          themeConfig: currentTheme,
-        }),
-      });
-
-      // 2. Save backup to browser localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(
-          `artvara_catalog_template_${currentExhibition.id}`,
-          JSON.stringify(templateWithMeta)
-        );
-      }
-
-      // 3. Update in-memory exhibitions state so changes persist immediately without full page reload
-      setExhibitions((prev) =>
-        prev.map((exh) =>
-          exh.id === currentExhibition.id
-            ? {
-                ...exh,
-                themeConfig: JSON.stringify(currentTheme),
-              }
-            : exh
-        )
-      );
-
-      if (res.ok) {
-        setSaveSuccessToast(true);
-        setTimeout(() => setSaveSuccessToast(false), 3500);
-      } else {
-        alert('บันทึกลงฐานข้อมูลไม่สำเร็จ แต่บันทึกสำรองในเบราว์เซอร์เรียบร้อยแล้ว');
-      }
-    } catch (err) {
-      console.error(err);
-      // Even if network fails, localStorage is saved
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(
-          `artvara_catalog_template_${currentExhibition.id}`,
-          JSON.stringify({ ...template, updatedAt: new Date().toISOString() })
-        );
-      }
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ (บันทึกสำรองไว้ในเครื่องแล้ว)');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Reload saved template from DB or local storage
-  const handleReloadSavedTemplate = () => {
-    if (!currentExhibition) return;
-    let finalTpl = getExhibitionCatalogTemplate(currentExhibition);
-    if (typeof window !== 'undefined') {
-      const localSaved = localStorage.getItem(`artvara_catalog_template_${currentExhibition.id}`);
-      if (localSaved) {
-        try {
-          const parsed = JSON.parse(localSaved);
-          if (parsed && Array.isArray(parsed.blocks) && parsed.blocks.length > 0) {
-            finalTpl = parsed;
-          }
-        } catch {}
-      }
-    }
-    setTemplate(finalTpl);
-    setHistory([finalTpl]);
-    setHistoryIndex(0);
-    setSelectedBlockId(null);
-    setSaveSuccessToast(true);
-    setTimeout(() => setSaveSuccessToast(false), 3000);
-  };
-
-  // Export template configuration as JSON file
-  const handleExportJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(template, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `catalog-template-${currentExhibition?.slug || 'artvara'}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
-
-  // Import template configuration from JSON file
-  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileReader = new FileReader();
-    if (e.target.files && e.target.files[0]) {
-      fileReader.readAsText(e.target.files[0], 'UTF-8');
-      fileReader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target?.result as string);
-          if (parsed && Array.isArray(parsed.blocks) && parsed.blocks.length > 0) {
-            updateTemplateWithHistory(parsed);
-            alert('นำเข้าไฟล์เลย์เอาต์สำเร็จแล้ว!');
-          } else {
-            alert('โครงสร้างไฟล์ JSON ไม่ถูกต้องสำหรับเทมเพลตสูจิบัตร');
-          }
-        } catch (err) {
-          alert('ไม่สามารถอ่านไฟล์ JSON ได้: ' + String(err));
-        }
-      };
-    }
-  };
-
-  // Save current template as a new reusable Custom Preset
-  const handleSaveAsNewPreset = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Save custom preset
+  const handleSaveAsCustomPreset = () => {
     if (!newPresetName.trim()) return;
-
     const newPreset: CatalogTemplateConfig = {
       ...template,
-      id: `custom-preset-${Date.now()}`,
+      id: `custom-preset-${Date.now().toString(36)}`,
       name: newPresetName.trim(),
-      description: newPresetDesc.trim() || `แม่แบบส่วนตัว สร้างเมื่อ ${new Date().toLocaleDateString('th-TH')}`,
-      updatedAt: new Date().toISOString(),
+      description: newPresetDesc.trim() || 'แม่แบบกำหนดเองของผู้ดูแลระบบ',
     };
-
-    const updated = [newPreset, ...customPresets];
+    const updated = [...customPresets, newPreset];
     setCustomPresets(updated);
     if (typeof window !== 'undefined') {
       localStorage.setItem('artvara_custom_catalog_presets', JSON.stringify(updated));
     }
-
     setNewPresetName('');
     setNewPresetDesc('');
     setIsSavePresetModalOpen(false);
@@ -939,54 +749,259 @@ export function CatalogDesignerStudio({
     setSelectedBlockId(null);
   };
 
+  // Mouse Drag / Resize Handlers
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragState || !canvasRef.current) return;
+
+      const pxPerInch = 96 * (zoomLevel / 100);
+      const deltaXInches = (e.clientX - dragState.startX) / pxPerInch;
+      const deltaYInches = (e.clientY - dragState.startY) / pxPerInch;
+
+      if (dragState.isDragging) {
+        const maxX = template.pageWidthInches - dragState.initialBlockW;
+        const maxY = template.pageHeightInches - dragState.initialBlockH;
+        const rawX = dragState.initialBlockX + deltaXInches;
+        const rawY = dragState.initialBlockY + deltaYInches;
+        const clampedX = Math.max(0, Math.min(maxX, rawX));
+        const clampedY = Math.max(0, Math.min(maxY, rawY));
+
+        handleUpdateBlockPosition(dragState.blockId, snap(clampedX), snap(clampedY));
+      } else if (dragState.isResizing && dragState.resizeHandle) {
+        const handle = dragState.resizeHandle;
+        let newX = dragState.initialBlockX;
+        let newY = dragState.initialBlockY;
+        let newW = dragState.initialBlockW;
+        let newH = dragState.initialBlockH;
+
+        if (handle.includes('e')) newW = Math.max(0.5, dragState.initialBlockW + deltaXInches);
+        if (handle.includes('s')) newH = Math.max(0.2, dragState.initialBlockH + deltaYInches);
+        if (handle.includes('w')) {
+          const maxDelta = dragState.initialBlockW - 0.5;
+          const appliedDelta = Math.min(maxDelta, deltaXInches);
+          newX = Math.max(0, dragState.initialBlockX + appliedDelta);
+          newW = Math.max(0.5, dragState.initialBlockW - appliedDelta);
+        }
+        if (handle.includes('n')) {
+          const maxDelta = dragState.initialBlockH - 0.2;
+          const appliedDelta = Math.min(maxDelta, deltaYInches);
+          newY = Math.max(0, dragState.initialBlockY + appliedDelta);
+          newH = Math.max(0.2, dragState.initialBlockH - appliedDelta);
+        }
+
+        handleUpdateBlockDimension(dragState.blockId, snap(newX), snap(newY), snap(newW), snap(newH));
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (dragState) {
+        updateTemplateWithHistory(template);
+        setDragState(null);
+      }
+    };
+
+    if (dragState) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragState, template]);
+
+  // Save template to exhibition themeConfig (DB + LocalStorage + In-Memory State)
+  const handleSaveTemplate = async () => {
+    if (!currentExhibition) return;
+    setIsSaving(true);
+
+    try {
+      let currentTheme: any = {};
+      if (currentExhibition.themeConfig) {
+        try {
+          currentTheme =
+            typeof currentExhibition.themeConfig === 'string'
+              ? JSON.parse(currentExhibition.themeConfig)
+              : currentExhibition.themeConfig;
+        } catch {}
+      }
+
+      const nowIso = new Date().toISOString();
+      const masterWithMeta = {
+        ...masterTemplate,
+        updatedAt: nowIso,
+      };
+
+      currentTheme.catalogTemplate = masterWithMeta;
+      currentTheme.pageOverrides = pageOverrides;
+
+      // 1. Save to database via API
+      const res = await fetch('/api/admin/exhibitions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentExhibition.id,
+          themeConfig: currentTheme,
+        }),
+      });
+
+      // 2. Save backup to browser localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          `artvara_catalog_template_${currentExhibition.id}`,
+          JSON.stringify(masterWithMeta)
+        );
+        localStorage.setItem(
+          `artvara_catalog_page_overrides_${currentExhibition.id}`,
+          JSON.stringify(pageOverrides)
+        );
+      }
+
+      // 3. Update in-memory exhibitions state
+      setExhibitions((prev) =>
+        prev.map((exh) =>
+          exh.id === currentExhibition.id
+            ? {
+                ...exh,
+                themeConfig: JSON.stringify(currentTheme),
+              }
+            : exh
+        )
+      );
+
+      if (res.ok) {
+        setSaveSuccessToast(true);
+        setTimeout(() => setSaveSuccessToast(false), 3500);
+      } else {
+        alert('บันทึกลงฐานข้อมูลไม่สำเร็จ แต่บันทึกสำรองในเบราว์เซอร์เรียบร้อยแล้ว');
+      }
+    } catch (err) {
+      console.error(err);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          `artvara_catalog_template_${currentExhibition.id}`,
+          JSON.stringify({ ...masterTemplate, updatedAt: new Date().toISOString() })
+        );
+        localStorage.setItem(
+          `artvara_catalog_page_overrides_${currentExhibition.id}`,
+          JSON.stringify(pageOverrides)
+        );
+      }
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ (บันทึกสำรองไว้ในเครื่องแล้ว)');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Reload saved template
+  const handleReloadSavedTemplate = () => {
+    if (!currentExhibition) return;
+    let finalTpl = getExhibitionCatalogTemplate(currentExhibition);
+    if (typeof window !== 'undefined') {
+      const localSaved = localStorage.getItem(`artvara_catalog_template_${currentExhibition.id}`);
+      if (localSaved) {
+        try {
+          const parsed = JSON.parse(localSaved);
+          if (parsed && Array.isArray(parsed.blocks) && parsed.blocks.length > 0) {
+            finalTpl = parsed;
+          }
+        } catch {}
+      }
+    }
+    setTemplate(finalTpl);
+    setHistory([finalTpl]);
+    setHistoryIndex(0);
+    setSelectedBlockId(null);
+    setSaveSuccessToast(true);
+    setTimeout(() => setSaveSuccessToast(false), 3000);
+  };
+
+  // Export JSON file
+  const handleExportJSON = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(template, null, 2));
+    const dl = document.createElement('a');
+    dl.setAttribute('href', dataStr);
+    dl.setAttribute('download', `${currentExhibition.slug || 'catalog'}-layout.json`);
+    dl.click();
+  };
+
+  // Import JSON file
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (parsed && Array.isArray(parsed.blocks)) {
+          updateTemplateWithHistory(parsed);
+          setSelectedBlockId(null);
+          alert('นำเข้าเลย์เอาต์สำเร็จ');
+        } else {
+          alert('ไฟล์ไม่ถูกต้อง: โครงสร้างข้อมูลไม่ตรงกับ CatalogTemplateConfig');
+        }
+      } catch (err) {
+        alert('เกิดข้อผิดพลาดในการอ่านไฟล์ JSON');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   return (
-    <div className="relative h-screen w-full bg-[#EAE6DE] text-[#1F1C17] overflow-hidden select-none font-sans">
+    <div
+      className="relative h-screen w-full bg-[#F8F7F4] text-[#1F1C17] overflow-hidden select-none font-sans"
+      style={{
+        backgroundImage: `radial-gradient(#D5CEBE 1px, transparent 1px)`,
+        backgroundSize: '24px 24px',
+      }}
+    >
       {/* ========================================================================= */}
-      {/* 🚀 FLOATING TOP PILL BAR (Compact Navigation & Main Controls) */}
+      {/* 🚀 AIRY MODERN TOP BAR */}
       {/* ========================================================================= */}
-      <header className="absolute top-4 left-4 right-4 z-40 flex items-center justify-between pointer-events-none">
+      <header className="absolute top-3.5 left-4 right-4 z-40 flex items-center justify-between pointer-events-none gap-2">
         {/* Left Pill: Back & Exhibition Selector */}
-        <div className="flex items-center gap-1.5 bg-[#141413]/95 backdrop-blur-xl border border-[#C5A880]/30 rounded-full px-3 py-1.5 shadow-2xl pointer-events-auto">
+        <div className="flex items-center gap-1.5 bg-white/92 backdrop-blur-xl border border-[#E6E0D4] rounded-full px-3 py-1.5 shadow-sm pointer-events-auto">
           <Link
             href="/admin/exhibitions"
-            className="p-1.5 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] transition-colors"
+            className="p-1.5 rounded-full hover:bg-black/5 text-[#666] hover:text-[#1F1C17] transition-colors"
             title="กลับหน้ารายการนิทรรศการ"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
 
-          <div className="h-4 w-px bg-white/10 mx-1" />
+          <div className="h-4 w-px bg-[#E6E0D4] mx-1" />
 
           {/* Exhibition Dropdown */}
           <select
             value={selectedExhibitionId}
             onChange={(e) => setSelectedExhibitionId(e.target.value)}
-            className="bg-transparent text-xs text-[#FAF9F6] font-medium focus:outline-none max-w-[180px] sm:max-w-[220px] truncate cursor-pointer"
+            className="bg-transparent text-xs text-[#1F1C17] font-semibold focus:outline-none max-w-[170px] sm:max-w-[220px] truncate cursor-pointer"
           >
             {exhibitions.map((exh) => (
-              <option key={exh.id} value={exh.id} className="bg-[#1F1C17] text-[#FAF9F6]">
+              <option key={exh.id} value={exh.id} className="bg-white text-[#1F1C17]">
                 {exh.title}
               </option>
             ))}
           </select>
         </div>
 
-        {/* Center Pill: Canvas Tools (Paper Size, Grid, Snap, Zoom, Undo) */}
-        <div className="hidden md:flex items-center gap-1.5 bg-[#141413]/95 backdrop-blur-xl border border-[#C5A880]/30 rounded-full px-3 py-1.5 shadow-2xl pointer-events-auto text-xs">
+        {/* Center Pill: Canvas Tools */}
+        <div className="hidden lg:flex items-center gap-2 bg-white/92 backdrop-blur-xl border border-[#E6E0D4] rounded-full px-3.5 py-1.5 shadow-sm pointer-events-auto text-xs">
           {/* Paper Size */}
           <select
             value={template.paperSize}
             onChange={(e) => handlePaperSizeChange(e.target.value as CatalogPaperSize)}
-            className="bg-transparent text-xs text-[#C5A880] font-semibold focus:outline-none cursor-pointer"
+            className="bg-transparent text-xs text-[#8B1B1B] font-bold focus:outline-none cursor-pointer"
           >
-            <option value="square_8x8" className="bg-[#1F1C17] text-[#FAF9F6]">8×8&quot; (203mm)</option>
-            <option value="square_10x10" className="bg-[#1F1C17] text-[#FAF9F6]">10×10&quot; (254mm)</option>
-            <option value="a4_portrait" className="bg-[#1F1C17] text-[#FAF9F6]">A4 แนวตั้ง</option>
-            <option value="a4_landscape" className="bg-[#1F1C17] text-[#FAF9F6]">A4 แนวนอน</option>
-            <option value="custom" className="bg-[#1F1C17] text-[#FAF9F6]">กำหนดเอง…</option>
+            <option value="square_8x8">8×8&quot; (203mm)</option>
+            <option value="square_10x10">10×10&quot; (254mm)</option>
+            <option value="a4_portrait">A4 แนวตั้ง</option>
+            <option value="a4_landscape">A4 แนวนอน</option>
+            <option value="custom">กำหนดเอง…</option>
           </select>
 
-          {/* D: Custom Paper Size W × H Inputs (shown only when 'custom' selected) */}
           {template.paperSize === 'custom' && (
             <div className="flex items-center gap-1 ml-1">
               <input
@@ -996,7 +1011,7 @@ export function CatalogDesignerStudio({
                 onChange={(e) => setCustomWidthInput(e.target.value)}
                 onBlur={handleApplyCustomPaperSize}
                 onKeyDown={(e) => e.key === 'Enter' && handleApplyCustomPaperSize()}
-                className="w-10 bg-black/40 border border-[#C5A880]/40 rounded text-[10px] font-mono text-[#FAF9F6] text-center focus:outline-none focus:border-[#C5A880] px-1 py-0.5"
+                className="w-10 bg-white border border-[#E6E0D4] rounded text-[10px] font-mono text-[#1F1C17] text-center focus:outline-none px-1 py-0.5"
                 title="ความกว้าง (นิ้ว)"
               />
               <span className="text-[10px] text-[#737067]">×</span>
@@ -1007,48 +1022,47 @@ export function CatalogDesignerStudio({
                 onChange={(e) => setCustomHeightInput(e.target.value)}
                 onBlur={handleApplyCustomPaperSize}
                 onKeyDown={(e) => e.key === 'Enter' && handleApplyCustomPaperSize()}
-                className="w-10 bg-black/40 border border-[#C5A880]/40 rounded text-[10px] font-mono text-[#FAF9F6] text-center focus:outline-none focus:border-[#C5A880] px-1 py-0.5"
+                className="w-10 bg-white border border-[#E6E0D4] rounded text-[10px] font-mono text-[#1F1C17] text-center focus:outline-none px-1 py-0.5"
                 title="ความสูง (นิ้ว)"
               />
               <span className="text-[9px] text-[#737067]">&quot;</span>
             </div>
           )}
 
-          <div className="h-3.5 w-px bg-white/10 mx-1" />
+          <div className="h-3.5 w-px bg-[#E6E0D4] mx-0.5" />
 
-          {/* B: Page Background Color Picker */}
+          {/* Page Background Color Picker */}
           <div className="relative">
             <button
               onClick={() => setIsBgColorOpen(!isBgColorOpen)}
-              className={`p-1.5 rounded-full flex items-center gap-1.5 text-[11px] transition-all cursor-pointer ${
-                isBgColorOpen ? 'bg-[#C5A880]/20 border border-[#C5A880]/40' : 'text-[#A59F92] hover:text-[#FAF9F6] hover:bg-white/5'
+              className={`px-2 py-1 rounded-full flex items-center gap-1.5 text-[11px] transition-all cursor-pointer ${
+                isBgColorOpen ? 'bg-[#8B1B1B]/10 border border-[#8B1B1B]/30 text-[#8B1B1B]' : 'text-[#666] hover:text-[#1F1C17] hover:bg-black/5'
               }`}
               title="เปลี่ยนสีพื้นหลังกระดาษ"
             >
               <div
-                className="w-3.5 h-3.5 rounded-sm border border-white/30 shadow-sm"
+                className="w-3.5 h-3.5 rounded-full border border-black/20 shadow-xs"
                 style={{ backgroundColor: template.backgroundColor || '#FFFFFF' }}
               />
-              <span className="hidden xl:inline text-[10px] font-mono text-[#C5A880]">พื้นหลัง</span>
+              <span className="hidden xl:inline text-[11px] font-medium text-[#444]">พื้นหลัง</span>
             </button>
 
             {/* Background Color Popover */}
             {isBgColorOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-[#141413] border border-[#C5A880]/40 rounded-2xl p-4 shadow-2xl w-60 z-50 text-xs"
+                className="absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-white border border-[#E6E0D4] rounded-2xl p-4 shadow-xl w-60 z-50 text-xs text-[#1F1C17]"
               >
-                <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/10">
-                  <span className="font-bold text-[#C5A880] flex items-center gap-1.5">
+                <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E6E0D4]">
+                  <span className="font-bold text-[#8B1B1B] flex items-center gap-1.5">
                     <Palette className="w-3.5 h-3.5" />
                     สีพื้นหลังกระดาษ
                   </span>
-                  <button onClick={() => setIsBgColorOpen(false)} className="p-1 rounded hover:bg-white/10 text-[#A59F92]">
+                  <button onClick={() => setIsBgColorOpen(false)} className="p-1 rounded hover:bg-black/5 text-[#777]">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Quick Palette (Print-safe colors) */}
                 <div className="grid grid-cols-6 gap-1.5 mb-3">
                   {[
                     { hex: '#FFFFFF', label: 'ขาวกระดาษ' },
@@ -1069,8 +1083,8 @@ export function CatalogDesignerStudio({
                       onClick={() => {
                         updateTemplateWithHistory({ ...template, backgroundColor: c.hex });
                       }}
-                      className={`w-8 h-8 rounded-lg border-2 transition-all cursor-pointer hover:scale-110 ${
-                        template.backgroundColor === c.hex ? 'border-[#C5A880] shadow-md scale-110' : 'border-white/10'
+                      className={`w-7 h-7 rounded-full border transition-all cursor-pointer hover:scale-110 ${
+                        template.backgroundColor === c.hex ? 'border-[#8B1B1B] ring-2 ring-[#8B1B1B]/30 scale-110' : 'border-black/10'
                       }`}
                       style={{ backgroundColor: c.hex }}
                       title={c.label}
@@ -1078,9 +1092,8 @@ export function CatalogDesignerStudio({
                   ))}
                 </div>
 
-                {/* Custom Color Hex Input */}
-                <div className="flex items-center gap-2 bg-[#1F1C17] border border-[#C5A880]/30 rounded-xl px-2 py-1.5">
-                  <div className="w-4 h-4 rounded border border-white/20" style={{ backgroundColor: template.backgroundColor || '#FFFFFF' }} />
+                <div className="flex items-center gap-2 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl px-2 py-1.5">
+                  <div className="w-4 h-4 rounded-full border border-black/20" style={{ backgroundColor: template.backgroundColor || '#FFFFFF' }} />
                   <input
                     type="color"
                     value={template.backgroundColor || '#FFFFFF'}
@@ -1095,7 +1108,7 @@ export function CatalogDesignerStudio({
                       const v = e.target.value;
                       if (/^#[0-9A-Fa-f]{6}$/.test(v)) updateTemplateWithHistory({ ...template, backgroundColor: v });
                     }}
-                    className="flex-1 bg-transparent text-[11px] font-mono text-[#FAF9F6] focus:outline-none"
+                    className="flex-1 bg-transparent text-[11px] font-mono text-[#1F1C17] focus:outline-none"
                     placeholder="#FFFFFF"
                     maxLength={7}
                   />
@@ -1107,20 +1120,20 @@ export function CatalogDesignerStudio({
           {/* Grid Toggle */}
           <button
             onClick={() => setShowGrid(!showGrid)}
-            className={`p-1.5 rounded-full flex items-center gap-1 text-[11px] transition-all cursor-pointer ${
-              showGrid ? 'bg-[#8B1B1B] text-white shadow-sm' : 'text-[#A59F92] hover:text-[#FAF9F6] hover:bg-white/5'
+            className={`px-2 py-1 rounded-full flex items-center gap-1 text-[11px] transition-all cursor-pointer ${
+              showGrid ? 'bg-[#8B1B1B] text-white shadow-xs' : 'text-[#666] hover:text-[#1F1C17] hover:bg-black/5'
             }`}
             title="เปิด/ปิดเส้น Grid 0.25 นิ้ว"
           >
             <Grid className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">.25&quot;</span>
+            <span className="hidden xl:inline">.25&quot;</span>
           </button>
 
           {/* Magnet Snap */}
           <button
             onClick={() => setSnapToGrid(!snapToGrid)}
-            className={`p-1.5 rounded-full flex items-center gap-1 text-[11px] transition-all cursor-pointer ${
-              snapToGrid ? 'bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40' : 'text-[#A59F92] hover:text-[#FAF9F6] hover:bg-white/5'
+            className={`px-2 py-1 rounded-full flex items-center gap-1 text-[11px] transition-all cursor-pointer ${
+              snapToGrid ? 'bg-[#8B1B1B]/10 text-[#8B1B1B] border border-[#8B1B1B]/30' : 'text-[#666] hover:text-[#1F1C17] hover:bg-black/5'
             }`}
             title="ระบบดูดเข้าตาราง (Snap to Grid)"
           >
@@ -1131,10 +1144,10 @@ export function CatalogDesignerStudio({
           <div className="relative">
             <button
               onClick={() => setIsMarginModalOpen(!isMarginModalOpen)}
-              className={`p-1.5 rounded-full flex items-center gap-1 text-[11px] transition-all cursor-pointer ${
+              className={`px-2 py-1 rounded-full flex items-center gap-1 text-[11px] transition-all cursor-pointer ${
                 isMarginModalOpen || showMarginGuide
-                  ? 'bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40'
-                  : 'text-[#A59F92] hover:text-[#FAF9F6] hover:bg-white/5'
+                  ? 'bg-[#8B1B1B]/10 text-[#8B1B1B] border border-[#8B1B1B]/30'
+                  : 'text-[#666] hover:text-[#1F1C17] hover:bg-black/5'
               }`}
               title="ตั้งค่าและแสดงระยะขอบกระดาษ (Margins)"
             >
@@ -1148,39 +1161,37 @@ export function CatalogDesignerStudio({
             {isMarginModalOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-[#141413] border border-[#C5A880]/40 rounded-2xl p-4 shadow-2xl w-64 z-50 text-xs animate-slide-up"
+                className="absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-white border border-[#E6E0D4] rounded-2xl p-4 shadow-xl w-64 z-50 text-xs text-[#1F1C17]"
               >
-                <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/10">
-                  <div className="flex items-center gap-1.5 font-bold text-[#C5A880]">
+                <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E6E0D4]">
+                  <div className="flex items-center gap-1.5 font-bold text-[#8B1B1B]">
                     <Frame className="w-3.5 h-3.5" />
                     <span>ระยะขอบกระดาษ (Margins)</span>
                   </div>
                   <button
                     onClick={() => setIsMarginModalOpen(false)}
-                    className="p-1 rounded hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
+                    className="p-1 rounded hover:bg-black/5 text-[#777]"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Show Margin Guide Toggle */}
-                <div className="flex items-center justify-between p-2 rounded-xl bg-[#1F1C17] border border-white/10 mb-3">
-                  <span className="text-[#FAF9F6] text-xs">แสดงเส้นนำสายตา Margin</span>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8F7F4] border border-[#E6E0D4] mb-3">
+                  <span className="text-[#333] text-xs">แสดงเส้นนำสายตา Margin</span>
                   <button
                     onClick={() => setShowMarginGuide(!showMarginGuide)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-colors cursor-pointer ${
                       showMarginGuide
                         ? 'bg-[#8B1B1B] text-white'
-                        : 'bg-[#141413] text-[#A59F92] border border-white/10'
+                        : 'bg-white text-[#777] border border-[#E6E0D4]'
                     }`}
                   >
                     {showMarginGuide ? 'เปิดอยู่' : 'ปิด'}
                   </button>
                 </div>
 
-                {/* Margin Presets */}
                 <div className="mb-3">
-                  <div className="text-[10px] uppercase font-bold text-[#A59F92] mb-1.5">
+                  <div className="text-[10px] uppercase font-bold text-[#777] mb-1.5">
                     ระยะสำเร็จรูป (Presets)
                   </div>
                   <div className="grid grid-cols-4 gap-1">
@@ -1208,8 +1219,8 @@ export function CatalogDesignerStudio({
                           }
                           className={`py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${
                             isCurr
-                              ? 'bg-[#8B1B1B] text-white font-bold shadow'
-                              : 'bg-[#1F1C17] border border-[#C5A880]/20 text-[#A59F92] hover:text-[#FAF9F6] hover:border-[#C5A880]'
+                              ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
+                              : 'bg-[#F8F7F4] border border-[#E6E0D4] text-[#555] hover:text-[#111] hover:border-[#8B1B1B]'
                           }`}
                         >
                           {p.label}
@@ -1219,14 +1230,13 @@ export function CatalogDesignerStudio({
                   </div>
                 </div>
 
-                {/* Custom Top / Bottom / Left / Right Inputs */}
                 <div>
-                  <div className="text-[10px] uppercase font-bold text-[#A59F92] mb-1.5">
+                  <div className="text-[10px] uppercase font-bold text-[#777] mb-1.5">
                     กำหนดเอง (นิ้ว - Inches)
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center justify-between bg-[#1F1C17] border border-[#C5A880]/30 rounded-lg px-2 py-1">
-                      <span className="text-[10px] text-[#A59F92]">บน (T)</span>
+                    <div className="flex items-center justify-between bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
+                      <span className="text-[10px] text-[#777]">บน (T)</span>
                       <input
                         type="number"
                         step="0.125"
@@ -1236,11 +1246,11 @@ export function CatalogDesignerStudio({
                         onChange={(e) =>
                           handleUpdateMargin({ top: parseFloat(e.target.value) || 0 })
                         }
-                        className="w-10 bg-transparent text-xs font-mono text-[#FAF9F6] text-right focus:outline-none"
+                        className="w-10 bg-transparent text-xs font-mono text-[#1F1C17] text-right focus:outline-none"
                       />
                     </div>
-                    <div className="flex items-center justify-between bg-[#1F1C17] border border-[#C5A880]/30 rounded-lg px-2 py-1">
-                      <span className="text-[10px] text-[#A59F92]">ล่าง (B)</span>
+                    <div className="flex items-center justify-between bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
+                      <span className="text-[10px] text-[#777]">ล่าง (B)</span>
                       <input
                         type="number"
                         step="0.125"
@@ -1250,11 +1260,11 @@ export function CatalogDesignerStudio({
                         onChange={(e) =>
                           handleUpdateMargin({ bottom: parseFloat(e.target.value) || 0 })
                         }
-                        className="w-10 bg-transparent text-xs font-mono text-[#FAF9F6] text-right focus:outline-none"
+                        className="w-10 bg-transparent text-xs font-mono text-[#1F1C17] text-right focus:outline-none"
                       />
                     </div>
-                    <div className="flex items-center justify-between bg-[#1F1C17] border border-[#C5A880]/30 rounded-lg px-2 py-1">
-                      <span className="text-[10px] text-[#A59F92]">ซ้าย (L)</span>
+                    <div className="flex items-center justify-between bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
+                      <span className="text-[10px] text-[#777]">ซ้าย (L)</span>
                       <input
                         type="number"
                         step="0.125"
@@ -1264,11 +1274,11 @@ export function CatalogDesignerStudio({
                         onChange={(e) =>
                           handleUpdateMargin({ left: parseFloat(e.target.value) || 0 })
                         }
-                        className="w-10 bg-transparent text-xs font-mono text-[#FAF9F6] text-right focus:outline-none"
+                        className="w-10 bg-transparent text-xs font-mono text-[#1F1C17] text-right focus:outline-none"
                       />
                     </div>
-                    <div className="flex items-center justify-between bg-[#1F1C17] border border-[#C5A880]/30 rounded-lg px-2 py-1">
-                      <span className="text-[10px] text-[#A59F92]">ขวา (R)</span>
+                    <div className="flex items-center justify-between bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
+                      <span className="text-[10px] text-[#777]">ขวา (R)</span>
                       <input
                         type="number"
                         step="0.125"
@@ -1278,7 +1288,7 @@ export function CatalogDesignerStudio({
                         onChange={(e) =>
                           handleUpdateMargin({ right: parseFloat(e.target.value) || 0 })
                         }
-                        className="w-10 bg-transparent text-xs font-mono text-[#FAF9F6] text-right focus:outline-none"
+                        className="w-10 bg-transparent text-xs font-mono text-[#1F1C17] text-right focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1287,31 +1297,31 @@ export function CatalogDesignerStudio({
             )}
           </div>
 
-          <div className="h-3.5 w-px bg-white/10 mx-1" />
+          <div className="h-3.5 w-px bg-[#E6E0D4] mx-0.5" />
 
           {/* Zoom */}
           <button
             onClick={() => setZoomLevel(Math.max(50, zoomLevel - 15))}
-            className="p-1 text-[#A59F92] hover:text-[#FAF9F6]"
+            className="p-1 text-[#666] hover:text-[#111] hover:bg-black/5 rounded cursor-pointer"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="font-mono text-[11px] text-[#C5A880] w-8 text-center">{zoomLevel}%</span>
+          <span className="font-mono text-[11px] text-[#8B1B1B] font-bold w-9 text-center">{zoomLevel}%</span>
           <button
             onClick={() => setZoomLevel(Math.min(150, zoomLevel + 15))}
-            className="p-1 text-[#A59F92] hover:text-[#FAF9F6]"
+            className="p-1 text-[#666] hover:text-[#111] hover:bg-black/5 rounded cursor-pointer"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
 
-          <div className="h-3.5 w-px bg-white/10 mx-1" />
+          <div className="h-3.5 w-px bg-[#E6E0D4] mx-0.5" />
 
           {/* Undo + Redo pair */}
           <div className="flex items-center gap-0.5">
             <button
               onClick={handleUndo}
               disabled={historyIndex <= 0}
-              className="p-1 text-[#A59F92] hover:text-[#FAF9F6] disabled:opacity-30 cursor-pointer rounded"
+              className="p-1 text-[#666] hover:text-[#111] hover:bg-black/5 disabled:opacity-30 cursor-pointer rounded"
               title="เลิกทำ Ctrl+Z (Undo)"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -1319,7 +1329,7 @@ export function CatalogDesignerStudio({
             <button
               onClick={handleRedo}
               disabled={historyIndex >= history.length - 1}
-              className="p-1 text-[#A59F92] hover:text-[#FAF9F6] disabled:opacity-30 cursor-pointer rounded"
+              className="p-1 text-[#666] hover:text-[#111] hover:bg-black/5 disabled:opacity-30 cursor-pointer rounded"
               title="ทำซ้ำ Ctrl+Y (Redo)"
             >
               <RotateCcw className="w-3.5 h-3.5 scale-x-[-1]" />
@@ -1329,8 +1339,8 @@ export function CatalogDesignerStudio({
           {/* Reload Saved Template */}
           <button
             onClick={handleReloadSavedTemplate}
-            className="p-1 text-[#A59F92] hover:text-[#C5A880] cursor-pointer"
-            title="โหลดเลย์เอาต์ที่บันทึกไว้ล่าสุด (Reload Saved Layout)"
+            className="p-1 text-[#666] hover:text-[#8B1B1B] hover:bg-black/5 rounded cursor-pointer"
+            title="โหลดเลย์เอาต์ที่บันทึกไว้ล่าสุด"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
@@ -1338,16 +1348,16 @@ export function CatalogDesignerStudio({
           {/* Export JSON file */}
           <button
             onClick={handleExportJSON}
-            className="p-1 text-[#A59F92] hover:text-[#C5A880] cursor-pointer"
-            title="ส่งออกไฟล์เลย์เอาต์ (.json) เก็บไว้ในเครื่อง"
+            className="p-1 text-[#666] hover:text-[#8B1B1B] hover:bg-black/5 rounded cursor-pointer"
+            title="ส่งออกไฟล์เลย์เอาต์ (.json)"
           >
             <Download className="w-3.5 h-3.5" />
           </button>
 
           {/* Import JSON file */}
           <label
-            className="p-1 text-[#A59F92] hover:text-[#C5A880] cursor-pointer flex items-center"
-            title="นำเข้าไฟล์เลย์เอาต์ (.json) จากเครื่อง"
+            className="p-1 text-[#666] hover:text-[#8B1B1B] hover:bg-black/5 rounded cursor-pointer flex items-center"
+            title="นำเข้าไฟล์เลย์เอาต์ (.json)"
           >
             <Upload className="w-3.5 h-3.5" />
             <input
@@ -1359,49 +1369,79 @@ export function CatalogDesignerStudio({
           </label>
         </div>
 
-        {/* Right Pill: Presets, Live Link, Save Button */}
+        {/* Right Pill: Page Customization Mode, Presets, Export, Save */}
         <div className="flex items-center gap-2 pointer-events-auto">
-          {/* F: Multi-Page Preview Panel Toggle */}
+          {/* 🌟 PAGE OVERRIDE TOGGLE (Customize this page vs Master) */}
+          {activeArtwork?.id && (
+            <div className="flex items-center gap-1.5 bg-white/92 backdrop-blur-xl border border-[#E6E0D4] rounded-full px-3 py-1 shadow-sm text-xs">
+              {isCurrentPageCustom ? (
+                <>
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-[#8B1B1B] bg-[#8B1B1B]/10 px-2 py-0.5 rounded-full">
+                    <Sparkles className="w-3 h-3" />
+                    <span>จัดเฉพาะหน้านี้</span>
+                  </span>
+                  <button
+                    onClick={handleResetCurrentPageToMaster}
+                    className="text-[11px] text-[#666] hover:text-[#8B1B1B] underline font-medium cursor-pointer ml-1"
+                    title="ยกเลิกการปรับแต่งเฉพาะหน้านี้ และกลับไปใช้แม่แบบหลัก"
+                  >
+                    รีเซ็ตเป็นแม่แบบหลัก
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleEnableCustomLayoutForCurrentPage}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[#444] hover:text-[#8B1B1B] transition-colors cursor-pointer"
+                  title="ปลดล็อคเพื่อจัดตำแหน่งรูปภาพหรือข้อความเฉพาะผลงานชิ้นนี้ โดยไม่กระทบหน้าอื่น"
+                >
+                  <Unlock className="w-3.5 h-3.5 text-[#8B1B1B]" />
+                  <span>ปรับแต่งเฉพาะหน้านี้</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Multi-Page Preview Panel Toggle */}
           <button
             onClick={() => setIsPagesPanelOpen(!isPagesPanelOpen)}
-            className={`p-2 rounded-full bg-[#141413]/95 backdrop-blur-xl border shadow-xl transition-all cursor-pointer ${
-              isPagesPanelOpen ? 'border-[#C5A880]/60 text-[#C5A880]' : 'border-[#C5A880]/30 text-[#A59F92] hover:text-[#FAF9F6]'
+            className={`p-2 rounded-full bg-white/92 backdrop-blur-xl border shadow-sm transition-all cursor-pointer ${
+              isPagesPanelOpen ? 'border-[#8B1B1B]/40 text-[#8B1B1B] bg-[#8B1B1B]/5' : 'border-[#E6E0D4] text-[#666] hover:text-[#111]'
             }`}
             title={isPagesPanelOpen ? 'ซ่อนแผงพรีวิวหน้า' : 'แสดงแผงพรีวิวทุกหน้า (Multi-Page Preview)'}
           >
-            <Layers className="w-3.5 h-3.5" />
+            <Layers className="w-4 h-4" />
           </button>
 
           {/* Preset Button */}
           <button
             onClick={() => setIsPresetModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#141413]/95 backdrop-blur-xl border border-[#C5A880]/40 text-xs text-[#C5A880] hover:bg-[#C5A880]/15 shadow-xl transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-xs font-semibold text-[#444] hover:text-[#8B1B1B] hover:bg-[#8B1B1B]/5 shadow-sm transition-all cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 text-[#8B1B1B]" />
             <span className="hidden sm:inline">แม่แบบ</span>
           </button>
 
-          {/* A: Print / Export PDF Button */}
+          {/* Print / Export PDF */}
           {currentExhibition?.slug && (
             <button
               onClick={() => {
                 const printUrl = `/catalog/${currentExhibition.slug}?print=1`;
                 window.open(printUrl, '_blank', 'noopener');
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141413]/95 backdrop-blur-xl border border-[#C5A880]/30 text-xs text-[#A59F92] hover:text-white hover:bg-[#8B1B1B]/70 hover:border-[#8B1B1B] shadow-xl transition-all cursor-pointer"
-              title="พิมพ์ / ส่งออก PDF — เปิดหน้าสูจิบัตรพร้อม print dialog"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-xs font-medium text-[#555] hover:text-[#8B1B1B] hover:border-[#8B1B1B]/40 shadow-sm transition-all cursor-pointer"
+              title="พิมพ์ / ส่งออก PDF"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">พิมพ์ PDF</span>
             </button>
           )}
 
-          {/* View Catalog */}
+          {/* Live Catalog View */}
           {currentExhibition?.slug && (
             <Link
               href={`/catalog/${currentExhibition.slug}?preview=admin`}
               target="_blank"
-              className="p-2 rounded-full bg-[#141413]/95 backdrop-blur-xl border border-[#C5A880]/30 text-[#A59F92] hover:text-[#FAF9F6] shadow-xl transition-all"
+              className="p-2 rounded-full bg-white/92 backdrop-blur-xl border border-[#E6E0D4] text-[#666] hover:text-[#8B1B1B] shadow-sm transition-all"
               title="เปิดดูสูจิบัตรออนไลน์จริง"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -1412,8 +1452,8 @@ export function CatalogDesignerStudio({
           <button
             onClick={handleSaveTemplate}
             disabled={isSaving}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow-2xl transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-            title="บันทึกเลย์เอาต์ลงฐานข้อมูลและเครื่องเพื่อใช้งานจริง"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            title="บันทึกเลย์เอาต์ทั้งหมด"
           >
             <Save className="w-3.5 h-3.5" />
             <span>{isSaving ? 'กำลังบันทึก...' : 'บันทึก'}</span>
@@ -1422,10 +1462,10 @@ export function CatalogDesignerStudio({
       </header>
 
       {/* ========================================================================= */}
-      {/* 🧩 LEFT FLOATING MODULE DOCK (Quick Add Elements) */}
+      {/* 🧩 SLIM FLOATING MODULE DOCK (Left Quick Add) */}
       {/* ========================================================================= */}
       <div className="absolute left-4 top-20 bottom-20 z-30 flex flex-col items-start pointer-events-none">
-        <div className="bg-[#141413]/95 backdrop-blur-xl border border-[#C5A880]/30 rounded-2xl p-1.5 shadow-2xl flex flex-col gap-1 pointer-events-auto max-h-full overflow-y-auto custom-scrollbar">
+        <div className="bg-white/92 backdrop-blur-xl border border-[#E6E0D4] rounded-2xl p-1.5 shadow-md flex flex-col gap-1 pointer-events-auto max-h-full overflow-y-auto custom-scrollbar">
           {AVAILABLE_MODULES.map((mod) => {
             const IconComp = mod.icon;
             const isUsed = template.blocks.some((b) => b.type === mod.type);
@@ -1436,15 +1476,15 @@ export function CatalogDesignerStudio({
                 onClick={() => handleAddModule(mod.type)}
                 className={`group relative p-2 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                   isUsed
-                    ? 'bg-[#8B1B1B]/20 text-[#C5A880] border border-[#8B1B1B]/40 hover:bg-[#8B1B1B]/30'
-                    : 'text-[#A59F92] hover:text-[#FAF9F6] hover:bg-white/10'
+                    ? 'bg-[#8B1B1B]/10 text-[#8B1B1B] border border-[#8B1B1B]/20 hover:bg-[#8B1B1B]/15'
+                    : 'text-[#666] hover:text-[#111] hover:bg-black/5'
                 }`}
                 title={`เพิ่ม ${mod.label}`}
               >
                 <IconComp className="w-4 h-4" />
 
-                {/* Floating Tooltip on Hover */}
-                <div className="absolute left-full ml-2.5 px-2.5 py-1 bg-[#141413] text-[#FAF9F6] text-[11px] font-medium rounded-lg shadow-xl border border-[#C5A880]/30 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                {/* Floating Tooltip */}
+                <div className="absolute left-full ml-3 px-2.5 py-1 bg-[#1F1C17] text-white text-[11px] font-medium rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
                   + {mod.label}
                 </div>
               </button>
@@ -1460,36 +1500,36 @@ export function CatalogDesignerStudio({
         onClick={() => setSelectedBlockId(null)}
         className="w-full h-full overflow-auto p-12 flex flex-col items-center justify-center relative custom-scrollbar cursor-default"
       >
-        {/* Sample Artwork Switcher Pill (Floating Bottom-Right Corner) */}
+        {/* Floating Sample Artwork Switcher Pill */}
         <div
           onClick={(e) => e.stopPropagation()}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-[#141413]/90 backdrop-blur-xl px-3 py-1.5 rounded-full border border-[#C5A880]/40 shadow-floating text-xs transition-all hover:bg-[#141413] hover:border-[#C5A880]"
-          title="ตัวอย่างผลงานที่นำมาพรีวิวบนแม่แบบ (Sample Artwork)"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-white/92 backdrop-blur-xl px-3.5 py-1.5 rounded-full border border-[#E6E0D4] shadow-md text-xs transition-all hover:shadow-lg"
+          title="ตัวอย่างผลงานที่นำมาพรีวิวบนแม่แบบ"
         >
           <button
             onClick={() =>
-              setSampleArtworkIndex(
-                (prev) => (prev - 1 + (exhibitionArtworks.length || 1)) % (exhibitionArtworks.length || 1)
+              handleSelectArtworkIndex(
+                (sampleArtworkIndex - 1 + (exhibitionArtworks.length || 1)) % (exhibitionArtworks.length || 1)
               )
             }
-            className="p-1 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] transition-colors"
+            className="p-1 rounded-full hover:bg-black/5 text-[#666] hover:text-[#111] transition-colors cursor-pointer"
             title="ผลงานก่อนหน้า"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[11px] font-medium text-[#FAF9F6] truncate max-w-[140px] sm:max-w-[200px]" title={activeArtwork.title}>
+          <span className="text-[11px] font-semibold text-[#1F1C17] truncate max-w-[140px] sm:max-w-[200px]" title={activeArtwork.title}>
             {activeArtwork.title}
           </span>
           <button
             onClick={() =>
-              setSampleArtworkIndex((prev) => (prev + 1) % (exhibitionArtworks.length || 1))
+              handleSelectArtworkIndex((sampleArtworkIndex + 1) % (exhibitionArtworks.length || 1))
             }
-            className="p-1 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] transition-colors"
+            className="p-1 rounded-full hover:bg-black/5 text-[#666] hover:text-[#111] transition-colors cursor-pointer"
             title="ผลงานถัดไป"
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[10px] text-[#C5A880] font-mono font-bold pl-1 border-l border-white/10">
+          <span className="text-[10px] text-[#8B1B1B] font-mono font-bold pl-1.5 border-l border-[#E6E0D4]">
             ({exhibitionArtworks.length > 0 ? sampleArtworkIndex + 1 : 1}/{exhibitionArtworks.length || 1})
           </span>
         </div>
@@ -1504,9 +1544,11 @@ export function CatalogDesignerStudio({
           className="relative mt-8"
         >
           {/* Page Dimensions Header */}
-          <div className="absolute -top-5 left-0 right-0 flex justify-between text-[10px] font-mono text-[#6E685C]">
+          <div className="absolute -top-6 left-0 right-0 flex justify-between text-[11px] font-mono text-[#777]">
             <span>{template.pageWidthInches}&quot;</span>
-            <span className="text-[#8B1B1B] font-bold">{template.paperSize}</span>
+            <span className="text-[#8B1B1B] font-bold">
+              {template.paperSize} {isCurrentPageCustom && '• ✨ เฉพาะหน้า'}
+            </span>
             <span>{template.pageHeightInches}&quot;</span>
           </div>
 
@@ -1514,12 +1556,12 @@ export function CatalogDesignerStudio({
           <div
             ref={canvasRef}
             onClick={(e) => e.stopPropagation()}
-            className="relative shadow-2xl select-none overflow-hidden rounded-[2px]"
+            className="relative select-none overflow-hidden rounded-[2px]"
             style={{
-              width: `${template.pageWidthInches * 96}px`, // 96 CSS px per inch
+              width: `${template.pageWidthInches * 96}px`,
               height: `${template.pageHeightInches * 96}px`,
               backgroundColor: template.backgroundColor || '#FFFFFF',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px #333',
+              boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08)',
             }}
           >
             {/* 0.25-Inch Grid Lines */}
@@ -1528,15 +1570,15 @@ export function CatalogDesignerStudio({
                 className="absolute inset-0 pointer-events-none z-0"
                 style={{
                   backgroundImage: `
-                    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-                    linear-gradient(to right, rgba(139, 27, 27, 0.12) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(139, 27, 27, 0.12) 1px, transparent 1px)
+                    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                    linear-gradient(to right, rgba(139, 27, 27, 0.08) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(139, 27, 27, 0.08) 1px, transparent 1px)
                   `,
                   backgroundSize: `
                     24px 24px, 24px 24px,
                     96px 96px, 96px 96px
-                  `, // 24px = 0.25", 96px = 1.0"
+                  `,
                 }}
               />
             )}
@@ -1546,93 +1588,39 @@ export function CatalogDesignerStudio({
               <CatalogDynamicPlate
                 artwork={activeArtwork}
                 template={template}
-                pageNumber={1}
+                pageNumber={sampleArtworkIndex + 1}
                 selectedBlockId={selectedBlockId}
-                onImageNaturalRatio={(blockId, naturalRatio) => {
-                  if (!naturalRatio || isNaN(naturalRatio) || naturalRatio <= 0) return;
-                  setImageRatios((prev) => ({ ...prev, [blockId]: naturalRatio }));
-                  const target = template.blocks.find((b) => b.id === blockId);
-                  if (!target) return;
-                  const currentRatio = target.widthInches / (target.heightInches || 1);
-                  if (Math.abs(currentRatio - naturalRatio) > 0.02) {
-                    if (target.type === 'artwork_image') {
-                      const newH = snap(target.widthInches / naturalRatio);
-                      handleUpdateBlockProp(blockId, { heightInches: newH }, false);
-                    } else if (target.type === 'artist_photo') {
-                      const cappedH = Math.min(target.heightInches || 1.5, 1.5);
-                      const newW = snap(cappedH * naturalRatio);
-                      handleUpdateBlockProp(blockId, { widthInches: newW, heightInches: cappedH }, false);
-                    } else if (target.type === 'country_flag') {
-                      const newW = snap(target.heightInches * naturalRatio);
-                      handleUpdateBlockProp(blockId, { widthInches: newW }, false);
-                    }
-                  }
+                onImageNaturalRatio={(blockId, ratio) => {
+                  setImageRatios((prev) => ({ ...prev, [blockId]: ratio }));
                 }}
               />
             </div>
 
-            {/* 📏 SUBTLE THIN GRAY MARGIN GUIDELINE (Minimalist Drafting Guide) */}
-            {showMarginGuide && (() => {
-              const padTop = template.paddingInches?.top ?? 0.5;
-              const padBottom = template.paddingInches?.bottom ?? 0.5;
-              const padLeft = template.paddingInches?.left ?? 0.5;
-              const padRight = template.paddingInches?.right ?? 0.5;
+            {/* Margin Guide Outlines */}
+            {showMarginGuide && template.paddingInches && (
+              <div
+                className="absolute border border-dashed border-[#8B1B1B]/40 pointer-events-none z-15"
+                style={{
+                  top: `${(template.paddingInches.top || 0) * 96}px`,
+                  bottom: `${(template.paddingInches.bottom || 0) * 96}px`,
+                  left: `${(template.paddingInches.left || 0) * 96}px`,
+                  right: `${(template.paddingInches.right || 0) * 96}px`,
+                }}
+              >
+                <span className="absolute top-1 left-1 text-[8px] font-mono text-[#8B1B1B]/60 tracking-wider">
+                  MARGIN {(template.paddingInches.top || 0.5)}&quot;
+                </span>
+              </div>
+            )}
 
-              const topPx = padTop * 96;
-              const leftPx = padLeft * 96;
-              const widthPx = Math.max(0, (template.pageWidthInches - padLeft - padRight) * 96);
-              const heightPx = Math.max(0, (template.pageHeightInches - padTop - padBottom) * 96);
-
-              return (
-                <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden select-none">
-                  {/* Thin Dashed Gray Margin Box */}
-                  <div
-                    style={{
-                      top: `${topPx}px`,
-                      left: `${leftPx}px`,
-                      width: `${widthPx}px`,
-                      height: `${heightPx}px`,
-                    }}
-                    className="absolute border border-dashed border-[#8A867E]/70 flex flex-col justify-between p-1.5 pointer-events-none"
-                  >
-                    {/* Subtle Top-Left Margin Badge */}
-                    <div className="flex justify-between items-start">
-                      <span className="text-[8.5px] font-mono text-[#737067] tracking-wider select-none">
-                        margin: {padTop}&quot; ({padLeft}&quot;, {padRight}&quot;, {padBottom}&quot;)
-                      </span>
-                    </div>
-
-                    {/* Subtle Bottom-Right Dimension */}
-                    <div className="flex justify-end items-end">
-                      <span className="text-[8px] font-mono text-[#999] select-none">
-                        {(template.pageWidthInches - padLeft - padRight).toFixed(2)}&quot; × {(template.pageHeightInches - padTop - padBottom).toFixed(2)}&quot;
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Interactive Layer: Block Drag / Resize Bounding Boxes */}
+            {/* Interactive Block Overlays & Resize Handles */}
             <div className="absolute inset-0 z-20">
               {template.blocks.map((block) => {
-                const isSelected = selectedBlockId === block.id;
-
-                const leftPx = block.xInches * 96;
-                const topPx = block.yInches * 96;
-                const widthPx = block.widthInches * 96;
-                const heightPx = block.heightInches * 96;
-
-                const bStyle = block.style || {};
-                const cornerRadiusStyle =
-                  bStyle.borderTopLeftRadius !== undefined ||
-                  bStyle.borderTopRightRadius !== undefined ||
-                  bStyle.borderBottomRightRadius !== undefined ||
-                  bStyle.borderBottomLeftRadius !== undefined
-                    ? `${bStyle.borderTopLeftRadius || 0}px ${bStyle.borderTopRightRadius || 0}px ${bStyle.borderBottomRightRadius || 0}px ${bStyle.borderBottomLeftRadius || 0}px`
-                    : bStyle.borderRadius !== undefined
-                    ? `${bStyle.borderRadius}px`
-                    : undefined;
+                const isSelected = block.id === selectedBlockId;
+                const blockPxX = block.xInches * 96;
+                const blockPxY = block.yInches * 96;
+                const blockPxW = block.widthInches * 96;
+                const blockPxH = block.heightInches * 96;
 
                 return (
                   <div
@@ -1642,6 +1630,7 @@ export function CatalogDesignerStudio({
                       setSelectedBlockId(block.id);
                     }}
                     onMouseDown={(e) => {
+                      if (e.button !== 0) return;
                       e.stopPropagation();
                       setSelectedBlockId(block.id);
                       setDragState({
@@ -1656,72 +1645,43 @@ export function CatalogDesignerStudio({
                         initialBlockH: block.heightInches,
                       });
                     }}
+                    style={{
+                      left: `${blockPxX}px`,
+                      top: `${blockPxY}px`,
+                      width: `${blockPxW}px`,
+                      height: `${blockPxH}px`,
+                      zIndex: isSelected ? 50 : block.zIndex,
+                    }}
                     className={`absolute group cursor-move transition-shadow ${
                       isSelected
-                        ? 'ring-2 ring-[#8B1B1B]'
-                        : 'hover:ring-1 hover:ring-[#8C6D3F]/60'
+                        ? 'ring-2 ring-[#8B1B1B] ring-offset-1 bg-[#8B1B1B]/5'
+                        : 'hover:ring-1 hover:ring-[#8B1B1B]/40 hover:bg-[#8B1B1B]/5'
                     }`}
-                    style={{
-                      left: `${leftPx}px`,
-                      top: `${topPx}px`,
-                      width: `${widthPx}px`,
-                      height: `${heightPx}px`,
-                      borderRadius: cornerRadiusStyle,
-                      zIndex: isSelected ? 50 : block.zIndex || 1,
-                    }}
                   >
-                    {/* Block Label Tag */}
-                    {(isSelected || dragState?.blockId === block.id) && (
-                      <div className="absolute -top-5 left-0 bg-[#8B1B1B] text-white text-[10px] px-1.5 py-0.5 rounded-t font-mono flex items-center gap-1 shadow">
-                        <span>{block.label}</span>
-                        <span className="opacity-75 font-sans">
-                          ({block.widthInches}&quot;×{block.heightInches}&quot;)
-                        </span>
-                      </div>
-                    )}
+                    {/* Badge Label */}
+                    <div
+                      className={`absolute -top-4 left-0 px-1.5 py-0.2 rounded text-[8.5px] font-medium font-sans whitespace-nowrap transition-opacity pointer-events-none ${
+                        isSelected
+                          ? 'bg-[#8B1B1B] text-white opacity-100 shadow-xs'
+                          : 'bg-[#1F1C17]/80 text-white opacity-0 group-hover:opacity-100'
+                      }`}
+                    >
+                      {block.label} ({block.widthInches.toFixed(2)}&quot; × {block.heightInches.toFixed(2)}&quot;)
+                    </div>
 
-                    {/* Resize Handles on Selection */}
+                    {/* Resize Handles (8 Points) */}
                     {isSelected && (
                       <>
-                        {(['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'] as const).map((handle) => {
-                          let posStyle = '';
-                          let cursorStyle = '';
-
-                          switch (handle) {
-                            case 'nw':
-                              posStyle = '-top-1.5 -left-1.5';
-                              cursorStyle = 'cursor-nwse-resize';
-                              break;
-                            case 'ne':
-                              posStyle = '-top-1.5 -right-1.5';
-                              cursorStyle = 'cursor-nesw-resize';
-                              break;
-                            case 'se':
-                              posStyle = '-bottom-1.5 -right-1.5';
-                              cursorStyle = 'cursor-nwse-resize';
-                              break;
-                            case 'sw':
-                              posStyle = '-bottom-1.5 -left-1.5';
-                              cursorStyle = 'cursor-nesw-resize';
-                              break;
-                            case 'n':
-                              posStyle = '-top-1.5 left-1/2 -translate-x-1/2';
-                              cursorStyle = 'cursor-ns-resize';
-                              break;
-                            case 's':
-                              posStyle = '-bottom-1.5 left-1/2 -translate-x-1/2';
-                              cursorStyle = 'cursor-ns-resize';
-                              break;
-                            case 'w':
-                              posStyle = 'top-1/2 -left-1.5 -translate-y-1/2';
-                              cursorStyle = 'cursor-ew-resize';
-                              break;
-                            case 'e':
-                              posStyle = 'top-1/2 -right-1.5 -translate-y-1/2';
-                              cursorStyle = 'cursor-ew-resize';
-                              break;
-                          }
-
+                        {[
+                          { handle: 'nw', posStyle: '-top-1 -left-1', cursorStyle: 'cursor-nwse-resize' },
+                          { handle: 'ne', posStyle: '-top-1 -right-1', cursorStyle: 'cursor-nesw-resize' },
+                          { handle: 'se', posStyle: '-bottom-1 -right-1', cursorStyle: 'cursor-nwse-resize' },
+                          { handle: 'sw', posStyle: '-bottom-1 -left-1', cursorStyle: 'cursor-nesw-resize' },
+                          { handle: 'n', posStyle: '-top-1 left-1/2 -translate-x-1/2', cursorStyle: 'cursor-ns-resize' },
+                          { handle: 's', posStyle: '-bottom-1 left-1/2 -translate-x-1/2', cursorStyle: 'cursor-ns-resize' },
+                          { handle: 'w', posStyle: 'top-1/2 -left-1 -translate-y-1/2', cursorStyle: 'cursor-ew-resize' },
+                          { handle: 'e', posStyle: 'top-1/2 -right-1 -translate-y-1/2', cursorStyle: 'cursor-ew-resize' },
+                        ].map(({ handle, posStyle, cursorStyle }) => {
                           return (
                             <div
                               key={handle}
@@ -1731,7 +1691,7 @@ export function CatalogDesignerStudio({
                                   blockId: block.id,
                                   isDragging: false,
                                   isResizing: true,
-                                  resizeHandle: handle,
+                                  resizeHandle: handle as any,
                                   startX: e.clientX,
                                   startY: e.clientY,
                                   initialBlockX: block.xInches,
@@ -1740,7 +1700,7 @@ export function CatalogDesignerStudio({
                                   initialBlockH: block.heightInches,
                                 });
                               }}
-                              className={`absolute w-2.5 h-2.5 bg-white border border-[#8B1B1B] rounded-full shadow-sm z-30 ${posStyle} ${cursorStyle}`}
+                              className={`absolute w-2.5 h-2.5 bg-white border border-[#8B1B1B] rounded-full shadow-xs z-30 ${posStyle} ${cursorStyle}`}
                             />
                           );
                         })}
@@ -1755,44 +1715,45 @@ export function CatalogDesignerStudio({
       </main>
 
       {/* ========================================================================= */}
-      {/* 📋 F: MULTI-PAGE PREVIEW PANEL (Right Sidebar – Collapsible) */}
+      {/* 📋 MULTI-PAGE PREVIEW PANEL (Right Sidebar) */}
       {/* ========================================================================= */}
       {isPagesPanelOpen && exhibitionArtworks.length > 0 && (
         <div
           onClick={(e) => e.stopPropagation()}
           className="fixed right-4 top-20 bottom-20 z-30 flex flex-col pointer-events-auto"
         >
-          <div className="bg-[#141413]/95 backdrop-blur-xl border border-[#C5A880]/30 rounded-2xl p-2 shadow-2xl flex flex-col gap-1.5 w-28 max-h-full overflow-y-auto custom-scrollbar">
+          <div className="bg-white/92 backdrop-blur-xl border border-[#E6E0D4] rounded-2xl p-2 shadow-md flex flex-col gap-1.5 w-28 max-h-full overflow-y-auto custom-scrollbar">
             {/* Panel Header */}
-            <div className="text-[10px] uppercase font-bold text-[#C5A880] tracking-wider text-center pb-1.5 border-b border-white/10">
+            <div className="text-[10px] uppercase font-bold text-[#8B1B1B] tracking-wider text-center pb-1.5 border-b border-[#E6E0D4]">
               {exhibitionArtworks.length} หน้า
             </div>
 
             {/* Artwork Thumbnails */}
             {exhibitionArtworks.map((art, idx) => {
               const isActive = idx === sampleArtworkIndex % exhibitionArtworks.length;
+              const hasCustomLayout = Boolean(pageOverrides[art.id]);
+
               return (
                 <button
                   key={art.id}
-                  onClick={() => setSampleArtworkIndex(idx)}
+                  onClick={() => handleSelectArtworkIndex(idx)}
                   className={`relative group flex flex-col items-center gap-1 p-1.5 rounded-xl cursor-pointer transition-all ${
                     isActive
-                      ? 'bg-[#8B1B1B]/30 ring-1 ring-[#8B1B1B]'
-                      : 'hover:bg-white/5 hover:ring-1 hover:ring-[#C5A880]/30'
+                      ? 'bg-[#8B1B1B]/10 ring-2 ring-[#8B1B1B]'
+                      : 'hover:bg-black/5'
                   }`}
-                  title={`หน้า ${idx + 1}: ${art.title}`}
+                  title={`หน้า ${idx + 1}: ${art.title} ${hasCustomLayout ? '(จัดเฉพาะหน้า)' : ''}`}
                 >
                   {/* Miniature Canvas Preview */}
                   <div
-                    className="relative w-full overflow-hidden rounded shadow-md"
+                    className="relative w-full overflow-hidden rounded shadow-xs"
                     style={{
                       aspectRatio: `${template.pageWidthInches} / ${template.pageHeightInches}`,
                       backgroundColor: template.backgroundColor || '#FFFFFF',
-                      border: isActive ? '1px solid #8B1B1B' : '1px solid rgba(255,255,255,0.1)',
+                      border: isActive ? '1px solid #8B1B1B' : '1px solid rgba(0,0,0,0.1)',
                     }}
                   >
                     {art.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={art.imageUrl}
                         alt={art.title}
@@ -1801,13 +1762,19 @@ export function CatalogDesignerStudio({
                       />
                     )}
                     {/* Page Number Badge */}
-                    <div className={`absolute bottom-0.5 right-0.5 text-[7px] font-bold px-1 rounded ${isActive ? 'bg-[#8B1B1B] text-white' : 'bg-black/50 text-white/70'}`}>
+                    <div className={`absolute bottom-0.5 right-0.5 text-[7px] font-bold px-1 rounded ${isActive ? 'bg-[#8B1B1B] text-white' : 'bg-black/60 text-white'}`}>
                       {idx + 1}
                     </div>
+                    {/* Custom Page Indicator */}
+                    {hasCustomLayout && (
+                      <div className="absolute top-0.5 left-0.5 text-[6.5px] font-bold px-1 rounded bg-[#8B1B1B] text-white">
+                        ✨
+                      </div>
+                    )}
                   </div>
 
-                  {/* Artwork Title (truncated) */}
-                  <span className={`text-[8.5px] leading-tight text-center line-clamp-2 w-full ${isActive ? 'text-[#C5A880] font-semibold' : 'text-[#A59F92]'}`}>
+                  {/* Artwork Title */}
+                  <span className={`text-[8.5px] leading-tight text-center line-clamp-2 w-full ${isActive ? 'text-[#8B1B1B] font-bold' : 'text-[#666]'}`}>
                     {art.title}
                   </span>
                 </button>
@@ -1818,42 +1785,42 @@ export function CatalogDesignerStudio({
       )}
 
       {/* ========================================================================= */}
-      {/* 🎛️ SLEEK CONTEXTUAL INSPECTOR PILL (Appears on Selected Block) */}
+      {/* 🎛️ AIRY CONTEXTUAL INSPECTOR PILL (Selected Block) */}
       {/* ========================================================================= */}
       {selectedBlock && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#141413]/95 backdrop-blur-2xl border border-[#C5A880]/40 rounded-2xl p-2 px-4 shadow-2xl flex flex-wrap items-center gap-3 animate-slide-up text-xs"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-2xl border border-[#E6E0D4] rounded-2xl p-2 px-4 shadow-xl flex flex-wrap items-center gap-3 text-xs text-[#1F1C17] max-w-[95vw] overflow-x-auto"
         >
           {/* Block Label & Quick Actions */}
-          <div className="flex items-center gap-2 pr-2 border-r border-white/10">
-            <span className="font-bold text-[#C5A880]">{selectedBlock.label}</span>
+          <div className="flex items-center gap-2 pr-2 border-r border-[#E6E0D4]">
+            <span className="font-bold text-[#8B1B1B]">{selectedBlock.label}</span>
             <button
               onClick={() => handleDuplicateBlock(selectedBlock.id)}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
+              className="p-1.5 rounded-lg hover:bg-black/5 text-[#666] hover:text-[#111]"
               title="ทำสำเนา"
             >
               <Copy className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => handleDeleteBlock(selectedBlock.id)}
-              className="p-1.5 rounded-lg hover:bg-red-500/20 text-[#A59F92] hover:text-red-400"
+              className="p-1.5 rounded-lg hover:bg-red-50 text-[#666] hover:text-red-600"
               title="ลบ"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* ACTIVE ALIGNMENT BUTTONS (Left, Center, Right, Justify) */}
-          <div className="flex items-center gap-0.5 bg-[#1F1C17] p-1 rounded-xl border border-white/10">
+          {/* Alignment */}
+          <div className="flex items-center gap-0.5 bg-[#F8F7F4] p-0.5 rounded-xl border border-[#E6E0D4]">
             <button
               onClick={() => handleSetAlignment('left')}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                (selectedBlock.style.textAlign || 'left') === 'left'
-                  ? 'bg-[#8B1B1B] text-white shadow'
-                  : 'text-[#A59F92] hover:text-[#FAF9F6]'
+                selectedBlock.style.textAlign === 'left' || !selectedBlock.style.textAlign
+                  ? 'bg-[#8B1B1B] text-white shadow-xs'
+                  : 'text-[#666] hover:text-[#111]'
               }`}
-              title="จัดชิดซ้าย (Align Left)"
+              title="จัดชิดซ้าย"
             >
               <AlignLeft className="w-3.5 h-3.5" />
             </button>
@@ -1861,10 +1828,10 @@ export function CatalogDesignerStudio({
               onClick={() => handleSetAlignment('center')}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                 selectedBlock.style.textAlign === 'center'
-                  ? 'bg-[#8B1B1B] text-white shadow'
-                  : 'text-[#A59F92] hover:text-[#FAF9F6]'
+                  ? 'bg-[#8B1B1B] text-white shadow-xs'
+                  : 'text-[#666] hover:text-[#111]'
               }`}
-              title="จัดกึ่งกลาง (Align Center)"
+              title="จัดกึ่งกลาง"
             >
               <AlignCenter className="w-3.5 h-3.5" />
             </button>
@@ -1872,10 +1839,10 @@ export function CatalogDesignerStudio({
               onClick={() => handleSetAlignment('right')}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                 selectedBlock.style.textAlign === 'right'
-                  ? 'bg-[#8B1B1B] text-white shadow'
-                  : 'text-[#A59F92] hover:text-[#FAF9F6]'
+                  ? 'bg-[#8B1B1B] text-white shadow-xs'
+                  : 'text-[#666] hover:text-[#111]'
               }`}
-              title="จัดชิดขวา (Align Right)"
+              title="จัดชิดขวา"
             >
               <AlignRight className="w-3.5 h-3.5" />
             </button>
@@ -1883,412 +1850,100 @@ export function CatalogDesignerStudio({
               onClick={() => handleSetAlignment('justify')}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                 selectedBlock.style.textAlign === 'justify'
-                  ? 'bg-[#8B1B1B] text-white shadow'
-                  : 'text-[#A59F92] hover:text-[#FAF9F6]'
+                  ? 'bg-[#8B1B1B] text-white shadow-xs'
+                  : 'text-[#666] hover:text-[#111]'
               }`}
-              title="จัดเต็มบรรทัด (Align Justify)"
+              title="จัดเต็มบรรทัด (Justify)"
             >
               <AlignJustify className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* Page Center Shortcut */}
-          <div className="flex items-center gap-1">
+          {/* Center Page */}
+          <div className="flex items-center gap-1 border-r border-[#E6E0D4] pr-2">
             <button
-              onClick={handleSnapCenterHorizontal}
-              className="p-1.5 rounded-lg bg-[#1F1C17] border border-white/10 text-[#A59F92] hover:text-[#FAF9F6] hover:border-[#C5A880]"
-              title="จัดกึ่งกลางหน้ากระดาษ (Center on Page)"
+              onClick={() => handleCenterBlock('h')}
+              className="p-1.5 rounded-lg hover:bg-black/5 text-[#666] hover:text-[#111]"
+              title="จัดกึ่งกลางแนวนอนของหน้า"
             >
               <AlignCenterHorizontal className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={handleSnapCenterVertical}
-              className="p-1.5 rounded-lg bg-[#1F1C17] border border-white/10 text-[#A59F92] hover:text-[#FAF9F6] hover:border-[#C5A880]"
-              title="จัดกึ่งกลางแนวตั้งบนหน้ากระดาษ"
+              onClick={() => handleCenterBlock('v')}
+              className="p-1.5 rounded-lg hover:bg-black/5 text-[#666] hover:text-[#111]"
+              title="จัดกึ่งกลางแนวตั้งของหน้า"
             >
               <AlignCenterVertical className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          {/* 📏 COMPACT PERCENTAGE SCALE TYPING INPUT (ประหยัดพื้นที่) */}
-          <div className="flex items-center gap-1 bg-[#1F1C17] px-2 py-1 rounded-xl border border-white/10 text-xs">
-            <span className="text-[10px] text-[#C5A880] font-mono font-bold flex items-center gap-1">
-              <Percent className="w-3 h-3 text-[#C5A880]" />
-              <span>สเกล:</span>
-            </span>
-
-            <div className="flex items-center bg-black/40 border border-white/10 rounded-lg px-1.5 py-0.5">
-              <input
-                type="number"
-                min="10"
-                max="400"
-                step="5"
-                placeholder="100"
-                defaultValue="100"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const targetVal = parseFloat((e.target as HTMLInputElement).value);
-                    if (!isNaN(targetVal) && targetVal > 0) {
-                      handleScaleBlockPercent(targetVal - 100);
-                      (e.target as HTMLInputElement).value = '100';
-                    }
-                  }
-                }}
-                className="w-10 bg-transparent text-xs font-mono text-[#FAF9F6] text-center focus:outline-none placeholder-neutral-500"
-                title="พิมพ์ % แล้วกด Enter เพื่อย่อ/ขยาย เช่น 80 หรือ 120"
-              />
-              <span className="text-[10px] text-[#A59F92] font-mono">%</span>
-            </div>
-
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => handleScaleBlockPercent(-5)}
-                className="w-5 h-5 flex items-center justify-center rounded bg-black/40 hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] font-mono text-[10px] cursor-pointer"
-                title="ลดขนาด -5%"
-              >
-                -
-              </button>
-              <button
-                onClick={() => handleScaleBlockPercent(+5)}
-                className="w-5 h-5 flex items-center justify-center rounded bg-black/40 hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] font-mono text-[10px] cursor-pointer"
-                title="เพิ่มขนาด +5%"
-              >
-                +
-              </button>
-            </div>
-
-            <div className="text-[10px] text-[#A59F92] font-mono px-1 border-l border-white/10 hidden md:inline">
-              {selectedBlock.widthInches.toFixed(2)}&quot;×{selectedBlock.heightInches.toFixed(2)}&quot;
-            </div>
+          {/* Layer Order */}
+          <div className="flex items-center gap-1 border-r border-[#E6E0D4] pr-2">
+            <button
+              onClick={() => handleZIndex('front')}
+              className="p-1.5 rounded-lg hover:bg-black/5 text-[#666] hover:text-[#111]"
+              title="นำมาไว้หน้าสุด (Bring to Front)"
+            >
+              <BringToFront className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => handleZIndex('back')}
+              className="p-1.5 rounded-lg hover:bg-black/5 text-[#666] hover:text-[#111]"
+              title="ส่งไปไว้หลังสุด (Send to Back)"
+            >
+              <SendToBack className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {/* 🔘 CORNER RADIUS CONTROLS (ความโค้งมนของแต่ละมุม สำหรับ รูปศิลปิน, กรอบรูป, กล่องข้อความ, รูป Footer) */}
-          {['artist_photo', 'artwork_image', 'custom_box', 'country_flag', 'footer_graphic'].includes(selectedBlock.type) && (
-            <div className="flex items-center gap-1.5 bg-[#1F1C17] px-2 py-1 rounded-xl border border-white/10 text-xs">
-              <span className="text-[10px] text-[#C5A880] font-mono font-bold flex items-center gap-1">
-                <Square className="w-3 h-3 text-[#C5A880]" />
-                <span>มุมมน:</span>
-              </span>
-
-              {/* All Corners / Master Radius */}
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  min="0"
-                  max="9999"
-                  value={selectedBlock.style.borderRadius ?? (selectedBlock.type === 'artist_photo' ? 8 : 0)}
-                  onChange={(e) => {
-                    const r = parseInt(e.target.value) || 0;
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      {
-                        style: {
-                          ...selectedBlock.style,
-                          borderRadius: r,
-                          borderTopLeftRadius: undefined,
-                          borderTopRightRadius: undefined,
-                          borderBottomRightRadius: undefined,
-                          borderBottomLeftRadius: undefined,
-                        },
-                      },
-                      true
-                    );
-                  }}
-                  className="w-10 bg-black/40 border border-white/10 rounded-lg px-1 py-0.5 text-xs font-mono text-[#FAF9F6] text-center focus:outline-none"
-                  title="ความโค้งมนทุกมุม (px)"
-                />
-                <span className="text-[10px] text-[#A59F92]">px</span>
-              </div>
-
-              {/* Quick Presets */}
-              <div className="flex items-center gap-0.5 border-l border-white/10 pl-1">
-                <button
-                  onClick={() =>
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      {
-                        style: {
-                          ...selectedBlock.style,
-                          borderRadius: 0,
-                          borderTopLeftRadius: undefined,
-                          borderTopRightRadius: undefined,
-                          borderBottomRightRadius: undefined,
-                          borderBottomLeftRadius: undefined,
-                        },
-                      },
-                      true
-                    )
-                  }
-                  className="px-1.5 py-0.5 rounded text-[10px] bg-black/30 hover:bg-white/10 text-[#A59F92] hover:text-white"
-                  title="เหลี่ยมคม (0px)"
-                >
-                  เหลี่ยม
-                </button>
-                <button
-                  onClick={() =>
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      {
-                        style: {
-                          ...selectedBlock.style,
-                          borderRadius: 8,
-                          borderTopLeftRadius: undefined,
-                          borderTopRightRadius: undefined,
-                          borderBottomRightRadius: undefined,
-                          borderBottomLeftRadius: undefined,
-                        },
-                      },
-                      true
-                    )
-                  }
-                  className="px-1.5 py-0.5 rounded text-[10px] bg-black/30 hover:bg-white/10 text-[#A59F92] hover:text-white"
-                  title="มนมาตรฐาน (8px)"
-                >
-                  มน 8
-                </button>
-                <button
-                  onClick={() =>
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      {
-                        style: {
-                          ...selectedBlock.style,
-                          borderRadius: 16,
-                          borderTopLeftRadius: undefined,
-                          borderTopRightRadius: undefined,
-                          borderBottomRightRadius: undefined,
-                          borderBottomLeftRadius: undefined,
-                        },
-                      },
-                      true
-                    )
-                  }
-                  className="px-1.5 py-0.5 rounded text-[10px] bg-black/30 hover:bg-white/10 text-[#A59F92] hover:text-white"
-                  title="มนมาก (16px)"
-                >
-                  มน 16
-                </button>
-                <button
-                  onClick={() =>
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      {
-                        style: {
-                          ...selectedBlock.style,
-                          borderRadius: 9999,
-                          borderTopLeftRadius: undefined,
-                          borderTopRightRadius: undefined,
-                          borderBottomRightRadius: undefined,
-                          borderBottomLeftRadius: undefined,
-                        },
-                      },
-                      true
-                    )
-                  }
-                  className="px-1.5 py-0.5 rounded text-[10px] bg-black/30 hover:bg-white/10 text-[#A59F92] hover:text-white font-mono"
-                  title="วงกลม / ทรงรี (9999px)"
-                >
-                  วงกลม
-                </button>
-              </div>
-
-              {/* 4 Corners Specific (TL, TR, BR, BL) */}
-              <div className="flex items-center gap-0.5 border-l border-white/10 pl-1.5" title="กำหนดความโค้งมนแยก 4 มุม: บนซ้าย, บนขวา, ล่างขวา, ล่างซ้าย">
-                <input
-                  type="number"
-                  placeholder="TL"
-                  value={selectedBlock.style.borderTopLeftRadius ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      { style: { ...selectedBlock.style, borderTopLeftRadius: val } },
-                      true
-                    );
-                  }}
-                  className="w-7 bg-black/50 border border-white/10 rounded px-0.5 py-0.5 text-[9px] font-mono text-center text-[#FAF9F6] focus:outline-none"
-                  title="บนซ้าย (Top-Left px)"
-                />
-                <input
-                  type="number"
-                  placeholder="TR"
-                  value={selectedBlock.style.borderTopRightRadius ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      { style: { ...selectedBlock.style, borderTopRightRadius: val } },
-                      true
-                    );
-                  }}
-                  className="w-7 bg-black/50 border border-white/10 rounded px-0.5 py-0.5 text-[9px] font-mono text-center text-[#FAF9F6] focus:outline-none"
-                  title="บนขวา (Top-Right px)"
-                />
-                <input
-                  type="number"
-                  placeholder="BR"
-                  value={selectedBlock.style.borderBottomRightRadius ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      { style: { ...selectedBlock.style, borderBottomRightRadius: val } },
-                      true
-                    );
-                  }}
-                  className="w-7 bg-black/50 border border-white/10 rounded px-0.5 py-0.5 text-[9px] font-mono text-center text-[#FAF9F6] focus:outline-none"
-                  title="ล่างขวา (Bottom-Right px)"
-                />
-                <input
-                  type="number"
-                  placeholder="BL"
-                  value={selectedBlock.style.borderBottomLeftRadius ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      { style: { ...selectedBlock.style, borderBottomLeftRadius: val } },
-                      true
-                    );
-                  }}
-                  className="w-7 bg-black/50 border border-white/10 rounded px-0.5 py-0.5 text-[9px] font-mono text-center text-[#FAF9F6] focus:outline-none"
-                  title="ล่างซ้าย (Bottom-Left px)"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* E: 💧 UNIVERSAL OPACITY CONTROL (All Block Types) */}
-          <div className="flex items-center gap-1.5 bg-[#1F1C17] px-2 py-1 rounded-xl border border-white/10 text-xs">
-            <span className="text-[10px] text-[#C5A880] font-bold flex items-center gap-1">
-              <Eye className="w-3 h-3" />
-              <span>Opacity:</span>
-            </span>
+          {/* Dimensions & Positions */}
+          <div className="flex items-center gap-1.5 bg-[#F8F7F4] px-2 py-1 rounded-xl border border-[#E6E0D4] text-[11px] font-mono">
+            <span className="text-[#777]">X:</span>
             <input
-              type="range"
-              min="10"
-              max="100"
-              step="5"
-              value={Math.round((selectedBlock.style.opacity ?? 1) * 100)}
-              onChange={(e) => {
-                const op = parseInt(e.target.value) / 100;
-                handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, opacity: op } }, true);
-              }}
-              className="w-20 accent-[#C5A880] h-1 bg-black/40 rounded cursor-pointer"
-              title="ปรับความโปร่งแสง (Opacity)"
+              type="number"
+              step="0.125"
+              value={selectedBlock.xInches}
+              onChange={(e) =>
+                handleUpdateBlockProp(selectedBlock.id, { xInches: parseFloat(e.target.value) || 0 })
+              }
+              className="w-10 bg-transparent text-[#1F1C17] text-right focus:outline-none"
             />
-            <span className="text-[10px] font-mono text-[#C5A880] w-7 text-right">
-              {Math.round((selectedBlock.style.opacity ?? 1) * 100)}%
-            </span>
+            <span className="text-[#777]">Y:</span>
+            <input
+              type="number"
+              step="0.125"
+              value={selectedBlock.yInches}
+              onChange={(e) =>
+                handleUpdateBlockProp(selectedBlock.id, { yInches: parseFloat(e.target.value) || 0 })
+              }
+              className="w-10 bg-transparent text-[#1F1C17] text-right focus:outline-none"
+            />
+            <span className="text-[#777] ml-1">W:</span>
+            <input
+              type="number"
+              step="0.125"
+              value={selectedBlock.widthInches}
+              onChange={(e) =>
+                handleUpdateBlockProp(selectedBlock.id, { widthInches: parseFloat(e.target.value) || 0.5 })
+              }
+              className="w-10 bg-transparent text-[#1F1C17] text-right focus:outline-none"
+            />
+            <span className="text-[#777]">H:</span>
+            <input
+              type="number"
+              step="0.125"
+              value={selectedBlock.heightInches}
+              onChange={(e) =>
+                handleUpdateBlockProp(selectedBlock.id, { heightInches: parseFloat(e.target.value) || 0.2 })
+              }
+              className="w-10 bg-transparent text-[#1F1C17] text-right focus:outline-none"
+            />
           </div>
 
-          {/* 🖼️ FOOTER GRAPHIC CONTROLS (ใส่รูปปกติ หรือ ไล่น้ำหนักจากเข้มขึ้นไปบางกลืนกระดาษ) */}
-          {selectedBlock.type === 'footer_graphic' && (
-            <div className="flex items-center gap-2 pl-2 border-l border-white/10 text-xs">
-              {/* Upload Image for Footer */}
-              <label
-                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#1F1C17] hover:bg-white/10 border border-[#C5A880]/30 hover:border-[#C5A880] rounded-xl text-[#C5A880] text-xs font-semibold cursor-pointer transition-all"
-                title="อัปโหลดรูปภาพ / แบนเนอร์ Footer จากเครื่อง"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>{selectedBlock.customContent || selectedBlock.style.imageUrl ? 'เปลี่ยนรูป Footer' : 'เลือกรูป Footer'}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      if (event.target?.result) {
-                        handleUpdateBlockProp(
-                          selectedBlock.id,
-                          {
-                            customContent: event.target.result as string,
-                            style: { ...selectedBlock.style, imageUrl: event.target.result as string },
-                          },
-                          true
-                        );
-                      }
-                    };
-                    reader.readAsDataURL(file);
-                  }}
-                  className="hidden"
-                />
-              </label>
-
-              {/* Mode Toggle: รูปปกติ (Solid) vs ไล่น้ำหนักกลืนกระดาษ (Fade to Paper) */}
-              <div className="flex items-center bg-[#1F1C17] border border-[#C5A880]/30 rounded-xl p-0.5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      { style: { ...selectedBlock.style, footerEffect: 'solid' } },
-                      true
-                    )
-                  }
-                  className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    !selectedBlock.style.footerEffect || selectedBlock.style.footerEffect === 'solid'
-                      ? 'bg-[#8B1B1B] text-white shadow'
-                      : 'text-[#A59F92] hover:text-[#FAF9F6]'
-                  }`}
-                  title="แสดงภาพปกติ คมชัด 100%"
-                >
-                  รูปปกติ
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      { style: { ...selectedBlock.style, footerEffect: 'gradient_fade' } },
-                      true
-                    )
-                  }
-                  className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                    selectedBlock.style.footerEffect === 'gradient_fade'
-                      ? 'bg-[#8B1B1B] text-white shadow'
-                      : 'text-[#A59F92] hover:text-[#FAF9F6]'
-                  }`}
-                  title="ไล่น้ำหนักจากเข้มขึ้นไปบาง จนกลืนเข้ากับเนื้อกระดาษอย่างนุ่มนวล"
-                >
-                  ไล่น้ำหนักกลืนกระดาษ 🌫️
-                </button>
-              </div>
-
-              {/* Opacity Control */}
-              <div className="flex items-center gap-1 bg-[#1F1C17] border border-white/10 rounded-xl px-2 py-1">
-                <span className="text-[10px] text-[#A59F92]">ความเข้ม:</span>
-                <input
-                  type="range"
-                  min="10"
-                  max="100"
-                  step="5"
-                  value={Math.round((selectedBlock.style.opacity ?? 1) * 100)}
-                  onChange={(e) => {
-                    const op = parseInt(e.target.value) / 100;
-                    handleUpdateBlockProp(
-                      selectedBlock.id,
-                      { style: { ...selectedBlock.style, opacity: op } },
-                      true
-                    );
-                  }}
-                  className="w-16 accent-[#C5A880] h-1 bg-black/40 rounded cursor-pointer"
-                  title="ปรับความโปร่งแสง / ความเข้มของภาพ Footer"
-                />
-                <span className="text-[10px] font-mono text-[#C5A880]">
-                  {Math.round((selectedBlock.style.opacity ?? 1) * 100)}%
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Typography (For text blocks) */}
+          {/* Typography Controls */}
           {['artwork_title', 'artist_name', 'artist_email', 'medium', 'dimensions', 'year_created', 'price', 'concept', 'page_number', 'custom_text'].includes(
             selectedBlock.type
           ) && (
-            <div className="flex items-center gap-2 pl-2 border-l border-white/10">
+            <div className="flex items-center gap-2 pl-2 border-l border-[#E6E0D4]">
               {/* Font Family */}
               <select
                 value={selectedBlock.style.fontFamily || 'Maitree'}
@@ -2299,7 +1954,7 @@ export function CatalogDesignerStudio({
                     true
                   )
                 }
-                className="bg-[#1F1C17] border border-[#C5A880]/30 rounded-lg px-2 py-1 text-xs text-[#FAF9F6] focus:outline-none"
+                className="bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1 text-xs text-[#1F1C17] focus:outline-none"
               >
                 <option value="Maitree">Maitree (เพาะช่าง)</option>
                 <option value="Sarabun">Sarabun (ทางการ)</option>
@@ -2309,7 +1964,7 @@ export function CatalogDesignerStudio({
               </select>
 
               {/* Font Size */}
-              <div className="flex items-center bg-[#1F1C17] border border-[#C5A880]/30 rounded-lg px-2 py-1">
+              <div className="flex items-center bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg px-2 py-1">
                 <input
                   type="number"
                   min="6"
@@ -2322,13 +1977,13 @@ export function CatalogDesignerStudio({
                       true
                     )
                   }
-                  className="w-8 bg-transparent text-xs font-mono text-[#FAF9F6] text-center focus:outline-none"
+                  className="w-8 bg-transparent text-xs font-mono text-[#1F1C17] text-center focus:outline-none"
                 />
-                <span className="text-[10px] text-[#A59F92]">pt</span>
+                <span className="text-[10px] text-[#777]">pt</span>
               </div>
 
-              {/* Font Weight: บาง (Light) / ปกติ (Regular) / หนา (Bold) */}
-              <div className="flex items-center bg-[#1F1C17] border border-[#C5A880]/30 rounded-lg p-0.5 text-xs">
+              {/* Font Weight */}
+              <div className="flex items-center bg-[#F8F7F4] border border-[#E6E0D4] rounded-lg p-0.5 text-xs">
                 <button
                   onClick={() =>
                     handleUpdateBlockProp(
@@ -2337,12 +1992,12 @@ export function CatalogDesignerStudio({
                       true
                     )
                   }
-                  className={`px-2 py-1 rounded text-[11px] font-light transition-all cursor-pointer ${
+                  className={`px-2 py-0.5 rounded text-[11px] font-light transition-all cursor-pointer ${
                     selectedBlock.style.fontWeight === 'light'
-                      ? 'bg-[#8B1B1B] text-white font-bold shadow'
-                      : 'text-[#A59F92] hover:text-[#FAF9F6]'
+                      ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
+                      : 'text-[#666] hover:text-[#111]'
                   }`}
-                  title="ตัวบาง (Light - 300)"
+                  title="ตัวบาง"
                 >
                   บาง
                 </button>
@@ -2354,12 +2009,12 @@ export function CatalogDesignerStudio({
                       true
                     )
                   }
-                  className={`px-2 py-1 rounded text-[11px] font-normal transition-all cursor-pointer ${
+                  className={`px-2 py-0.5 rounded text-[11px] font-normal transition-all cursor-pointer ${
                     !selectedBlock.style.fontWeight || selectedBlock.style.fontWeight === 'normal'
-                      ? 'bg-[#8B1B1B] text-white font-bold shadow'
-                      : 'text-[#A59F92] hover:text-[#FAF9F6]'
+                      ? 'bg-[#8B1B1B] text-white font-bold shadow-xs'
+                      : 'text-[#666] hover:text-[#111]'
                   }`}
-                  title="ตัวปกติ (Regular - 400)"
+                  title="ตัวปกติ"
                 >
                   ปกติ
                 </button>
@@ -2371,356 +2026,124 @@ export function CatalogDesignerStudio({
                       true
                     )
                   }
-                  className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
                     selectedBlock.style.fontWeight === 'bold' || selectedBlock.style.fontWeight === 'semibold' || selectedBlock.style.fontWeight === 'black'
-                      ? 'bg-[#8B1B1B] text-white shadow'
-                      : 'text-[#A59F92] hover:text-[#FAF9F6]'
+                      ? 'bg-[#8B1B1B] text-white shadow-xs'
+                      : 'text-[#666] hover:text-[#111]'
                   }`}
-                  title="ตัวหนา (Bold - 700)"
+                  title="ตัวหนา"
                 >
                   หนา
                 </button>
               </div>
 
-              {/* Italic Toggle (ตัวเอียง) */}
-              <button
-                onClick={() => {
-                  const isItalic = selectedBlock.style.fontStyle === 'italic';
-                  handleUpdateBlockProp(
-                    selectedBlock.id,
-                    { style: { ...selectedBlock.style, fontStyle: isItalic ? 'normal' : 'italic' } },
-                    true
-                  );
-                }}
-                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                  selectedBlock.style.fontStyle === 'italic'
-                    ? 'bg-[#8B1B1B] text-white border-[#8B1B1B] shadow'
-                    : 'bg-[#1F1C17] border-[#C5A880]/30 text-[#A59F92] hover:text-[#FAF9F6]'
-                }`}
-                title="ตัวเอียง (Italic)"
-              >
-                <Italic className="w-3.5 h-3.5" />
-              </button>
-
-              {/* CMYK Color Studio Swatch Button */}
-              {(() => {
-                const cmyk = selectedBlock.style.cmyk || hexToCmyk(selectedBlock.style.color || '#1F1C17');
-                const hexColor = cmykToHex(cmyk.c, cmyk.m, cmyk.y, cmyk.k);
-
-                return (
-                  <div className="relative">
-                    <button
-                      onClick={() => setIsCmykModalOpen(!isCmykModalOpen)}
-                      className="flex items-center gap-1.5 px-2 py-1 bg-[#1F1C17] border border-[#C5A880]/40 hover:border-[#C5A880] rounded-lg transition-all cursor-pointer text-xs"
-                      title="เลือกและปรับแต่งค่าสี CMYK สำหรับสิ่งพิมพ์"
-                    >
-                      <div
-                        className="w-4 h-4 rounded border border-white/30 shadow-xs"
-                        style={{ backgroundColor: hexColor }}
-                      />
-                      <span className="font-mono text-[10px] text-[#C5A880] font-semibold">
-                        C{cmyk.c} M{cmyk.m} Y{cmyk.y} K{cmyk.k}
-                      </span>
-                    </button>
-
-                    {/* CMYK Color Studio Floating Popover */}
-                    {isCmykModalOpen && (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-[#141413] border border-[#C5A880]/40 rounded-2xl p-4 shadow-2xl w-72 z-50 text-xs animate-slide-up"
-                      >
-                        <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/10">
-                          <div className="flex items-center gap-1.5 font-bold text-[#C5A880]">
-                            <Pipette className="w-3.5 h-3.5" />
-                            <span>CMYK Color Studio</span>
-                          </div>
-                          <button
-                            onClick={() => setIsCmykModalOpen(false)}
-                            className="p-1 rounded hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        {/* Live Color Preview Banner */}
-                        <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#1F1C17] border border-white/10 mb-3">
-                          <div
-                            className="w-10 h-10 rounded-lg border border-white/30 shadow-inner shrink-0"
-                            style={{ backgroundColor: hexColor }}
-                          />
-                          <div className="flex-1 font-mono text-[11px] leading-tight">
-                            <div className="text-[#FAF9F6] font-bold">
-                              C:{cmyk.c}% M:{cmyk.m}% Y:{cmyk.y}% K:{cmyk.k}%
-                            </div>
-                            <div className="text-[#A59F92] text-[10px]">
-                              RGB Preview: {hexColor.toUpperCase()}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* CMYK Sliders */}
-                        <div className="space-y-2.5 mb-4">
-                          {/* Cyan */}
-                          <div className="space-y-0.5">
-                            <div className="flex justify-between text-[10px]">
-                              <span className="text-cyan-400 font-bold">Cyan (C)</span>
-                              <span className="font-mono text-[#FAF9F6]">{cmyk.c}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={cmyk.c}
-                              onChange={(e) => {
-                                const newC = parseInt(e.target.value) || 0;
-                                const newHex = cmykToHex(newC, cmyk.m, cmyk.y, cmyk.k);
-                                handleUpdateBlockProp(
-                                  selectedBlock.id,
-                                  { style: { ...selectedBlock.style, color: newHex, cmyk: { c: newC, m: cmyk.m, y: cmyk.y, k: cmyk.k } } },
-                                  true
-                                );
-                              }}
-                              className="w-full accent-cyan-400 h-1.5 bg-[#1F1C17] rounded-lg cursor-pointer"
-                            />
-                          </div>
-
-                          {/* Magenta */}
-                          <div className="space-y-0.5">
-                            <div className="flex justify-between text-[10px]">
-                              <span className="text-pink-400 font-bold">Magenta (M)</span>
-                              <span className="font-mono text-[#FAF9F6]">{cmyk.m}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={cmyk.m}
-                              onChange={(e) => {
-                                const newM = parseInt(e.target.value) || 0;
-                                const newHex = cmykToHex(cmyk.c, newM, cmyk.y, cmyk.k);
-                                handleUpdateBlockProp(
-                                  selectedBlock.id,
-                                  { style: { ...selectedBlock.style, color: newHex, cmyk: { c: cmyk.c, m: newM, y: cmyk.y, k: cmyk.k } } },
-                                  true
-                                );
-                              }}
-                              className="w-full accent-pink-400 h-1.5 bg-[#1F1C17] rounded-lg cursor-pointer"
-                            />
-                          </div>
-
-                          {/* Yellow */}
-                          <div className="space-y-0.5">
-                            <div className="flex justify-between text-[10px]">
-                              <span className="text-yellow-400 font-bold">Yellow (Y)</span>
-                              <span className="font-mono text-[#FAF9F6]">{cmyk.y}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={cmyk.y}
-                              onChange={(e) => {
-                                const newY = parseInt(e.target.value) || 0;
-                                const newHex = cmykToHex(cmyk.c, cmyk.m, newY, cmyk.k);
-                                handleUpdateBlockProp(
-                                  selectedBlock.id,
-                                  { style: { ...selectedBlock.style, color: newHex, cmyk: { c: cmyk.c, m: cmyk.m, y: newY, k: cmyk.k } } },
-                                  true
-                                );
-                              }}
-                              className="w-full accent-yellow-400 h-1.5 bg-[#1F1C17] rounded-lg cursor-pointer"
-                            />
-                          </div>
-
-                          {/* Key (Black) */}
-                          <div className="space-y-0.5">
-                            <div className="flex justify-between text-[10px]">
-                              <span className="text-neutral-300 font-bold">Key / Black (K)</span>
-                              <span className="font-mono text-[#FAF9F6]">{cmyk.k}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={cmyk.k}
-                              onChange={(e) => {
-                                const newK = parseInt(e.target.value) || 0;
-                                const newHex = cmykToHex(cmyk.c, cmyk.m, cmyk.y, newK);
-                                handleUpdateBlockProp(
-                                  selectedBlock.id,
-                                  { style: { ...selectedBlock.style, color: newHex, cmyk: { c: cmyk.c, m: cmyk.m, y: cmyk.y, k: newK } } },
-                                  true
-                                );
-                              }}
-                              className="w-full accent-neutral-300 h-1.5 bg-[#1F1C17] rounded-lg cursor-pointer"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Poh-Chang & Museum Standard Print Swatches */}
-                        <div>
-                          <div className="text-[10px] uppercase font-bold text-[#A59F92] mb-1.5">
-                            แม่สีสิ่งพิมพ์เพาะช่าง (Print Inks)
-                          </div>
-                          <div className="grid grid-cols-6 gap-1.5">
-                            {PRINT_CMYK_PALETTE.map((pal) => (
-                              <button
-                                key={pal.label}
-                                onClick={() => {
-                                  handleUpdateBlockProp(
-                                    selectedBlock.id,
-                                    { style: { ...selectedBlock.style, color: pal.hex, cmyk: { c: pal.c, m: pal.m, y: pal.y, k: pal.k } } },
-                                    true
-                                  );
-                                }}
-                                className="w-8 h-8 rounded-lg border border-white/20 hover:scale-110 hover:border-[#C5A880] transition-all relative group cursor-pointer"
-                                style={{ backgroundColor: pal.hex }}
-                                title={`${pal.label} (C:${pal.c} M:${pal.m} Y:${pal.y} K:${pal.k})`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+              {/* Color Picker */}
+              <div className="flex items-center gap-1 bg-[#F8F7F4] border border-[#E6E0D4] rounded-xl px-2 py-1">
+                <input
+                  type="color"
+                  value={selectedBlock.style.color || '#1A1918'}
+                  onChange={(e) =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, color: e.target.value } },
+                      true
+                    )
+                  }
+                  className="w-4 h-4 bg-transparent border-none cursor-pointer"
+                  title="เลือกสีข้อความ"
+                />
+                <input
+                  type="text"
+                  value={selectedBlock.style.color || '#1A1918'}
+                  onChange={(e) =>
+                    handleUpdateBlockProp(
+                      selectedBlock.id,
+                      { style: { ...selectedBlock.style, color: e.target.value } },
+                      true
+                    )
+                  }
+                  className="w-16 bg-transparent text-[11px] font-mono text-[#1F1C17] focus:outline-none uppercase"
+                  maxLength={7}
+                />
+              </div>
             </div>
           )}
 
-          {/* Layer Order */}
-          <div className="flex items-center gap-1 pl-2 border-l border-white/10">
-            <button
-              onClick={handleBringToFront}
-              className="p-1.5 rounded-lg bg-[#1F1C17] border border-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
-              title="นำมาไว้หน้าสุด (Bring to Front)"
-            >
-              <BringToFront className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={handleSendToBack}
-              className="p-1.5 rounded-lg bg-[#1F1C17] border border-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
-              title="ส่งไปไว้หลังสุด (Send to Back)"
-            >
-              <SendToBack className="w-3.5 h-3.5" />
-            </button>
+          {/* Opacity Control */}
+          <div className="flex items-center gap-1.5 bg-[#F8F7F4] px-2 py-1 rounded-xl border border-[#E6E0D4] text-xs">
+            <Eye className="w-3 h-3 text-[#777]" />
+            <input
+              type="range"
+              min="10"
+              max="100"
+              step="5"
+              value={Math.round((selectedBlock.style.opacity ?? 1) * 100)}
+              onChange={(e) => {
+                const op = parseInt(e.target.value) / 100;
+                handleUpdateBlockProp(selectedBlock.id, { style: { ...selectedBlock.style, opacity: op } }, true);
+              }}
+              className="w-16 accent-[#8B1B1B] h-1 bg-black/10 rounded cursor-pointer"
+              title="ปรับความโปร่งแสง (Opacity)"
+            />
+            <span className="text-[10px] font-mono text-[#1F1C17] w-6 text-right">
+              {Math.round((selectedBlock.style.opacity ?? 1) * 100)}%
+            </span>
           </div>
-
-          {/* Close Pill */}
-          <button
-            onClick={() => setSelectedBlockId(null)}
-            className="p-1 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6] ml-1"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* 🌟 PRESET TEMPLATES MODAL (แม่แบบมาตรฐาน & แม่แบบที่คุณบันทึกไว้) */}
+      {/* 📐 PRESET TEMPLATES MODAL */}
       {/* ========================================================================= */}
       {isPresetModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#141413] border border-[#C5A880]/30 rounded-3xl w-full max-w-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up">
-            <div className="p-5 border-b border-white/10 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white border border-[#E6E0D4] rounded-2xl w-full max-w-4xl max-h-[85vh] shadow-2xl flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-[#E6E0D4] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-[#C5A880]" />
-                <h3 className="text-sm font-bold text-[#FAF9F6]">เลือกและจัดการแม่แบบสูจิบัตร (Catalog Templates)</h3>
+                <Sparkles className="w-4 h-4 text-[#8B1B1B]" />
+                <h3 className="font-serif text-base font-bold text-[#1F1C17]">
+                  คลังแม่แบบสูจิบัตรมาตรฐาน (Catalog Layout Presets)
+                </h3>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setIsPresetModalOpen(false);
-                    setIsSavePresetModalOpen(true);
-                  }}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow transition-all cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>บันทึกเป็นแม่แบบใหม่</span>
-                </button>
-                <button
-                  onClick={() => setIsPresetModalOpen(false)}
-                  className="p-1.5 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              <button
+                onClick={() => setIsPresetModalOpen(false)}
+                className="p-1 rounded-full hover:bg-black/5 text-[#777]"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
-              {/* 1. Custom Presets Section */}
-              {customPresets.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#C5A880] uppercase tracking-wider">
-                      <FolderOpen className="w-4 h-4" />
-                      <span>แม่แบบที่คุณบันทึกไว้ ({customPresets.length})</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {customPresets.map((preset) => (
-                      <div
-                        key={preset.id}
-                        onClick={() => handleSelectPreset(preset)}
-                        className="group p-4 rounded-2xl bg-[#1C1A17] hover:bg-[#25221D] border border-[#C5A880]/30 hover:border-[#8B1B1B] cursor-pointer transition-all flex flex-col justify-between relative shadow"
-                      >
-                        <div>
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <span className="text-sm font-bold text-[#FAF9F6] group-hover:text-[#C5A880] transition-colors line-clamp-1">
-                              {preset.name}
-                            </span>
-                            <button
-                              onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
-                              className="p-1 rounded-md text-[#A59F92] hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-500/30 transition-all cursor-pointer"
-                              title="ลบแม่แบบนี้"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <div className="text-[11px] text-[#A59F92] mb-1 line-clamp-1 font-sans">
-                            {preset.description || 'แม่แบบกำหนดเอง'}
-                          </div>
-                          <div className="text-xs text-[#737067] mb-3 font-mono">
-                            {preset.pageWidthInches}&quot; × {preset.pageHeightInches}&quot; ({preset.paperSize})
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-[#C5A880] font-semibold border-t border-white/5 pt-2">
-                          <span className="text-[11px] text-[#A59F92]">{preset.blocks.length} องค์ประกอบ</span>
-                          <span className="group-hover:translate-x-1 transition-transform text-[11px]">ใช้แม่แบบนี้ →</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 2. Built-in Standard Presets */}
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               <div>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#A59F92] uppercase tracking-wider mb-3">
-                  <Sparkles className="w-4 h-4 text-[#C5A880]" />
-                  <span>แม่แบบมาตรฐาน (Built-in Standard Presets)</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <h4 className="text-xs uppercase font-bold text-[#8B1B1B] tracking-wider mb-3">
+                  แม่แบบทางการ (Official Artvara Presets)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {BUILTIN_CATALOG_PRESETS.map((preset) => (
                     <div
                       key={preset.id}
                       onClick={() => handleSelectPreset(preset)}
-                      className="group p-4 rounded-2xl bg-[#1F1C17] hover:bg-[#2A2722] border border-white/10 hover:border-[#8B1B1B] cursor-pointer transition-all flex flex-col justify-between"
+                      className="group bg-[#F8F7F4] hover:bg-white border border-[#E6E0D4] hover:border-[#8B1B1B] p-4 rounded-xl shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
                     >
                       <div>
-                        <div className="text-sm font-bold text-[#FAF9F6] group-hover:text-[#C5A880] transition-colors mb-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-mono font-bold text-[#8B1B1B] uppercase bg-[#8B1B1B]/10 px-2 py-0.5 rounded-full">
+                            {preset.paperSize}
+                          </span>
+                          <span className="text-[10px] font-mono text-[#777]">
+                            {preset.blocks.length} องค์ประกอบ
+                          </span>
+                        </div>
+                        <h5 className="font-serif font-bold text-sm text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors mb-1">
                           {preset.name}
-                        </div>
-                        <div className="text-xs text-[#A59F92] mb-1 font-sans">
-                          {preset.description}
-                        </div>
-                        <div className="text-xs text-[#737067] mb-3 font-mono">
-                          {preset.pageWidthInches}&quot; × {preset.pageHeightInches}&quot; ({preset.paperSize})
-                        </div>
+                        </h5>
+                        <p className="text-[11px] text-[#666] line-clamp-2">
+                          {preset.description || 'แม่แบบจัดหน้าสูจิบัตรศิลปกรรมระดับพรีเมียม'}
+                        </p>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-[#C5A880] font-semibold border-t border-white/5 pt-2">
-                        <span className="text-[11px] text-[#A59F92]">{preset.blocks.length} องค์ประกอบ</span>
-                        <span className="group-hover:translate-x-1 transition-transform text-[11px]">เลือกแม่แบบนี้ →</span>
+                      <div className="mt-4 pt-3 border-t border-[#E6E0D4] flex items-center justify-between text-xs text-[#8B1B1B] font-semibold">
+                        <span>เลือกใช้แม่แบบนี้</span>
+                        <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                       </div>
                     </div>
                   ))}
@@ -2731,95 +2154,11 @@ export function CatalogDesignerStudio({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 💾 SAVE AS NEW PRESET MODAL */}
-      {/* ========================================================================= */}
-      {isSavePresetModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#141413] border border-[#C5A880]/40 rounded-3xl w-full max-w-md p-6 shadow-2xl animate-slide-up">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-[#C5A880]" />
-                <h3 className="text-sm font-bold text-[#FAF9F6]">บันทึกเป็นแม่แบบใหม่ (Save as Preset)</h3>
-              </div>
-              <button
-                onClick={() => setIsSavePresetModalOpen(false)}
-                className="p-1 rounded-full hover:bg-white/10 text-[#A59F92] hover:text-[#FAF9F6]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveAsNewPreset} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-[#C5A880] mb-1.5">
-                  ชื่อแม่แบบใหม่ (Preset Name) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  placeholder="เช่น สูจิบัตรเพาะช่าง โมเดิร์น 2026"
-                  value={newPresetName}
-                  onChange={(e) => setNewPresetName(e.target.value)}
-                  className="w-full bg-[#1F1C17] border border-[#C5A880]/30 focus:border-[#C5A880] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF9F6] focus:outline-none placeholder-neutral-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#A59F92] mb-1.5">
-                  คำอธิบายเพิ่มเติม (Description)
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น เลย์เอาต์จัดวางรูปศิลปินชิดขวา ธงชาติ 1cm"
-                  value={newPresetDesc}
-                  onChange={(e) => setNewPresetDesc(e.target.value)}
-                  className="w-full bg-[#1F1C17] border border-white/10 focus:border-[#C5A880] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF9F6] focus:outline-none placeholder-neutral-500"
-                />
-              </div>
-
-              <div className="p-3 bg-[#1F1C17] rounded-xl border border-white/5 text-xs text-[#A59F92] space-y-1">
-                <div className="flex justify-between">
-                  <span>ขนาดกระดาษ:</span>
-                  <span className="font-mono text-[#FAF9F6]">{template.pageWidthInches}&quot; × {template.pageHeightInches}&quot; ({template.paperSize})</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>จำนวนองค์ประกอบ:</span>
-                  <span className="font-mono text-[#FAF9F6]">{template.blocks.length} บล็อก</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsSavePresetModalOpen(false)}
-                  className="px-4 py-2 rounded-full text-xs text-[#A59F92] hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-full bg-[#8B1B1B] hover:bg-[#721616] text-white text-xs font-bold shadow-lg transition-all cursor-pointer active:scale-95"
-                >
-                  บันทึกแม่แบบ
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 🍞 SAVE SUCCESS TOAST */}
-      {/* ========================================================================= */}
+      {/* Save Success Toast */}
       {saveSuccessToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#8B1B1B] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-[#D4AF37]/50 animate-slide-up">
-          <Check className="w-4 h-4 text-[#D4AF37]" />
-          <div>
-            <div className="text-xs font-bold">บันทึกเทมเพลตสำเร็จ!</div>
-            <div className="text-[11px] text-white/80">สูจิบัตรของนิทรรศการนี้จะใช้รูปแบบใหม่ทันที</div>
-          </div>
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-2 bg-[#8B1B1B] text-white px-4 py-2.5 rounded-full shadow-xl text-xs font-semibold animate-slide-down">
+          <Check className="w-4 h-4" />
+          <span>บันทึกการจัดหน้าสูจิบัตรเรียบร้อยแล้ว</span>
         </div>
       )}
     </div>
