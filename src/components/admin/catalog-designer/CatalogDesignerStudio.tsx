@@ -1207,7 +1207,7 @@ export function CatalogDesignerStudio({
       const plateNode = canvasEl.querySelector('.catalog-dynamic-page');
       const plateHtml = plateNode ? plateNode.outerHTML : canvasEl.innerHTML;
 
-      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
         .map((el) => el.outerHTML)
         .join('\n');
 

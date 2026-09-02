@@ -255,7 +255,7 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
       const w = isCustomSize ? (customTemplate?.pageWidthInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 8.27);
       const h = isCustomSize ? (customTemplate?.pageHeightInches || 8.0) : (paperSize === 'square8x8' ? 8.0 : 11.69);
 
-      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
         .map((el) => el.outerHTML)
         .join('\n');
 
