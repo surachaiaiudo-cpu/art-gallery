@@ -19,6 +19,8 @@ import {
 } from '@/types/catalogTemplate';
 import { CatalogDynamicPlate } from '@/components/catalog/CatalogDynamicPlate';
 import { useLanguage } from '@/context/LanguageContext';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import {
   Layout,
   Plus,
@@ -231,6 +233,8 @@ export function CatalogDesignerStudio({
   const [editingPreset, setEditingPreset] = useState<{ id: string; name: string; description: string } | null>(null);
   const [isCmykModalOpen, setIsCmykModalOpen] = useState<boolean>(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
+  const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
+  const [exportStatusText, setExportStatusText] = useState<string>('');
   const [showMarginGuide, setShowMarginGuide] = useState<boolean>(true);
   const [isMarginModalOpen, setIsMarginModalOpen] = useState<boolean>(false);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState<boolean>(false);
@@ -1074,6 +1078,105 @@ export function CatalogDesignerStudio({
     setTimeout(cleanup, 2500);
   };
 
+  // 📥 DIRECT DOWNLOAD PDF (No Print Dialog, Instant File Download)
+  const handleDirectDownloadPDF = async () => {
+    if (!canvasRef.current) return;
+    try {
+      setIsExportingPDF(true);
+      setExportStatusText('กำลังประมวลผล PDF คมชัดสูง (300 DPI)...');
+      const w = template.pageWidthInches || 8;
+      const h = template.pageHeightInches || 8;
+
+      // Temporarily hide edit guides from capture
+      setShowGrid(false);
+      setShowMarginGuide(false);
+      setSelectedBlockId(null);
+
+      await new Promise((r) => setTimeout(r, 120));
+
+      const canvas = await html2canvas(canvasRef.current, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: template.backgroundColor || '#FFFFFF',
+        logging: false,
+      });
+
+      setExportStatusText('กำลังสร้างไฟล์ PDF ขนาดตามจริง...');
+
+      const imgData = canvas.toDataURL('image/png', 1.0);
+
+      const pdf = new jsPDF({
+        orientation: w > h ? 'landscape' : 'portrait',
+        unit: 'in',
+        format: [w, h],
+        compress: true,
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, w, h, undefined, 'FAST');
+
+      const slug = currentExhibition?.slug || 'catalog';
+      const cleanFileName = `${slug}-Plate-${w}x${h}.pdf`;
+      pdf.save(cleanFileName);
+
+      setShowGrid(true);
+      setShowMarginGuide(true);
+      setIsExportingPDF(false);
+      setExportStatusText('');
+    } catch (err) {
+      console.error('Direct PDF export error:', err);
+      setIsExportingPDF(false);
+      setExportStatusText('');
+      setShowGrid(true);
+      setShowMarginGuide(true);
+      alert('ระบบกำลังเปิดหน้าต่างบันทึกสำรองให้แทน');
+      handlePrintStudioCurrentPage();
+    }
+  };
+
+  // 🖼️ DIRECT DOWNLOAD HIGH-RES PNG (300 DPI)
+  const handleDirectDownloadPNG = async () => {
+    if (!canvasRef.current) return;
+    try {
+      setIsExportingPDF(true);
+      setExportStatusText('กำลังเรนเดอร์รูปภาพ PNG ความละเอียดสูง (300 DPI)...');
+      const w = template.pageWidthInches || 8;
+      const h = template.pageHeightInches || 8;
+
+      setShowGrid(false);
+      setShowMarginGuide(false);
+      setSelectedBlockId(null);
+
+      await new Promise((r) => setTimeout(r, 120));
+
+      const canvas = await html2canvas(canvasRef.current, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: template.backgroundColor || '#FFFFFF',
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const link = document.createElement('a');
+      const slug = currentExhibition?.slug || 'catalog';
+      link.href = imgData;
+      link.download = `${slug}-Plate-${w}x${h}.png`;
+      link.click();
+
+      setShowGrid(true);
+      setShowMarginGuide(true);
+      setIsExportingPDF(false);
+      setExportStatusText('');
+    } catch (err) {
+      console.error('Direct PNG export error:', err);
+      setIsExportingPDF(false);
+      setExportStatusText('');
+      setShowGrid(true);
+      setShowMarginGuide(true);
+    }
+  };
+
   // Export JSON file
   const handleExportJSON = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(template, null, 2));
@@ -1666,7 +1769,56 @@ export function CatalogDesignerStudio({
                   <span className="text-[10px] text-gray-500 font-normal">({template.paperSize})</span>
                 </div>
 
-                {/* Direct Current Page Print */}
+                {/* 📥 1. DIRECT DOWNLOAD PDF FILE */}
+                <button
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleDirectDownloadPDF();
+                  }}
+                  disabled={isExportingPDF}
+                  className="w-full p-2.5 rounded-xl bg-[#8B1B1B]/5 hover:bg-[#8B1B1B] text-left transition-all cursor-pointer group border border-[#8B1B1B]/20 hover:border-[#8B1B1B]"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-2 rounded-lg bg-[#8B1B1B] text-white group-hover:bg-white group-hover:text-[#8B1B1B] transition-colors shrink-0">
+                      <Download className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[#8B1B1B] group-hover:text-white transition-colors flex items-center gap-1.5">
+                        <span>ดาวน์โหลดไฟล์ PDF ขนาดตามจริง</span>
+                        <span className="text-[9.5px] bg-[#8B1B1B] text-white group-hover:bg-white group-hover:text-[#8B1B1B] px-1.5 py-0.2 rounded-full font-mono">
+                          {template.pageWidthInches}&quot;x{template.pageHeightInches}&quot;
+                        </span>
+                      </div>
+                      <div className="text-[10.5px] text-[#666] group-hover:text-white/90 leading-tight mt-0.5">
+                        ดาวน์โหลดเป็นไฟล์ .PDF ลงเครื่องทันที ไม่ต้องผ่านหน้าต่างพิมพ์
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                {/* 🖼️ 2. DIRECT DOWNLOAD HIGH-RES PNG */}
+                <button
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleDirectDownloadPNG();
+                  }}
+                  disabled={isExportingPDF}
+                  className="w-full p-2.5 rounded-xl hover:bg-[#F8F7F4] flex items-start gap-2.5 text-left transition-colors cursor-pointer group"
+                >
+                  <div className="p-2 rounded-lg bg-black/5 text-[#444] group-hover:bg-[#8B1B1B] group-hover:text-white transition-colors shrink-0">
+                    <ImageIcon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors">
+                      ดาวน์โหลดเป็นรูปภาพ PNG (300 DPI)
+                    </div>
+                    <div className="text-[10.5px] text-[#777] leading-tight mt-0.5">
+                      ภาพความละเอียดสูงสำหรับโรงพิมพ์หรืองานกราฟิก
+                    </div>
+                  </div>
+                </button>
+
+                {/* 🖨️ 3. PRINT TO PHYSICAL PRINTER */}
                 <button
                   onClick={() => {
                     setIsExportMenuOpen(false);
@@ -1674,20 +1826,20 @@ export function CatalogDesignerStudio({
                   }}
                   className="w-full p-2.5 rounded-xl hover:bg-[#F8F7F4] flex items-start gap-2.5 text-left transition-colors cursor-pointer group"
                 >
-                  <div className="p-2 rounded-lg bg-[#8B1B1B] text-white transition-colors">
+                  <div className="p-2 rounded-lg bg-black/5 text-[#444] group-hover:bg-[#8B1B1B] group-hover:text-white transition-colors shrink-0">
                     <Printer className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="text-xs font-bold text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors">
-                      บันทึกหน้านี้เป็น PDF ทันที ({template.pageWidthInches}&quot; x {template.pageHeightInches}&quot;)
+                      สั่งพิมพ์ออกเครื่องพิมพ์ (Print Dialog)
                     </div>
-                    <div className="text-[10.5px] text-[#777] leading-tight">
-                      พิมพ์หรือบันทึก PDF ทันทีตรงจากหน้าจอนี้ ไม่ต้องรอเปิดหน้าอื่น
+                    <div className="text-[10.5px] text-[#777] leading-tight mt-0.5">
+                      เปิดหน้าต่างพิมพ์ของระบบสำหรับต่อกับเครื่องพิมพ์จริง
                     </div>
                   </div>
                 </button>
 
-                {/* Full Catalog PDF */}
+                {/* 📚 4. Full Catalog Continuous View */}
                 {currentExhibition?.slug && (
                   <Link
                     href={`/catalog/${currentExhibition.slug}?mode=full`}
@@ -1695,15 +1847,15 @@ export function CatalogDesignerStudio({
                     onClick={() => setIsExportMenuOpen(false)}
                     className="w-full p-2.5 rounded-xl hover:bg-[#F8F7F4] flex items-start gap-2.5 text-left transition-colors cursor-pointer group"
                   >
-                    <div className="p-2 rounded-lg bg-[#8B1B1B]/10 text-[#8B1B1B] group-hover:bg-[#8B1B1B] group-hover:text-white transition-colors">
-                      <Download className="w-4 h-4" />
+                    <div className="p-2 rounded-lg bg-black/5 text-[#444] group-hover:bg-[#8B1B1B] group-hover:text-white transition-colors shrink-0">
+                      <Layers className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="text-xs font-bold text-[#1F1C17] group-hover:text-[#8B1B1B] transition-colors">
-                        เปิดสูจิบัตรทั้งเล่ม (ทุกหน้าพร้อมพิมพ์)
+                        เปิดสูจิบัตรทั้งเล่ม (ทุกหน้ารวมกัน)
                       </div>
-                      <div className="text-[10.5px] text-[#777] leading-tight">
-                        เปิดหน้ารวมสูจิบัตรต่อเนื่องพร้อมสั่งบันทึก PDF ทั้งเล่ม
+                      <div className="text-[10.5px] text-[#777] leading-tight mt-0.5">
+                        เปิดหน้ารวมสูจิบัตรต่อเนื่อง
                       </div>
                     </div>
                   </Link>
@@ -3144,6 +3296,21 @@ export function CatalogDesignerStudio({
                 บันทึกชื่อใหม่
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exporting Progress Overlay */}
+      {isExportingPDF && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white border border-[#E6E0D4] rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-3 text-center max-w-sm">
+            <div className="w-10 h-10 border-3 border-[#8B1B1B] border-t-transparent rounded-full animate-spin" />
+            <h4 className="font-serif font-bold text-sm text-[#1F1C17]">
+              กำลังดาวน์โหลดไฟล์สูจิบัตร...
+            </h4>
+            <p className="text-xs text-[#777]">
+              {exportStatusText || 'กำลังประมวลผลความละเอียดสูง (300 DPI) และดาวน์โหลดลงเครื่อง'}
+            </p>
           </div>
         </div>
       )}
