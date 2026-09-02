@@ -66,6 +66,11 @@ export function CatalogReaderModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedPageModalIndex, totalPages, onClose, onSelectPageIndex, onPrintSinglePage]);
 
+  const customTemplate = getExhibitionCatalogTemplate(exhibition);
+  const widthInches = customTemplate?.pageWidthInches;
+  const heightInches = customTemplate?.pageHeightInches;
+  const backgroundColor = customTemplate?.backgroundColor;
+
   return (
     <div className="no-print fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md overflow-hidden animate-fade-in text-white">
       {/* Top Reader Navigation Bar */}
@@ -177,6 +182,9 @@ export function CatalogReaderModal({
                 coverFooter={coverFooter}
                 isReaderModal
                 paperSize={paperSize}
+                widthInches={widthInches}
+                heightInches={heightInches}
+                backgroundColor={backgroundColor}
               />
             ) : hasReviewers && selectedPageModalIndex === 1 ? (
               <CatalogStatementPage
@@ -185,6 +193,9 @@ export function CatalogReaderModal({
                 peerReviewersList={peerReviewersList}
                 plateFooter={plateFooter}
                 paperSize={paperSize}
+                widthInches={widthInches}
+                heightInches={heightInches}
+                backgroundColor={backgroundColor}
               />
             ) : (
               (() => {

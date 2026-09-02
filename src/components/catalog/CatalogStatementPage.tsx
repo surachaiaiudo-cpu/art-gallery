@@ -11,6 +11,9 @@ interface CatalogStatementPageProps {
   peerReviewersList: PeerReviewer[];
   plateFooter: string;
   paperSize?: 'a4' | 'square8x8';
+  widthInches?: number;
+  heightInches?: number;
+  backgroundColor?: string;
 }
 
 export function CatalogStatementPage({
@@ -19,11 +22,26 @@ export function CatalogStatementPage({
   peerReviewersList,
   plateFooter,
   paperSize = 'a4',
+  widthInches,
+  heightInches,
+  backgroundColor = '#FFFFFF',
 }: CatalogStatementPageProps) {
-  const isSquare = paperSize === 'square8x8';
+  const isSquare = paperSize === 'square8x8' || (widthInches && heightInches && Math.abs(widthInches - heightInches) < 0.1);
+  const wIn = widthInches || (isSquare ? 8.0 : 8.27);
+  const hIn = heightInches || (isSquare ? 8.0 : 11.69);
 
   return (
-    <section className={`${isSquare ? 'catalog-square8-page w-[203.2mm] h-[203.2mm] min-h-[203.2mm] max-h-[203.2mm] p-[6.35mm]' : 'catalog-a4-page w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] p-[15mm]'} bg-white border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-[#1E1D1B]`}>
+    <section
+      style={{
+        width: `${wIn}in`,
+        height: `${hIn}in`,
+        minHeight: `${hIn}in`,
+        maxHeight: `${hIn}in`,
+        maxWidth: `${wIn}in`,
+        backgroundColor: backgroundColor || '#FFFFFF',
+      }}
+      className={`${isSquare ? 'catalog-square8-page p-[6.35mm]' : 'catalog-a4-page p-[15mm]'} border border-[#E0E0E0] shadow-2xl mx-auto rounded-sm flex flex-col justify-between overflow-hidden relative box-border text-[#1E1D1B] select-none`}
+    >
       <div className="space-y-3">
         {/* Header */}
         <div className="border-b border-[#E0E0E0] pb-2 flex items-center justify-between">

@@ -1001,6 +1001,9 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
             curator={curator}
             coverFooter={coverFooter}
             paperSize={paperSize}
+            widthInches={customTemplate?.pageWidthInches || (paperSize === 'square8x8' ? 8.0 : 8.27)}
+            heightInches={customTemplate?.pageHeightInches || (paperSize === 'square8x8' ? 8.0 : 11.69)}
+            backgroundColor={customTemplate?.backgroundColor}
           />
         </PlateErrorBoundary>
 
@@ -1013,6 +1016,9 @@ export function CatalogViewerClient({ exhibition }: CatalogViewerClientProps) {
               peerReviewersList={peerReviewersList}
               plateFooter={plateFooter}
               paperSize={paperSize}
+              widthInches={customTemplate?.pageWidthInches || (paperSize === 'square8x8' ? 8.0 : 8.27)}
+              heightInches={customTemplate?.pageHeightInches || (paperSize === 'square8x8' ? 8.0 : 11.69)}
+              backgroundColor={customTemplate?.backgroundColor}
             />
           </PlateErrorBoundary>
         )}
