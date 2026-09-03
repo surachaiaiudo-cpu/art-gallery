@@ -23,7 +23,14 @@ export async function GET(
     }
 
     const entries = await db
-      .select()
+      .select({
+        id: schema.guestbookEntries.id,
+        visitorName: schema.guestbookEntries.visitorName,
+        visitorCountry: schema.guestbookEntries.visitorCountry,
+        message: schema.guestbookEntries.message,
+        rating: schema.guestbookEntries.rating,
+        createdAt: schema.guestbookEntries.createdAt,
+      })
       .from(schema.guestbookEntries)
       .where(
         and(

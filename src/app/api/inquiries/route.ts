@@ -1,18 +1,8 @@
 export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
-import { createInquiry, getAllInquiries } from '@/lib/data';
+import { createInquiry } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
-
-export async function GET() {
-  try {
-    const list = await getAllInquiries();
-    return NextResponse.json({ inquiries: list });
-  } catch (error) {
-    console.error('Failed to get inquiries:', error);
-    return NextResponse.json({ error: 'Failed to fetch inquiries' }, { status: 500 });
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {

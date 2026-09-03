@@ -235,7 +235,7 @@ export function ExhibitionCarousel({ exhibition }: ExhibitionCarouselProps) {
                   {t.specs.concept}:
                 </span>
                 <p className="italic bg-[#F4F1EA] p-3 rounded-lg border border-[#EAE5DC] max-h-36 overflow-y-auto">
-                  "{currentArtwork.concept || currentArtwork.description || 'This work deals with cultural heritage and historical preservation.'}"
+                  &ldquo;{currentArtwork.concept || currentArtwork.description || 'This work deals with cultural heritage and historical preservation.'}&rdquo;
                 </p>
               </div>
             </motion.div>

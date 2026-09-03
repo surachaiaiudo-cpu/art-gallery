@@ -10,6 +10,7 @@ async function performClear() {
   if (binding && typeof binding.prepare === 'function') {
     // Direct Cloudflare D1 batch deletion
     await binding.prepare('DELETE FROM inquiries').run();
+    await binding.prepare('DELETE FROM guestbook_entries').run();
     await binding.prepare('DELETE FROM exhibition_artworks').run();
     await binding.prepare('DELETE FROM artworks').run();
     await binding.prepare('DELETE FROM exhibitions').run();
@@ -17,6 +18,7 @@ async function performClear() {
   } else {
     // Drizzle proxy deletion
     await db.delete(schema.inquiries);
+    await db.delete(schema.guestbookEntries);
     await db.delete(schema.exhibitionArtworks);
     await db.delete(schema.artworks);
     await db.delete(schema.exhibitions);
@@ -40,8 +42,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-export async function GET(req: NextRequest) {
-  return POST(req);
 }

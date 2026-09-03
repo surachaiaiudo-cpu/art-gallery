@@ -245,7 +245,9 @@ export async function DELETE(req: NextRequest) {
       await deleteFromImageKit(existing[0].bannerUrl, imageKitPrivateKey);
     }
 
-    // Delete exhibition (CASCADE will automatically delete exhibition_artworks links)
+    // Explicitly delete dependent records to prevent orphaned records in D1/SQLite
+    await db.delete(schema.guestbookEntries).where(eq(schema.guestbookEntries.exhibitionId, id));
+    await db.delete(schema.exhibitionArtworks).where(eq(schema.exhibitionArtworks.exhibitionId, id));
     await db.delete(schema.exhibitions).where(eq(schema.exhibitions.id, id));
 
     invalidateDataCache();

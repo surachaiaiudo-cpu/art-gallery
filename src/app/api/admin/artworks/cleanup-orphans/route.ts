@@ -5,10 +5,6 @@ import { inArray, notInArray, eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  return executeCleanup();
-}
-
 export async function POST() {
   return executeCleanup();
 }

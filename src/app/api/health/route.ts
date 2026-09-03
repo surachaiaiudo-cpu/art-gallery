@@ -29,7 +29,6 @@ export async function GET() {
           name: a.name,
           country: a.country,
           flagEmoji: a.flagEmoji,
-          email: a.email,
         })),
         sampleArtworks: allArtworks.slice(0, 10).map((art: any) => ({
           id: art.id,

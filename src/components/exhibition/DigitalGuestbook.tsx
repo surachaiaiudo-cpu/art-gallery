@@ -203,7 +203,7 @@ export function DigitalGuestbook({ exhibitionSlug, exhibitionTitle }: DigitalGue
                 </div>
 
                 <p className="text-xs text-neutral-300 leading-relaxed italic bg-black/40 p-4 rounded-xl border border-white/5">
-                  "{item.message}"
+                  &ldquo;{item.message}&rdquo;
                 </p>
               </div>
 

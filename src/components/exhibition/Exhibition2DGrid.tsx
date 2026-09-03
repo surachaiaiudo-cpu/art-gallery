@@ -234,7 +234,7 @@ export function Exhibition2DGrid({ exhibition }: Exhibition2DGridProps) {
               </span>
             </div>
             <div className="text-xs sm:text-sm text-[#474239] leading-relaxed whitespace-pre-line font-serif italic max-w-4xl pt-1">
-              "{exhibition.curatorNote}"
+              &ldquo;{exhibition.curatorNote}&rdquo;
             </div>
           </div>
         )}

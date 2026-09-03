@@ -35,26 +35,38 @@ export function getAdminPassword(): string {
   return getEnvValue('ADMIN_PASSWORD') || DEFAULT_DEV_ADMIN_PASSWORD;
 }
 
+export function getImageKitPrivateKey(): string {
+  return (
+    getEnvValue('IMAGEKIT_PRIVATE_KEY') ||
+    getEnvValue('IMAGEKIT_KEY') ||
+    ''
+  );
+}
+
 export function isPasswordValid(inputPassword: string): boolean {
   const cleanInput = (inputPassword || '').trim();
   if (!cleanInput) return false;
 
   const envPass = getEnvValue('ADMIN_PASSWORD');
-  if (envPass && cleanInput === envPass.trim()) {
-    return true;
+  if (envPass) {
+    // When ADMIN_PASSWORD is set (e.g. production/staging), strictly enforce it
+    return cleanInput === envPass.trim();
   }
 
-  // Accepted passwords for local development & fallback
-  const acceptedDevPasswords = [
-    'admin1234',
-    'admin',
-    'pohchang2026',
-    'artvara2026',
-    '123456',
-    'admin123',
-  ];
+  // Fallback dev passwords only allowed in local development (non-production)
+  if (process.env.NODE_ENV !== 'production') {
+    const acceptedDevPasswords = [
+      DEFAULT_DEV_ADMIN_PASSWORD,
+      'admin',
+      'pohchang2026',
+      'artvara2026',
+      '123456',
+      'admin123',
+    ];
+    return acceptedDevPasswords.includes(cleanInput);
+  }
 
-  return acceptedDevPasswords.includes(cleanInput);
+  return false;
 }
 
 // Convert string to BufferSource

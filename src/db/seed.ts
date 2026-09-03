@@ -14,6 +14,7 @@ async function seed() {
 
   // Drop and recreate tables
   await client.executeMultiple(`
+    DROP TABLE IF EXISTS guestbook_entries;
     DROP TABLE IF EXISTS inquiries;
     DROP TABLE IF EXISTS exhibition_artworks;
     DROP TABLE IF EXISTS artworks;
@@ -85,6 +86,19 @@ async function seed() {
       status TEXT CHECK(status IN ('pending', 'contacted', 'completed')) DEFAULT 'pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (artwork_id) REFERENCES artworks(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS guestbook_entries (
+      id TEXT PRIMARY KEY,
+      exhibition_id TEXT NOT NULL,
+      visitor_name TEXT NOT NULL,
+      visitor_email TEXT,
+      visitor_country TEXT DEFAULT 'Thailand',
+      message TEXT NOT NULL,
+      rating INTEGER DEFAULT 5,
+      is_approved INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (exhibition_id) REFERENCES exhibitions(id) ON DELETE CASCADE
     );
   `);
 

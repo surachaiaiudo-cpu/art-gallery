@@ -7,10 +7,6 @@ import { invalidateDataCache } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  return executeArtistDeduplication();
-}
-
 export async function POST() {
   return executeArtistDeduplication();
 }

@@ -11,6 +11,7 @@ async function clear() {
 
   await client.executeMultiple(`
     DELETE FROM inquiries;
+    DELETE FROM guestbook_entries;
     DELETE FROM exhibition_artworks;
     DELETE FROM artworks;
     DELETE FROM exhibitions;

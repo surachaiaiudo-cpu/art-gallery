@@ -469,7 +469,7 @@ export function HomeClient({ exhibitions }: HomeClientProps) {
                   </div>
 
                   <p className="text-xs text-neutral-300 italic bg-black/30 p-4 rounded-xl border border-white/10 leading-relaxed">
-                    "{activeSpotlight.concept || activeSpotlight.description || 'ผลงานชิ้นเอกที่สะท้อนคุณค่าความประณีตทางสุนทรียศาสตร์ร่วมสมัย'}"
+                    &ldquo;{activeSpotlight.concept || activeSpotlight.description || 'ผลงานชิ้นเอกที่สะท้อนคุณค่าความประณีตทางสุนทรียศาสตร์ร่วมสมัย'}&rdquo;
                   </p>
                 </div>
 

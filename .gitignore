@@ -36,3 +36,13 @@ next-env.d.ts
 
 # wrangler
 .wrangler
+.dev.vars
+
+# backups & temporary db dumps
+*.sqlite.backup*
+*.sqlite-journal
+
+# agent skills & local workspace config
+.agent/
+.gemini/
+

@@ -433,7 +433,7 @@ export function ArtworkLightbox({
             <div className="text-xs text-[#5C564B] leading-relaxed mb-6 space-y-1.5">
               <span className="font-bold text-[#1A1918] block">{t.specs.concept}:</span>
               <p className="italic bg-[#F4F1EA] p-3.5 rounded-lg border border-[#EAE4D8] max-h-44 overflow-y-auto leading-relaxed">
-                "{artwork.concept || artwork.description || 'This work investigates sacred cultural heritage and contemporary memory.'}"
+                &ldquo;{artwork.concept || artwork.description || 'This work investigates sacred cultural heritage and contemporary memory.'}&rdquo;
               </p>
             </div>
           </div>

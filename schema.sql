@@ -67,3 +67,17 @@ CREATE TABLE IF NOT EXISTS inquiries (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (artwork_id) REFERENCES artworks(id) ON DELETE CASCADE
 );
+
+-- 6. Table: guestbook_entries
+CREATE TABLE IF NOT EXISTS guestbook_entries (
+    id TEXT PRIMARY KEY,
+    exhibition_id TEXT NOT NULL,
+    visitor_name TEXT NOT NULL,
+    visitor_email TEXT,
+    visitor_country TEXT DEFAULT 'Thailand',
+    message TEXT NOT NULL,
+    rating INTEGER DEFAULT 5,
+    is_approved INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (exhibition_id) REFERENCES exhibitions(id) ON DELETE CASCADE
+);
